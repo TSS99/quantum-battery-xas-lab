@@ -1,0 +1,66 @@
+name: Validate and deploy laboratory to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Set up optional reference-test runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: science/requirements.txt
+      - name: Install application dependencies
+        run: npm ci
+      - name: Install reference-test dependencies
+        run: python -m pip install -r science/requirements.txt
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test browser science engines
+        run: npm test
+      - name: Test independent SciPy reference
+        run: python -m pytest science
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Build static laboratory
+        env:
+          NEXT_PUBLIC_BASE_PATH: /quantum-battery-xas-lab
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npm run build
+      - name: Upload static laboratory
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
