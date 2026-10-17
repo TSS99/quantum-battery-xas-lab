@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const modules = [
   ['Overview', ''],
-  ['Battery & crystal', 'crystal'],
+  ['Sample', 'crystal'],
   ['XAS beamline', 'beamline'],
   ['Spectra studio', 'spectra'],
   ['Electronic structure', 'electronic'],
@@ -35,25 +35,25 @@ test('lithium slider obeys charge balance and remains synchronized across module
   await lithium.focus();
   await lithium.press('End');
   await expect(lithium).toHaveValue('1');
-  await expect(metric(page, 'Nominal Mn oxidation')).toContainText('+3.00');
-  await expect(page.getByRole('img', { name: '100 percent nominal manganese three plus' })).toBeVisible();
+  await expect(metric(page, 'Mn oxidation')).toContainText('+3.00');
+  await expect(page.getByRole('img', { name: '100 percent manganese three plus in the charge-balance model' })).toBeVisible();
   await lithium.press('Home');
-  await expect(metric(page, 'Nominal Mn oxidation')).toContainText('+4.00');
-  await page.getByRole('navigation').getByRole('link', { name: 'XAS beamline' }).click();
+  await expect(metric(page, 'Mn oxidation')).toContainText('+4.00');
+  await page.getByRole('navigation', {name:'Laboratory modules'}).getByRole('link', { name: 'XAS beamline' }).click();
   await expect(page.getByRole('slider', { name: 'Lithium content', exact: true })).toHaveValue('0');
-  await expect(metric(page, 'Nominal Mn oxidation')).toContainText('+4.00');
+  await expect(metric(page, 'Mn oxidation')).toContainText('+4.00');
 });
 
 test('beamline energy and thickness update actual counts with a provenance link', async ({ page }) => {
   await page.goto('./beamline/');
-  await expect(page.getByText('Synthetic educational model', { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Model provenance and limits' })).toBeVisible();
+  await expect(page.locator('.plot-legend').first()).toContainText('Tabulated atomic data');
+  await expect(page.getByRole('link', { name: 'Data source and limits' })).toBeVisible();
   const energy = page.getByRole('slider', { name: 'Photon energy', exact: true });
   await energy.focus();
   await energy.press('Home');
   const initialAbsorption = await metric(page, 'Absorption').locator('strong').innerText();
   await energy.press('End');
-  await expect(energy).toHaveValue('6580');
+  expect(Number(await energy.inputValue())).toBeGreaterThan(6600);
   await expect(metric(page, 'Absorption').locator('strong')).not.toHaveText(initialAbsorption);
   const thickness = page.getByRole('slider', { name: 'Sample thickness', exact: true });
   await thickness.focus();
@@ -64,12 +64,13 @@ test('beamline energy and thickness update actual counts with a provenance link'
   expect(thickCounts).toBeGreaterThanOrEqual(0);
   expect(thickCounts).toBeLessThan(thinCounts);
   expect(thinCounts).toBeLessThanOrEqual(100000);
+  await page.getByRole('button', { name: 'Research', exact: true }).click();
   await page.getByRole('checkbox', { name: 'Simulate Poisson detector counts' }).check();
   const seed = page.getByRole('spinbutton', { name: 'Random seed' });
   const previousSeed = Number(await seed.inputValue());
   await page.getByRole('button', { name: 'New seeded draw' }).click();
   await expect(seed).toHaveValue(String((previousSeed + 1) >>> 0));
-  await expect(page.getByText(/Zero counts make logarithmic attenuation undefined/)).toBeVisible();
+  await expect(page.getByText(/With zero counts, μ can't be computed/)).toBeVisible();
 });
 
 test('spectra validates imports without losing valid runs and exports provenance', async ({ page }) => {
@@ -83,12 +84,13 @@ test('spectra validates imports without losing valid runs and exports provenance
   };
   const input = page.getByLabel('Import spectrum CSV or JSON');
   await input.setInputFiles({ name: 'synthetic-test.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(imported)) });
-  await expect(page.getByRole('button', { name: 'Synthetic test sample', exact: true })).toBeVisible();
-  await expect(page.getByText('Imported synthetic', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synthetic test sample', exact: true }).first()).toBeVisible();
+  await expect(page.locator('.plot-legend')).toContainText('Imported synthetic');
   await input.setInputFiles({ name: 'invalid.csv', mimeType: 'text/csv', buffer: Buffer.from('energy,mu\n6530,1\n6540,2') });
   // Next.js also renders an empty route-announcer alert, so match the validation message itself.
   await expect(page.getByRole('alert').filter({ hasText: 'CSV headers' })).toContainText('CSV headers must be energy_eV,mu_cm_inv');
   await expect(page.getByRole('button', { name: 'Synthetic test sample', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Research', exact: true }).click();
   const downloadEvent = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Raw JSON', exact: true }).click();
   const download = await downloadEvent;
@@ -121,8 +123,7 @@ test('mobile modules fit the viewport and respect reduced-motion preference', as
 
 test('overview starting paths choose a module and explanation level', async ({ page }) => {
   await page.goto('./');
-  await expect(page.getByText('Synthetic educational model', { exact: true })).toBeVisible();
-  await expect(page.getByText(/not quantitatively predictive data/)).toBeVisible();
+  await expect(page.getByText('These spectra are a teaching model, not measured data.')).toBeVisible();
   for (const [audience, route, mode] of [['Student', 'crystal', 'Explore'], ['Researcher', 'quantum', 'Research'], ['Industry R&D', 'spectra', 'Research']]) {
     await page.goto('./');
     await page.locator('.module-card').filter({ hasText: audience }).click();
@@ -149,11 +150,11 @@ test('guided controls report composition and orbital changes', async ({ page }) 
   const lithium = page.getByRole('slider', { name: 'Lithium content', exact: true });
   await lithium.focus();
   await lithium.press('End');
-  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('At x = 1.00, nominal Mn is +3.00');
+  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('At x = 1.00, Mn is +3.00');
   await expect(page.locator('.delta-readout')).toContainText('+0.50');
-  await page.getByRole('navigation').getByRole('link', { name: 'Electronic structure', exact: true }).click();
+  await page.getByRole('navigation', {name:'Laboratory modules'}).getByRole('link', { name: 'Electronic structure', exact: true }).click();
   await page.getByRole('button', { name: /1s → d-like character/ }).click();
-  await page.getByRole('button', { name: 'Illustrate excitation' }).click();
+  await page.getByRole('button', { name: 'Excite the electron' }).click();
   await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('dashed circle marks the core hole');
 });
 
@@ -161,7 +162,7 @@ test('plot inspection includes units and SVG export remains standalone', async (
   await page.goto('./spectra/');
   await page.getByRole('button', { name: 'Derivative', exact: true }).click();
   await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('dμ/dE');
-  const plot = page.getByRole('img', { name: /spectra-derivative:/ });
+  const plot = page.getByRole('slider', { name: /spectra-derivative:/ });
   await plot.focus();
   await plot.press('ArrowRight');
   await expect(page.locator('.plot-readout').first()).toContainText('eV');
@@ -184,9 +185,71 @@ test('quantum reference compares completed runs and validation reports actual ch
   await steps.focus();
   await steps.press('Home');
   await page.getByRole('button', { name: 'Run simulation', exact: true }).click();
-  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('Trotter spectral L¹ error changed from', { timeout: 30_000 });
-  await page.getByRole('navigation').getByRole('link', { name: 'Methods & validation', exact: true }).click();
-  await expect(page.getByText(/not quantitatively predictive data/)).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('Spectrum error vs exact changed from', { timeout: 30_000 });
+  await page.getByRole('navigation', {name:'Laboratory modules'}).getByRole('link', { name: 'Methods & validation', exact: true }).click();
+  await expect(page.getByText(/Adjustable peaks and edge shifts are models, not measured data/)).toBeVisible();
   await page.getByRole('button', { name: 'Run sanity checks' }).click();
   await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('9 of 9 checks passed', { timeout: 30_000 });
+});
+
+test('sample presets and free formulas select real edges across modules', async ({ page }) => {
+  await page.goto('./crystal/');
+  const preset = page.getByLabel('Sample preset');
+  await expect(preset).toBeEnabled();
+  await preset.selectOption('fe2o3-hematite');
+  await expect(page.getByLabel('Chemical formula')).toHaveValue('Fe2O3');
+  await expect(page.getByRole('slider', { name: 'Lithium content', exact: true })).toHaveCount(0);
+  await page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link', { name: 'XAS beamline' }).click();
+  const ironWindow = await page.getByTestId('beamline-window').innerText();
+  expect(ironWindow).toContain('7076');
+  await page.getByRole('link', { name: 'Change sample' }).click();
+  await page.getByLabel('Absorber', { exact: true }).selectOption('O');
+  await page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link', { name: 'XAS beamline' }).click();
+  await expect(page.getByTestId('beamline-window')).not.toHaveText(ironWindow);
+  await expect(page.getByTestId('beamline-window')).toContainText('513');
+  await page.getByRole('link', { name: 'Change sample' }).click();
+  await page.getByLabel('Chemical formula').fill('CuSO4·5H2O');
+  await page.getByLabel('Density (g/cm³)').fill('2.286');
+  await page.getByRole('button', { name: 'Use this formula' }).click();
+  await expect(page.getByLabel('Sample preset')).toHaveValue('custom');
+  await page.getByLabel('Absorber', { exact: true }).selectOption('Cu');
+  await expect(page.getByLabel('Absorption edge')).toHaveValue('K');
+  await page.getByLabel('Chemical formula').fill('Qq2(');
+  await page.getByRole('button', { name: 'Use this formula' }).click();
+  await expect(page.locator('#sample-error')).toContainText('Unknown element');
+  await expect(page.getByLabel('Absorber', { exact: true })).toHaveValue('Cu');
+});
+
+test('custom Hamiltonians validate Pauli JSON and run independently of the sample', async ({ page }) => {
+  await page.goto('./quantum/');
+  await expect(page.getByRole('button', { name: 'Keep run as reference' })).toBeEnabled({ timeout: 30000 });
+  await page.getByText('Load your Hamiltonian', { exact: true }).click();
+  await page.getByLabel('Pauli strings JSON').fill('{"qubits":2,"terms":[{"label":"AX","coefficient":1}]}');
+  await page.getByRole('button', { name: 'Load and run Hamiltonian' }).click();
+  await expect(page.locator('#hamiltonian-error')).toContainText('letters from I, X, Y, Z');
+  await page.getByLabel('Pauli strings JSON').fill(JSON.stringify({ name: 'Complex test', qubits: 2, terms: [{ label: 'YI', coefficient: .6 }, { label: 'IZ', coefficient: .4 }, { label: 'XX', coefficient: .2 }] }));
+  await page.getByRole('button', { name: 'Load and run Hamiltonian' }).click();
+  await expect(page.getByText('Loaded: Complex test, 2 qubits, 3 Pauli terms.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keep run as reference' })).toBeEnabled({ timeout: 30000 });
+  await expect(page.getByRole('slider', { name: /^quantum-spectrum:/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Research', exact: true }).click();
+  await expect(page.getByText('Custom Pauli evolution is calculated directly.', { exact: false })).toBeVisible();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Full run JSON' }).click();
+  const file = await downloading;
+  const result = JSON.parse(await readFile((await file.path())!, 'utf8'));
+  expect(result.result.customHamiltonian.name).toBe('Complex test');
+  expect(result.result.validation.unitarityError).toBeLessThan(1e-10);
+  await page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link', { name: 'Overview', exact: true }).click();
+  await expect(page.getByRole('navigation', { name: 'Research workflow' }).getByRole('link', { name: /Kick the ground state, completed/ })).toBeVisible();
+});
+test('presets navigate immediately and undo restores the previous sample', async ({ page }) => {
+  await page.goto('./crystal/');
+  await expect(page.getByLabel('Sample preset')).toBeEnabled();
+  await page.getByLabel('Sample preset').selectOption('water');
+  await page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link', { name: 'Experiments', exact: true }).click();
+  await page.getByRole('link', { name: /Across the absorption edge/ }).click();
+  await expect(page).toHaveURL(/\/beamline\/$/);
+  await page.getByRole('button', { name: 'Undo preset' }).click();
+  await expect(page.locator('.sample-summary')).toContainText('H2O');
 });

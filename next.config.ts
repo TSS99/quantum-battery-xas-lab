@@ -3,5 +3,6 @@ const config: NextConfig = {
   output: 'export', trailingSlash: true,
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   images: { unoptimized: true }, devIndicators: false,
+  productionBrowserSourceMaps: false,
 };
 export default config;

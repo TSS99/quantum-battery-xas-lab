@@ -4,7 +4,7 @@ import { validateScenario, type LabState } from './scenario';
 export interface Spectrum {
   id: string;
   name: string;
-  provenance: 'synthetic' | 'imported';
+  provenance: 'synthetic' | 'imported' | 'tabulated';
   energy_eV: number[];
   mu_cm_inv: number[];
   sigma_mu_cm_inv?: number[];
@@ -15,7 +15,7 @@ export interface Spectrum {
   notes?: string;
   calibration?: { reference: string; offset_eV: number; status: 'uncalibrated' | 'user-declared' };
   /** An imported file's declaration is retained, but is not independently verified. */
-  declaredProvenance?: 'synthetic' | 'imported';
+  declaredProvenance?: 'synthetic' | 'imported' | 'tabulated';
 }
 
 export const MAX_SPECTRUM_ROWS = 20000;
@@ -42,7 +42,7 @@ export function validateSpectrum(input: unknown): Spectrum {
   if (coefficient.length !== energy.length) throw new Error('Energy and absorption arrays must have equal lengths.');
   if (energy.some((value, i) => value < 0 || value > 1e9 || (i > 0 && value <= energy[i - 1]))) throw new Error('Energies must be nonnegative and strictly increasing in eV.');
   if (coefficient.some(value => Math.abs(value) > 1e9)) throw new Error('Absorption coefficients exceed the supported range.');
-  if (data.provenance !== 'synthetic' && data.provenance !== 'imported') throw new Error('Spectrum provenance must be synthetic or imported.');
+  if (data.provenance !== 'synthetic' && data.provenance !== 'imported' && data.provenance !== 'tabulated') throw new Error('Spectrum provenance must be synthetic or imported.');
   let sigma: number[] | undefined;
   if (data.sigma_mu_cm_inv !== undefined) {
     sigma = finiteArray(data.sigma_mu_cm_inv, 'sigma_mu_cm_inv');
@@ -70,7 +70,7 @@ export function validateSpectrum(input: unknown): Spectrum {
       parameters[key as keyof XASParams] = value;
     }
   }
-  if (data.declaredProvenance !== undefined && data.declaredProvenance !== 'synthetic' && data.declaredProvenance !== 'imported') throw new Error('Invalid declared provenance.');
+  if (data.declaredProvenance !== undefined && data.declaredProvenance !== 'synthetic' && data.declaredProvenance !== 'imported' && data.declaredProvenance !== 'tabulated') throw new Error('Invalid declared provenance.');
   if (data.sourceSha256 !== undefined && (typeof data.sourceSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(data.sourceSha256))) throw new Error('Source SHA-256 must be a lowercase 64-digit hexadecimal hash.');
   return {
     id: textField(data.id, 'id', 200) ?? 'imported-spectrum',
@@ -263,7 +263,9 @@ export function fitSpectrum(spectrum: Spectrum, params: XASParams, onProgress?: 
 export type SpectrumView = 'raw' | 'normalized' | 'derivative';
 
 export function spectrumProvenance(spectrum: Spectrum): string {
-  return spectrum.provenance === 'synthetic' ? 'Synthetic educational model' : spectrum.declaredProvenance === 'synthetic' ? 'Imported synthetic' : 'Imported data — user supplied';
+  if (spectrum.provenance === 'tabulated') return 'Tabulated atomic data';
+  if (spectrum.declaredProvenance === 'tabulated') return 'Imported tabulated data';
+  return spectrum.provenance === 'synthetic' ? 'Synthetic educational model' : spectrum.declaredProvenance === 'synthetic' ? 'Imported synthetic' : 'Imported data (user supplied)';
 }
 
 /** A display transform never overwrites the stored raw arrays or claims propagated uncertainty. */

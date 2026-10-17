@@ -1,0 +1,344 @@
+{
+ "xraydbVersion": "4.5.8",
+ "edges": [
+  {
+   "element": "Fe",
+   "edge": "K",
+   "energy_eV": 7112.0,
+   "jumpRatio": 7.893,
+   "fluorescenceYield": 0.350985
+  },
+  {
+   "element": "Cu",
+   "edge": "K",
+   "energy_eV": 8979.0,
+   "jumpRatio": 7.56,
+   "fluorescenceYield": 0.441091
+  },
+  {
+   "element": "Mn",
+   "edge": "K",
+   "energy_eV": 6539.0,
+   "jumpRatio": 7.999,
+   "fluorescenceYield": 0.319181
+  },
+  {
+   "element": "O",
+   "edge": "K",
+   "energy_eV": 543.1,
+   "jumpRatio": 15.4,
+   "fluorescenceYield": 0.0058
+  },
+  {
+   "element": "Ti",
+   "edge": "K",
+   "energy_eV": 4966.0,
+   "jumpRatio": 8.366,
+   "fluorescenceYield": 0.218425
+  },
+  {
+   "element": "Ni",
+   "edge": "K",
+   "energy_eV": 8333.0,
+   "jumpRatio": 7.707,
+   "fluorescenceYield": 0.411937
+  },
+  {
+   "element": "Co",
+   "edge": "K",
+   "energy_eV": 7709.0,
+   "jumpRatio": 7.796,
+   "fluorescenceYield": 0.381903
+  },
+  {
+   "element": "Zn",
+   "edge": "K",
+   "energy_eV": 9659.0,
+   "jumpRatio": 7.543,
+   "fluorescenceYield": 0.469369
+  },
+  {
+   "element": "Si",
+   "edge": "K",
+   "energy_eV": 1839.0,
+   "jumpRatio": 10.37,
+   "fluorescenceYield": 0.0429108
+  },
+  {
+   "element": "N",
+   "edge": "K",
+   "energy_eV": 409.9,
+   "jumpRatio": 17.44,
+   "fluorescenceYield": 0.0031
+  },
+  {
+   "element": "C",
+   "edge": "K",
+   "energy_eV": 284.2,
+   "jumpRatio": 19.02,
+   "fluorescenceYield": 0.0014
+  },
+  {
+   "element": "Pt",
+   "edge": "L3",
+   "energy_eV": 11564.0,
+   "jumpRatio": 2.563,
+   "fluorescenceYield": 0.306
+  },
+  {
+   "element": "Pt",
+   "edge": "L2",
+   "energy_eV": 13273.0,
+   "jumpRatio": 1.4,
+   "fluorescenceYield": 0.321
+  },
+  {
+   "element": "Pb",
+   "edge": "L3",
+   "energy_eV": 13035.0,
+   "jumpRatio": 2.506,
+   "fluorescenceYield": 0.36
+  }
+ ],
+ "elementMu": [
+  {
+   "element": "H",
+   "energy_eV": 1000,
+   "photo": 6.817515181770355,
+   "total": 7.21469187302649
+  },
+  {
+   "element": "H",
+   "energy_eV": 10000,
+   "photo": 0.002723380660773284,
+   "total": 0.38542557878610034
+  },
+  {
+   "element": "Li",
+   "energy_eV": 150,
+   "photo": 52586.31635432025,
+   "total": 52586.833045842126
+  },
+  {
+   "element": "C",
+   "energy_eV": 300,
+   "photo": 42205.03531197169,
+   "total": 42206.22260049669
+  },
+  {
+   "element": "O",
+   "energy_eV": 500,
+   "photo": 1431.7384446982458,
+   "total": 1433.3166652914342
+  },
+  {
+   "element": "O",
+   "energy_eV": 600,
+   "photo": 15970.69094197143,
+   "total": 15972.258454738647
+  },
+  {
+   "element": "Si",
+   "energy_eV": 1800,
+   "photo": 325.4136635200281,
+   "total": 327.5847271502107
+  },
+  {
+   "element": "Si",
+   "energy_eV": 1900,
+   "photo": 3029.200431074683,
+   "total": 3031.3265031163214
+  },
+  {
+   "element": "Fe",
+   "energy_eV": 7000,
+   "photo": 53.71782931652464,
+   "total": 55.5604041937412
+  },
+  {
+   "element": "Fe",
+   "energy_eV": 7200,
+   "photo": 393.93241747402607,
+   "total": 395.7255984536056
+  },
+  {
+   "element": "Fe",
+   "energy_eV": 20000,
+   "photo": 25.049828164484282,
+   "total": 25.68302313253822
+  },
+  {
+   "element": "Cu",
+   "energy_eV": 8000,
+   "photo": 50.61605817770448,
+   "total": 52.55342943337347
+  },
+  {
+   "element": "Cu",
+   "energy_eV": 9500,
+   "photo": 242.41509184797502,
+   "total": 244.029938321194
+  },
+  {
+   "element": "Pt",
+   "energy_eV": 11000,
+   "photo": 84.60478314950191,
+   "total": 88.98567327508775
+  },
+  {
+   "element": "Pt",
+   "energy_eV": 12000,
+   "photo": 172.3605333821517,
+   "total": 176.38181042080413
+  },
+  {
+   "element": "Pb",
+   "energy_eV": 15000,
+   "photo": 108.20766719352517,
+   "total": 111.57441276816623
+  },
+  {
+   "element": "U",
+   "energy_eV": 30000,
+   "photo": 39.621044871691524,
+   "total": 41.284112836233895
+  },
+  {
+   "element": "Cf",
+   "energy_eV": 50000,
+   "photo": 12.755931992548783,
+   "total": 13.702620254074265
+  }
+ ],
+ "compoundMu": [
+  {
+   "formula": "Fe2O3",
+   "density": 5.26,
+   "energy_eV": 7000,
+   "photo_cm_inv": 224.31220230906126,
+   "total_cm_inv": 231.91378001378828
+  },
+  {
+   "formula": "Fe2O3",
+   "density": 5.26,
+   "energy_eV": 7200,
+   "photo_cm_inv": 1473.7426985334741,
+   "total_cm_inv": 1481.1421474106926
+  },
+  {
+   "formula": "Fe2O3",
+   "density": 5.26,
+   "energy_eV": 7600,
+   "photo_cm_inv": 1290.8334801198316,
+   "total_cm_inv": 1297.8552860353436
+  },
+  {
+   "formula": "H2O",
+   "density": 0.997,
+   "energy_eV": 600,
+   "photo_cm_inv": 14145.265406556504,
+   "total_cm_inv": 14146.697686075422
+  },
+  {
+   "formula": "H2O",
+   "density": 0.997,
+   "energy_eV": 10000,
+   "photo_cm_inv": 4.929510209455779,
+   "total_cm_inv": 5.313915362677477
+  },
+  {
+   "formula": "SiO2",
+   "density": 2.65,
+   "energy_eV": 1900,
+   "photo_cm_inv": 4883.930601398788,
+   "total_cm_inv": 4888.421592880507
+  },
+  {
+   "formula": "CuSO4·5H2O",
+   "density": 2.286,
+   "energy_eV": 9000,
+   "photo_cm_inv": 189.9009088084139,
+   "total_cm_inv": 191.75224635966092
+  },
+  {
+   "formula": "LiNi0.5Mn1.5O4",
+   "density": 4.45,
+   "energy_eV": 8400,
+   "photo_cm_inv": 725.3824704077877,
+   "total_cm_inv": 730.2242069565142
+  },
+  {
+   "formula": "LiFePO4",
+   "density": 3.6,
+   "energy_eV": 7150,
+   "photo_cm_inv": 607.5337943805798,
+   "total_cm_inv": 611.3316151453095
+  },
+  {
+   "formula": "TiO2",
+   "density": 3.89,
+   "energy_eV": 5000,
+   "photo_cm_inv": 1663.5077983055733,
+   "total_cm_inv": 1668.9737287532214
+  },
+  {
+   "formula": "Pt",
+   "density": 21.45,
+   "energy_eV": 11600,
+   "photo_cm_inv": 4051.4057555730847,
+   "total_cm_inv": 4140.633956964077
+  }
+ ],
+ "molarMass": [
+  {
+   "formula": "Fe2O3",
+   "molarMass": 159.687
+  },
+  {
+   "formula": "CuSO4·5H2O",
+   "molarMass": 249.675
+  },
+  {
+   "formula": "LiNi0.5Mn1.5O4",
+   "molarMass": 182.68970000000002
+  },
+  {
+   "formula": "Ca3(PO4)2",
+   "molarMass": 310.1736
+  },
+  {
+   "formula": "C6H10O5",
+   "molarMass": 162.139
+  }
+ ],
+ "thickness": [
+  {
+   "formula": "Fe2O3",
+   "density": 5.26,
+   "absorber": "Fe",
+   "edge": "K",
+   "tableEdge_eV": 7112.00869660344,
+   "deltaMuOverRho": 247.94742608571121,
+   "muOverRhoAbove": 290.1397200141818,
+   "thickness_um": 7.667515305254487,
+   "totalAbsorptionAbove": 1.170166291276141,
+   "pelletArea_cm2": 1.3273228961416876,
+   "sampleMass_mg": 5.35324329474126,
+   "xraydbStepPerTotalAt50eV": 0.8549223757665526
+  },
+  {
+   "formula": "Cu",
+   "density": 8.96,
+   "absorber": "Cu",
+   "edge": "K",
+   "tableEdge_eV": 8978.965911104362,
+   "deltaMuOverRho": 240.05582964143815,
+   "muOverRhoAbove": 278.3429586881885,
+   "thickness_um": 4.649216102097832,
+   "totalAbsorptionAbove": 1.1594926026330554,
+   "pelletArea_cm2": 1.3273228961416876,
+   "sampleMass_mg": 5.529225839356857,
+   "xraydbStepPerTotalAt50eV": 0.8627613802965411
+  }
+ ]
+}

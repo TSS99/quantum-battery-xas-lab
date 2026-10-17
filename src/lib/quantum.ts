@@ -17,6 +17,7 @@ export interface PauliTerm { label: string; coefficient: number }
 export interface Complex { re: number; im: number }
 export interface CircuitGate { gate: 'Rz' | 'Rx' | 'CX'; qubits: number[]; angle?: number; termIndex: number }
 export interface QuantumResult {
+  customHamiltonian?: { name: string; qubits: number; terms: PauliTerm[] };
   engine: string;
   provenance: 'exact-toy';
   params: QuantumParams;

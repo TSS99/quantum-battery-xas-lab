@@ -1,4 +1,4 @@
-# Quantum Battery XAS Lab — implementation specification
+# Quantum Battery XAS Lab: implementation specification
 
 ## Intent and scientific boundary
 A local education and research-prototyping laboratory. Researchers should be able to audit equations, reproduce runs, export numerical data, inspect convergence, and bring their own spectra. This release is not a calibrated materials predictor. No generated data are called experimental, no quantum hardware is implied, and no quantum advantage is claimed.

@@ -1,6 +1,7 @@
 'use client';
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useState, useEffect, type ReactNode } from 'react';
 import { useLab } from './lab-context';
+import { WorkflowNext } from './workflow';
 import { Download } from 'lucide-react';
 
 export function Badge({children,tone='violet'}:{children:ReactNode;tone?:string}){return <span className={`badge ${tone}`}><span/>{children}</span>;}
@@ -11,4 +12,4 @@ export function Disclosure({children,title='Model assumptions'}:{children:ReactN
 export function download(name:string,text:string,type='application/json'){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export function ExportButton({onClick,children='Export'}:{onClick:()=>void;children?:ReactNode}){return <button className="button secondary small" onClick={onClick}><Download size={14}/>{children}</button>;}
 
-export function TryThis({children,research,done=false,action}:{children:ReactNode;research:ReactNode;done?:boolean;action?:ReactNode}){const {state}=useLab();return <aside className={`try-this ${done&&!state.expert?"complete":""}`} aria-label={state.expert?"Model note":"Try this"}><strong>{state.expert?"Model note":done?"What changed":"Try this"}</strong><div>{state.expert?research:children}{action}</div></aside>;}
+export function TryThis({children,research,done=false,action,steps=[]}:{children:ReactNode;research:ReactNode;done?:boolean;action?:ReactNode;steps?:string[]}){const {state,complete}=useLab();const key=steps.join(',');useEffect(()=>{if(done&&key)complete(key.split(','));},[done,key,complete]);return <aside className={`try-this ${done&&!state.expert?'complete':''}`} aria-label={state.expert?'Model note':'Try this'}><strong>{state.expert?'Model note':done?'What changed':'Try this'}</strong><div>{state.expert?research:children}{action}<WorkflowNext steps={steps} done={done}/></div></aside>;}

@@ -13,5 +13,9 @@ http.createServer(async(req,res)=>{
   if(target!==root&&!target.startsWith(root+path.sep)){res.writeHead(403);res.end('Forbidden');return;}
   let file=target;const info=await stat(file);if(info.isDirectory())file=path.join(file,'index.html');
   const body=await readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(body);
- }catch{res.writeHead(404,{'Content-Type':'text/plain'});res.end('Not found. Build the static export with npm run build first.');}
+ }catch{
+  // Like GitHub Pages: unknown paths get the exported 404 page with a 404 status.
+  try{const body=await readFile(path.join(root,'404.html'));res.writeHead(404,{'Content-Type':types['.html'],'Cache-Control':'no-cache'});res.end(body);}
+  catch{res.writeHead(404,{'Content-Type':'text/plain'});res.end('Not found. Build the static export with npm run build first.');}
+ }
 }).listen(port,'127.0.0.1',()=>console.log(`Static laboratory: http://127.0.0.1:${port}${base}/`));

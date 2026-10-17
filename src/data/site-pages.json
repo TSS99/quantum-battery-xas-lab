@@ -1,0 +1,64 @@
+{
+  "siteName": "XAS Lab",
+  "siteUrl": "https://tss99.github.io/quantum-battery-xas-lab",
+  "author": { "name": "TSS99", "url": "https://github.com/TSS99" },
+  "repository": "https://github.com/TSS99/quantum-battery-xas-lab",
+  "pages": [
+    {
+      "slug": "",
+      "name": "Overview",
+      "title": "XAS Lab: X-ray absorption spectroscopy in your browser",
+      "description": "Pick any chemical formula, find its X-ray absorption edges, plan a sample, compare spectra and follow the quantum workflow behind XAS. Runs in your browser.",
+      "ogAlt": "XAS Lab overview card with an absorption edge curve"
+    },
+    {
+      "slug": "crystal",
+      "name": "Sample",
+      "title": "Choose a sample and absorption edge",
+      "description": "Enter any chemical formula and density, then pick the absorbing element and its edge. Uses tabulated X-ray data for every element from hydrogen to californium.",
+      "ogAlt": "Sample card: choose a formula, an absorbing element and an edge"
+    },
+    {
+      "slug": "beamline",
+      "name": "XAS beamline",
+      "title": "XAS beamline simulator",
+      "description": "Scan the photon energy across an absorption edge, set the sample thickness and see how many photons reach the detector, using tabulated cross sections.",
+      "ogAlt": "Beamline card: X-ray source, sample and detector with an absorption curve"
+    },
+    {
+      "slug": "spectra",
+      "name": "Spectra studio",
+      "title": "Spectra studio: compare and fit XAS spectra",
+      "description": "Save curves, import your own CSV or JSON spectra, normalise them, find the edge, and score a model against data with an energy shift and similarity metrics.",
+      "ogAlt": "Spectra studio card with overlaid absorption spectra"
+    },
+    {
+      "slug": "electronic",
+      "name": "Electronic structure",
+      "title": "Electronic structure behind an absorption edge",
+      "description": "See which core to valence transitions shape an absorption edge, and size an active space like the one used in recent quantum computing studies of XAS.",
+      "ogAlt": "Electronic structure card showing a core electron excited to an empty level"
+    },
+    {
+      "slug": "quantum",
+      "name": "Quantum dynamics",
+      "title": "Quantum dynamics: from time signal to spectrum",
+      "description": "Kick a ground state with a dipole operator, evolve it in time and Fourier transform the signal into a spectrum. Load your own Hamiltonian of up to six qubits.",
+      "ogAlt": "Quantum dynamics card with a time signal turning into spectral peaks"
+    },
+    {
+      "slug": "experiments",
+      "name": "Experiments",
+      "title": "Ready-made XAS experiments",
+      "description": "Open guided experiments in one click, from lithium charge balance to scans across an absorption edge, and save or share your settings as a link or a file.",
+      "ogAlt": "Experiments card listing guided XAS experiments"
+    },
+    {
+      "slug": "validation",
+      "name": "Methods & validation",
+      "title": "Methods, data sources and validation",
+      "description": "The equations, data sources, sanity checks and arXiv papers behind the lab, and the claims these teaching models cannot support. Read this before citing results.",
+      "ogAlt": "Methods card listing equations, data sources and checks"
+    }
+  ]
+}

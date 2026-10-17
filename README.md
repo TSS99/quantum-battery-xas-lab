@@ -1,10 +1,10 @@
 # Quantum Battery XAS Lab
 
-A responsive, local-first laboratory for exploring lithium insertion, MnO6 coordination, transmission XAS and small quantum time-evolution algorithms. It pairs interactive scientific diagrams with inspectable numerical results, source provenance and reproducible exports.
+XAS Lab is a browser laboratory for X-ray absorption spectroscopy (XAS) of any material. Enter a chemical formula and density, pick the absorbing element and edge, plan a transmission sample, scan a simulated beamline, compare spectra with your own data, and follow the time-domain quantum workflow used in recent quantum-computing studies of XAS. The lithium manganese oxide battery cathode is kept as one worked example.
 
 **Live:** [tss99.github.io/quantum-battery-xas-lab](https://tss99.github.io/quantum-battery-xas-lab/), deployed by the GitHub Actions workflow on every push to `main`.
 
-**Scientific boundary:** generated near-edge spectra are synthetic educational data. Quantum results are exact only for the displayed 2–6 qubit effective Hamiltonian. Imported spectra remain user supplied and unverified. This application does not calculate material-specific Mn K-edge spectra, establish battery performance, execute quantum hardware or demonstrate quantum advantage.
+**Scientific boundary:** absorption backgrounds and edge jumps come from tabulated isolated-atom cross sections (XrayDB, Elam, Ravel and Sieber 2002, CC0), covering hydrogen to californium from 100 eV to 100 keV. They contain no chemical shifts, XANES or EXAFS fine structure. Near-edge shapes on top of them are adjustable models, not predictions. Quantum results are exact only for the displayed 1 to 6 qubit Hamiltonian. Imported spectra remain user supplied and unverified. The app does not predict material-specific spectra, establish battery performance, run quantum hardware or demonstrate quantum advantage.
 
 ## Quick start
 
@@ -23,14 +23,14 @@ The project uses Next.js App Router with static export, React, TypeScript, Motio
 
 | Route | What to explore |
 | --- | --- |
-| `/` | Mission-control overview, live composition context, atomic visualization and guided entry points. |
-| `/crystal/` | Rotate/zoom the MnO6 coordination motif, toggle labels/bonds and vary idealized lithium loading. |
-| `/beamline/` | Scan 6530–6580 eV, change sample thickness and photon counts, inspect synchronized absorption/transmission and seeded count noise. |
-| `/spectra/` | Save scans, overlay curves, import CSV/JSON, inspect raw uncertainty, normalize, differentiate, estimate edges, fit illustrative shapes and export data. |
-| `/electronic/` | Explore the Mn 1s core, unoccupied p character, dipole selection, core holes and hybridization. |
-| `/quantum/` | Run an exact effective Hamiltonian in a browser Worker, compare first-order Trotter dynamics and spectra, and inspect circuit/resources/transitions. |
-| `/experiments/` | Apply presets, save/load/share bounded scenarios and export reproducible run records. |
-| `/validation/` | Inspect equations, assumptions, sanity checks, source papers and the route toward material-specific research. |
+| `/` | Live spectrum demo, three starting paths (student, researcher, industry R&D) and the eight-step research workflow with progress. |
+| `/crystal/` | Sample: any formula and density, presets from water to Pt foil, absorber and edge picker, and the LixMnO2 battery example with its MnO6 model. |
+| `/beamline/` | Scan the photon energy across the chosen edge, plan thickness, compare absorption and transmission, and add seeded count noise in Research mode. |
+| `/spectra/` | Save and overlay curves, import CSV/JSON, normalize, differentiate, estimate edges, score a model against data and export with provenance. |
+| `/electronic/` | Core-to-valence transitions, dipole selection, core holes and an active-space size planner based on recent quantum XAS papers. |
+| `/quantum/` | Kick, evolve and transform: exact and first-order Trotter dynamics in a browser Worker, a loader for your own Pauli-string Hamiltonian, and circuit details. |
+| `/experiments/` | One-click guided experiments with undo, and save or share settings as a link or a file. |
+| `/validation/` | Equations, data sources, sanity checks, arXiv references and the claims these models cannot support. |
 
 The Explore/Research switch changes explanatory depth. It does not change the model's validity. Shared parameters are saved in local browser storage when available. Imported/snapshotted runs are held in the current session; export them before refreshing or closing the tab.
 
@@ -137,6 +137,10 @@ npx playwright install chromium
 Then set `PLAYWRIGHT_CHANNEL=chromium` when running `npm run test:ui`. PowerShell syntax is `$env:PLAYWRIGHT_CHANNEL='chromium'`; POSIX syntax is `PLAYWRIGHT_CHANNEL=chromium npm run test:ui`. The suite starts or reuses the local dev server, tests real controls and provenance, and includes a narrow-screen/reduced-motion project. Set `PLAYWRIGHT_EXTERNAL_SERVER=1` and `PLAYWRIGHT_BASE_URL` to test an already running static preview instead.
 
 Executed results for this delivery will be recorded here after the final verification run. A documented command or source-review checklist alone is not a passed test.
+
+## Search and sharing assets
+
+Titles, descriptions, canonical URLs, Open Graph and Twitter tags and JSON-LD come from `src/data/site-pages.json` through `src/lib/site.ts`. The build also writes `sitemap.xml`, `robots.txt` and a `404.html`. After changing a page title or description, regenerate the share images and icons with `PLAYWRIGHT_CHANNEL=chrome node scripts/make-share-assets.mjs`. To rebuild the X-ray tables, run `scripts/build-xray-data.py` with the `xraydb` package installed (see `src/data/xray/README.md`).
 
 ## Static build and GitHub Pages handoff
 

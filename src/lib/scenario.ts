@@ -1,5 +1,7 @@
 /** Portable, versioned experiment state. Units are eV, micrometres and counts. */
+import { DEFAULT_SAMPLE, validateSample, batteryFormula, isBattery, type Sample } from './sample';
 export interface LabState {
+  sample: Sample;
   x: number;
   energy: number;
   thickness: number;
@@ -15,13 +17,14 @@ export interface LabState {
 }
 
 export const DEFAULT_STATE: LabState = {
+  sample: DEFAULT_SAMPLE,
   x: 0.5, energy: 6550, thickness: 20, photons: 100000, seed: 42,
   edge: 6550, shift: 3, width: 1.2, whiteLine: 65, preEdge: 10,
   oscillation: 0.06, expert: false,
 };
 
-export const STATE_BOUNDS: Record<Exclude<keyof LabState, 'expert'>, readonly [number, number]> = {
-  x: [0, 1], energy: [6530, 6580], thickness: [0.1, 1000],
+export const STATE_BOUNDS: Record<Exclude<keyof LabState, 'expert' | 'sample'>, readonly [number, number]> = {
+  x: [0, 1], energy: [100, 100000], thickness: [0.00001, 1000000],
   photons: [1, 10000000], seed: [0, 4294967295], edge: [6530, 6580],
   shift: [-10, 10], width: [0.2, 8], whiteLine: [0, 300], preEdge: [0, 100],
   oscillation: [0, 0.3],
@@ -31,7 +34,7 @@ export const STATE_BOUNDS: Record<Exclude<keyof LabState, 'expert'>, readonly [n
 export function validateScenario(value: unknown): LabState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Scenario parameters must be an object.');
   const data = value as Record<string, unknown>;
-  const allowed = new Set([...Object.keys(STATE_BOUNDS), 'expert']);
+  const allowed = new Set([...Object.keys(STATE_BOUNDS), 'expert', 'sample']);
   if (Object.keys(data).some(key => !allowed.has(key))) throw new Error('Scenario contains an unknown parameter.');
   const validated: Record<string, number | boolean> = {};
   for (const [key, bounds] of Object.entries(STATE_BOUNDS)) {
@@ -44,7 +47,8 @@ export function validateScenario(value: unknown): LabState {
   }
   if (typeof data.expert !== 'boolean') throw new Error('expert must be true or false.');
   validated.expert = data.expert;
-  return validated as unknown as LabState;
+  const sample = validateSample(data.sample ?? { ...DEFAULT_SAMPLE, formula: batteryFormula(validated.x as number) });
+  return { ...validated, sample } as unknown as LabState;
 }
 
 export function scenarioToJSON(state: LabState): string {

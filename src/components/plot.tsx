@@ -1,14 +1,79 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Download } from 'lucide-react';
 import { download } from './ui';
-export interface Series {name:string;color:string;x:number[];y:number[];dashed?:boolean;sigma?:number[];}
-export function Plot({series,xLabel='Photon energy (eV)',yLabel='μ (cm⁻¹)',cursor,onCursor,height=240,exportName='spectrum',minY}:{series:Series[];xLabel?:string;yLabel?:string;cursor?:number;onCursor?:(n:number)=>void;height?:number;exportName?:string;minY?:number}){
- const uid=useId().replace(/:/g,'');const wrapRef=useRef<HTMLDivElement>(null);const [width,setWidth]=useState(700);const ref=useRef<SVGSVGElement>(null);const [hover,setHover]=useState<number|null>(null);
- const valid=series.filter(s=>s.x.length&&s.x.length===s.y.length);useEffect(()=>{if(!wrapRef.current)return;const observer=new ResizeObserver(([entry])=>setWidth(Math.max(280,Math.min(900,Math.round(entry.contentRect.width)))));observer.observe(wrapRef.current);return()=>observer.disconnect();},[valid.length]);if(!valid.length)return <div className="plot-empty">No spectrum yet. Run an experiment or import data.</div>;
- let x0=Infinity,x1=-Infinity,lo=0,hi=0;for(const s of valid)for(let i=0;i<s.x.length;i++){x0=Math.min(x0,s.x[i]);x1=Math.max(x1,s.x[i]);lo=Math.min(lo,s.y[i]-(s.sigma?.[i]??0));hi=Math.max(hi,s.y[i]+(s.sigma?.[i]??0));}const y0=minY??lo,y1=Math.max(hi,y0+1e-6)+(hi-y0)*.1;const W=width,H=height,L=57,R=18,T=25,B=42;
- const px=(x:number)=>L+(x-x0)/(x1-x0||1)*(W-L-R),py=(y:number)=>H-B-(y-y0)/(y1-y0||1)*(H-T-B);
- const line=(s:Series)=>s.y.map((v,i)=>`${i?'L':'M'}${px(s.x[i]).toFixed(2)},${py(v).toFixed(2)}`).join(' ');
- const cx=hover??cursor;const xUnit=xLabel.match(/\(([^)]+)\)/)?.[1].split(';')[0]??'';const yUnit=yLabel.match(/\(([^)]+)\)/)?.[1]??'';const nearest=(s:Series)=>s.x.reduce((best,x,j)=>Math.abs(x-(cx??x0))<Math.abs(s.x[best]-(cx??x0))?j:best,0);const ticks=Array.from({length:width<400?3:5},(_,i)=>i/(width<400?2:4));const fmt=(n:number)=>Math.abs(n)>100?n.toFixed(0):Math.abs(n)<0.01&&n!==0?n.toExponential(1):n.toFixed(2);
- return <div ref={wrapRef} className="plot-wrap"><div className="plot-top"><span>{yLabel}</span><button className="icon-button" aria-label={`Download ${exportName} as SVG`} onClick={()=>ref.current&&download(`${exportName}.svg`,new XMLSerializer().serializeToString(ref.current),'image/svg+xml')}><Download size={14}/></button></div><svg ref={ref} xmlns="http://www.w3.org/2000/svg" role="img" tabIndex={0} aria-label={`${exportName}: ${yLabel} versus ${xLabel}. Use arrow keys to inspect values.`} onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End','Enter'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?x0:e.key==='End'?x1:Math.max(x0,Math.min(x1,(cx??x0)+(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0)*(x1-x0)/100));setHover(next);if(e.key==='Enter')onCursor?.(next);}}} viewBox={`0 0 ${W} ${H}`} style={{maxHeight:height+60}} onPointerMove={e=>{const b=e.currentTarget.getBoundingClientRect();const q=((e.clientX-b.left)/b.width*W-L)/(W-L-R);setHover(Math.max(x0,Math.min(x1,x0+q*(x1-x0))));}} onPointerLeave={()=>setHover(null)} onClick={()=>cx!=null&&onCursor?.(cx)}><title>{`${yLabel} versus ${xLabel}`}</title><defs><linearGradient id={uid} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={valid[0].color} stopOpacity=".14"/><stop offset="100%" stopColor={valid[0].color} stopOpacity="0"/></linearGradient></defs><rect width={W} height={H} fill="#181f28"/>{ticks.map(t=><g key={t}><line x1={L} x2={W-R} y1={py(y0+t*(y1-y0))} y2={py(y0+t*(y1-y0))} stroke="#29303e" strokeDasharray="3 6"/><text x={L-10} y={py(y0+t*(y1-y0))+4} textAnchor="end" fill="#a0a9bb" fontSize="12" fontFamily="monospace">{fmt(y0+t*(y1-y0))}</text><text x={px(x0+t*(x1-x0))} y={H-22} textAnchor="middle" fill="#a0a9bb" fontSize="10" fontFamily="monospace">{fmt(x0+t*(x1-x0))}</text></g>)}{valid.length===1&&<path d={`${line(valid[0])} L${px(x1)},${py(y0)} L${px(x0)},${py(y0)} Z`} fill={`url(#${uid})`}/>}<clipPath id={`${uid}clip`}><rect x={L} y={T} width={W-L-R} height={H-T-B}/></clipPath><g clipPath={`url(#${uid}clip)`}>{valid.map((s,j)=><g key={j}>{s.sigma&&<path d={s.x.map((x,i)=>`${i?'L':'M'}${px(x)},${py(s.y[i]+s.sigma![i])}`).join(' ')+s.x.map((_,i)=>{const k=s.x.length-1-i;return `L${px(s.x[k])},${py(s.y[k]-s.sigma![k])}`;}).join(' ')+'Z'} fill={s.color} opacity=".13"/>}<path d={line(s)} fill="none" stroke={s.color} strokeWidth="2.2" strokeDasharray={s.dashed?'5 5':undefined}/></g>)}</g>{cx!=null&&cx>=x0&&cx<=x1&&<g><line x1={px(cx)} x2={px(cx)} y1={T} y2={H-B} stroke="#e7d7aa" strokeDasharray="4 4"/><line x1={L} x2={W-R} y1={py(valid[0].y[nearest(valid[0])])} y2={py(valid[0].y[nearest(valid[0])])} stroke="#accbd8" strokeOpacity=".4" strokeDasharray="3 5"/>{valid.map((s,i)=><circle key={i} cx={px(s.x[nearest(s)])} cy={py(s.y[nearest(s)])} r="4" fill={s.color} stroke="#181f28" strokeWidth="1.5"/>)}<rect x={Math.min(W-140,Math.max(L,px(cx)-55))} y={2} width="125" height="21" rx="4" fill="#344450"/><text x={Math.min(W-132,Math.max(L+8,px(cx)-47))} y={17} fill="#f0eee8" fontSize="12" fontFamily="monospace">{`${cx.toFixed(2)} ${xUnit}`}</text></g>}<text x={W/2} y={H-3} fill="#a0a9bb" fontSize="10" fontFamily="sans-serif">{xLabel}</text></svg><div className="plot-readout">{cx==null?'Hover or use arrow keys to inspect values.':`${xLabel}: ${cx.toFixed(2)}${xUnit?' '+xUnit:''}. Values at nearest samples.`}</div><div className="plot-legend">{valid.map((s,i)=>{let index=0;if(cx!=null)index=s.x.reduce((best,x,j)=>Math.abs(x-cx)<Math.abs(s.x[best]-cx)?j:best,0);return <span key={i}><i style={{background:s.color}}/>{s.name}{cx!=null&&<b>{fmt(s.y[index])} {yUnit}</b>}</span>;})}</div></div>;
+export interface Series { name: string; color: string; x: number[]; y: number[]; dashed?: boolean; sigma?: number[] }
+interface Props { series: Series[]; xLabel?: string; yLabel?: string; cursor?: number; onCursor?: (n: number) => void; height?: number; exportName?: string; minY?: number; ghostKey?: string; edge?: number; reveal?: number }
+export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm⁻¹)', cursor, onCursor, height = 240, exportName = 'spectrum', minY, ghostKey, edge, reveal = 1 }: Props) {
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, ''), reduced = useReducedMotion();
+  const wrapRef = useRef<HTMLDivElement>(null), ref = useRef<SVGSVGElement>(null);
+  const [width, setWidth] = useState(700), [hover, setHover] = useState<number | null>(null);
+  const prior = useRef<{ key?: string; series: Series[]; edge?: number } | null>(null);
+  const [ghost, setGhost] = useState<{ series: Series[]; delta: number | null } | null>(null);
+  const valid = series.filter(s => s.x.length && s.x.length === s.y.length);
+  useEffect(() => {
+    if (!wrapRef.current) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(180, Math.round(entry.contentRect.width))));
+    observer.observe(wrapRef.current); return () => observer.disconnect();
+  }, [valid.length]);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (ghostKey !== undefined && prior.current && prior.current.key !== ghostKey) {
+      setGhost({ series: prior.current.series, delta: edge !== undefined && prior.current.edge !== undefined ? edge - prior.current.edge : null });
+      timer = setTimeout(() => setGhost(null), 600);
+    }
+    prior.current = { key: ghostKey, series, edge };
+    return () => clearTimeout(timer);
+  }, [ghostKey]); // Cursor movement does not restart the edge comparison.
+  if (!valid.length) return <div className="plot-empty">No curve yet. Run an experiment or import data.</div>;
+  let x0 = Infinity, x1 = -Infinity, low = 0, high = 0;
+  for (const s of valid) for (let i = 0; i < s.x.length; i++) { x0 = Math.min(x0, s.x[i]); x1 = Math.max(x1, s.x[i]); low = Math.min(low, s.y[i] - (s.sigma?.[i] ?? 0)); high = Math.max(high, s.y[i] + (s.sigma?.[i] ?? 0)); }
+  const y0 = minY ?? low, y1 = Math.max(high, y0 + 1e-6) + (high - y0) * .1;
+  const labelLines: string[] = [];
+  const maxChars = Math.max(20, Math.floor((width - 16) / 7));
+  for (const word of xLabel.split(' ')) {
+    const last = labelLines.length - 1;
+    if (last < 0 || labelLines[last].length + word.length + 1 > maxChars) labelLines.push(word); else labelLines[last] += ' ' + word;
+  }
+  const W = width, H = height + Math.max(0, labelLines.length - 1) * 16, L = width < 400 ? 58 : 64, R = 20, T = 30, B = 48 + Math.max(0, labelLines.length - 1) * 16;
+  const px = (x: number) => L + (x - x0) / (x1 - x0 || 1) * (W - L - R);
+  const py = (y: number) => H - B - (y - y0) / (y1 - y0 || 1) * (H - T - B);
+  const line = (s: Series) => s.y.map((v, i) => (i ? 'L' : 'M') + px(s.x[i]).toFixed(2) + ',' + py(v).toFixed(2)).join(' ');
+  const cx = Math.max(x0, Math.min(x1, hover ?? cursor ?? x0));
+  const xUnit = xLabel.match(/\(([^)]+)\)/)?.[1].split(';')[0] ?? '';
+  const yUnit = yLabel.match(/\(([^)]+)\)/)?.[1] ?? '';
+  const nearest = (s: Series) => s.x.reduce((best, x, j) => Math.abs(x - cx) < Math.abs(s.x[best] - cx) ? j : best, 0);
+  const ticks = Array.from({ length: width < 400 ? 3 : 5 }, (_, i) => i / (width < 400 ? 2 : 4));
+  const fmt = (n: number) => Math.abs(n) >= 100000 || (Math.abs(n) < .01 && n !== 0) ? n.toExponential(1) : Math.abs(n) > 100 ? n.toFixed(0) : n.toFixed(2);
+  const inspect = (value: number, commit: boolean) => { setHover(value); if (commit) onCursor?.(value); };
+  const pointerValue = (event: React.PointerEvent<SVGSVGElement>) => { const b = event.currentTarget.getBoundingClientRect(); return Math.max(x0, Math.min(x1, x0 + (((event.clientX - b.left) / b.width * W - L) / (W - L - R)) * (x1 - x0))); };
+  return <div ref={wrapRef} className="plot-wrap">
+    <div className="plot-top"><span>{yLabel}</span>{ghost?.delta != null && <span className="edge-delta">edge {ghost.delta > 0 ? '+' : ''}{ghost.delta.toFixed(2)} eV</span>}<button className="icon-button" aria-label={'Download ' + exportName + ' as SVG'} onClick={() => ref.current && download(exportName + '.svg', new XMLSerializer().serializeToString(ref.current), 'image/svg+xml')}><Download size={16} /></button></div>
+    <svg ref={ref} xmlns="http://www.w3.org/2000/svg" role="slider" tabIndex={0} aria-label={exportName + ': ' + yLabel + ' versus ' + xLabel} aria-valuemin={x0} aria-valuemax={x1} aria-valuenow={cx} aria-valuetext={cx.toFixed(2) + ' ' + xUnit + '; ' + valid[0].name + ' ' + fmt(valid[0].y[nearest(valid[0])]) + ' ' + yUnit} aria-describedby={uid + '-help'} viewBox={'0 0 ' + W + ' ' + H}
+      onKeyDown={e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) { e.preventDefault(); inspect(e.key === 'Home' ? x0 : e.key === 'End' ? x1 : Math.max(x0, Math.min(x1, cx + (['ArrowLeft', 'ArrowDown'].includes(e.key) ? -1 : 1) * (x1 - x0) / 100)), true); } }}
+      onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); inspect(pointerValue(e), true); }}
+      onPointerMove={e => inspect(pointerValue(e), e.buttons === 1)}
+      onPointerUp={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>
+      <title>{yLabel + ' versus ' + xLabel}</title>
+      <rect width={W} height={H} fill="#11171e" />
+      {ticks.map(t => <g key={t}><line x1={L} x2={W - R} y1={py(y0 + t * (y1 - y0))} y2={py(y0 + t * (y1 - y0))} stroke="#35404d" /><text x={L - 8} y={py(y0 + t * (y1 - y0)) + 4} textAnchor="end" fill="#c4ccd6" fontSize="13" fontFamily="sans-serif">{fmt(y0 + t * (y1 - y0))}</text><text x={px(x0 + t * (x1 - x0))} y={H - B + 20} textAnchor="middle" fill="#c4ccd6" fontSize="13" fontFamily="sans-serif">{fmt(x0 + t * (x1 - x0))}</text></g>)}
+      <defs><clipPath id={uid + '-clip'}><rect x={L} y={T} width={W - L - R} height={H - T - B} /></clipPath></defs>
+      <g clipPath={'url(#' + uid + '-clip)'}>
+        {valid.length === 1 && <path d={line(valid[0]) + ' L' + px(x1) + ',' + py(y0) + ' L' + px(x0) + ',' + py(y0) + 'Z'} fill={valid[0].color} opacity=".06" />}
+        {ghost?.series.map((s, i) => <path key={i} className="edge-ghost" d={line(s)} stroke={s.color} opacity=".3" fill="none" strokeWidth="2" />)}
+        {valid.map((s, j) => <g key={s.name}>
+          {s.sigma && <path d={s.x.map((x, i) => (i ? 'L' : 'M') + px(x) + ',' + py(s.y[i] + s.sigma![i])).join(' ') + s.x.map((_, i) => { const k = s.x.length - 1 - i; return 'L' + px(s.x[k]) + ',' + py(s.y[k] - s.sigma![k]); }).join(' ') + 'Z'} fill={s.color} opacity=".13" />}
+          <motion.path initial={false} animate={{ d: line(s), strokeDashoffset: j === 0 && reveal < 1 && !reduced ? 1 - reveal : 0 }} transition={{ duration: reduced ? 0 : reveal < 1 ? .065 : .24, ease: 'linear' }} pathLength={j === 0 && reveal < 1 ? 1 : undefined} fill="none" stroke={s.color} strokeWidth="2.2" strokeDasharray={j === 0 && reveal < 1 ? '1' : s.dashed ? '5 5' : undefined} />
+        </g>)}
+        <line x1={px(cx)} x2={px(cx)} y1={T} y2={H - B} stroke="#ffc46b" strokeDasharray="4 4" />
+        {valid.map((s, i) => <circle key={i} cx={px(s.x[nearest(s)])} cy={py(s.y[nearest(s)])} r="4" fill={s.color} stroke="#11171e" strokeWidth="1.5" />)}
+      </g>
+      <text x={L} y="18" fill="#eef2f6" fontSize="13" fontFamily="sans-serif">{cx.toFixed(2) + ' ' + xUnit}</text>
+      {labelLines.map((label, i) => <text key={i} x={W / 2} y={H - (labelLines.length - 1 - i) * 16 - 5} fill="#c4ccd6" fontSize="13" fontFamily="sans-serif">{label}</text>)}
+    </svg>
+    <span id={uid + '-help'} className="sr-only">Use arrow keys, Home or End to inspect the curve. Drag to move the cursor.</span>
+    <div className="plot-readout" aria-live="polite" aria-atomic="true">{cx.toFixed(2)} {xUnit}; values at the nearest samples.</div>
+    <div className="plot-legend">{valid.map((s, i) => <span key={i}><i style={{ background: s.color }} />{s.name}<b>{fmt(s.y[nearest(s)])} {yUnit}</b></span>)}</div>
+  </div>;
 }

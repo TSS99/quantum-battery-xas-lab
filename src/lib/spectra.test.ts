@@ -56,7 +56,7 @@ describe('strict unit and provenance contracts', () => {
     const hashed = { ...measured, sourceSha256: 'a'.repeat(64) };
     expect(parseSpectrum(spectrumToJSON(hashed)).sourceSha256).toBe(hashed.sourceSha256);
     expect(() => validateSpectrum({ ...measured, sourceSha256: 'not-a-sha256' })).toThrow('SHA-256');
-    expect(spectrumProvenance(measured)).toBe('Imported data — user supplied');
+    expect(spectrumProvenance(measured)).toBe('Imported data (user supplied)');
     expect(spectrumProvenance({ ...measured, declaredProvenance: 'synthetic' })).toBe('Imported synthetic');
   });
 });
