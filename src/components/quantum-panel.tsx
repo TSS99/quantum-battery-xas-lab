@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, CheckCircle2, Cpu, Download, FlaskConical, Play, RotateCcw, Square } from 'lucide-react';
 import { defaultQuantumParams, validateQuantumParams, type QuantumParams, type QuantumResult } from '@/lib/quantum';
-import { Badge, Disclosure, Metric, Panel, Range, download } from './ui';
+import { Badge, Disclosure, Metric, Panel, Range, TryThis, download } from './ui';
+import { useLab } from './lab-context';
 import { Plot } from './plot';
 
 const stages = [
@@ -16,6 +17,7 @@ const stages = [
 ];
 
 const sci = (value: number) => Math.abs(value) < 0.001 ? value.toExponential(2) : value.toFixed(4);
+const readableCaveat = (text: string) => text.replace('ALIASING WARNING:', 'Aliasing:').replace('DEGENERATE GROUND SPACE:', 'Degenerate ground space:');
 const percent = (value: number) => `${(100 * value).toFixed(2)}%`;
 
 function Circuit({ result }: { result: QuantumResult }) {
@@ -59,6 +61,8 @@ function Circuit({ result }: { result: QuantumResult }) {
 }
 
 export function QuantumPanel() {
+  const { state } = useLab();
+  const [comparison, setComparison] = useState<QuantumResult | null>(null);
   const [params, setParams] = useState<QuantumParams>(defaultQuantumParams);
   const [result, setResult] = useState<QuantumResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -152,20 +156,20 @@ export function QuantumPanel() {
 
   return <div className="quantum-lab">
     <div className="module-toolbar toolbar"><Badge>Exact toy model</Badge><Badge tone="green">Browser computation</Badge><span className="muted">2–6 qubits · no account or server required</span></div>
-    <p className="callout"><strong>This is an effective quantum model, not calculated Mn K-edge XAS.</strong> The synthetic beamline and this Hamiltonian are separate teaching models. All results are classical numerical simulations; no quantum hardware or advantage is claimed.</p>
+    <TryThis action={result&&<button className="button secondary small" disabled={busy||stale} onClick={()=>setComparison(result)}>Keep run as reference</button>} done={!!comparison&&!!result&&!stale&&result!==comparison} research={<>H is an effective spin model with D = X₀ and a fixed transverse field of 0.17 eV. Energies are referenced to E_g; no Mn K-edge calibration is applied.{comparison&&result&&result!==comparison&&!stale&&<> Spectral L¹: {percent(comparison.validation.spectralL1TrotterVsExact)} → {percent(result.validation.spectralL1TrotterVsExact)}.</>}</>}>{comparison&&result&&!stale&&result!==comparison?<>Trotter spectral L¹ error changed from {percent(comparison.validation.spectralL1TrotterVsExact)} to {percent(result.validation.spectralL1TrotterVsExact)}. Compare fidelity too: convergence in one measure does not guarantee convergence in the other.</>:<>{comparison?'Reference kept. Change Trotter steps and run again to compare the spectral error.':'Keep the current run as a reference, change Trotter steps, and run again to compare the spectral error.'}</>}</TryThis>
 
-    <Panel title="From Hamiltonian to spectrum" eyebrow="THE QUANTUM XAS WORKFLOW">
+    <Panel title="From Hamiltonian to spectrum" eyebrow="Calculation steps">
       <div className="quantum-workflow toolbar" role="group" aria-label="Quantum algorithm stages">
         {stages.map((s, i) => <button key={s.title} className={`button ${stage === i ? '' : 'secondary'}`} onClick={() => setStage(i)} aria-pressed={stage === i}><span className="muted">0{i + 1}</span> {s.title}{i < stages.length - 1 && <ArrowRight size={14}/>}</button>)}
       </div>
       <AnimatePresence mode="wait"><motion.div className="quantum-stage callout" key={stage} initial={{ opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: reducedMotion ? 1 : 0 }} transition={{ duration: 0.16 }}>
-        <h3>{stages[stage].subtitle}</h3><p>{stages[stage].text}</p><p className="equation">{stages[stage].equation}</p>
+        <h3>{stages[stage].subtitle}</h3><p>{state.expert?stages[stage].text:[ 'The Hamiltonian describes how the spins interact. Its lowest-energy state is the starting point for this calculation.', 'Flip the first qubit to make an excited starting state. This is a simple stand-in for an excitation.', 'Calculate the motion exactly, then approximate it with short steps. Compare how the two answers differ.', 'Measure the overlap with the starting state as time passes. Its oscillations contain the excitation energies.', 'Convert the time signal into an energy spectrum. A longer observation time can resolve more closely spaced features.' ][stage]}</p>{state.expert&&<p className="equation">{stages[stage].equation}</p>}
         {stage === 2 && <div className="toolbar"><button className="button secondary small" onClick={() => document.getElementById('quantum-correlations')?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' })}>Exact branch · inspect C(t)</button><button className="button secondary small" onClick={() => document.getElementById('quantum-circuit')?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' })}>Trotter branch · inspect circuit</button></div>}
       </motion.div></AnimatePresence>
     </Panel>
 
     <div className="two-col">
-      <Panel title="Define the experiment" eyebrow="EFFECTIVE HAMILTONIAN" className="control-panel">
+      <Panel title="Define the experiment" eyebrow="Effective Hamiltonian" className="control-panel">
         <Range label="Number of qubits" value={params.qubits} min={2} max={6} onChange={qubits => update({ qubits })} hint={`Hilbert space: ${2 ** params.qubits} basis states. Dense memory grows as 4ⁿ.`}/>
         <Range label="Longitudinal field h" value={params.field} min={0} max={2} step={0.05} digits={2} unit="eV" onChange={field => update({ field })}/>
         <Range label="Nearest-neighbor coupling J" value={params.coupling} min={-1} max={1} step={0.05} digits={2} unit="eV" onChange={coupling => update({ coupling })}/>
@@ -186,14 +190,14 @@ export function QuantumPanel() {
         {error && <p className="callout" role="alert">{error}</p>}
       </Panel>
 
-      <Panel title="Numerical run record" eyebrow="REPRODUCIBLE BY DESIGN" aside={result && <button className="button secondary small" onClick={exportRun}><Download size={14}/>Full run JSON</button>}>
+      <Panel title="Numerical run record" eyebrow="Completed run" aside={result && <button className="button secondary small" onClick={exportRun}><Download size={14}/>Full run JSON</button>}>
         {result ? <>
           <div className="metric-grid"><Metric label="Ground energy" value={result.groundEnergy.toFixed(5)} unit="eV"/><Metric label="Final state fidelity" value={percent(result.finalFidelity)} tone="violet"/><Metric label="Trotter spectral L¹ error" value={percent(result.validation.spectralL1TrotterVsExact)}/><Metric label="Serial circuit depth" value={result.resources.depth}/></div>
           <p className="muted">Run: {result.params.qubits} qubits · J = {result.params.coupling.toFixed(2)} eV · h = {result.params.field.toFixed(2)} eV · {result.params.trotterSteps} steps · T = {result.params.timeMax} eV⁻¹. {stale && <strong>Pending controls differ.</strong>}</p>
           <div className="equation">H = {result.terms.map((term, i) => <span key={i}>{i ? ' + ' : ''}({term.coefficient.toFixed(3)}) {term.label}</span>)}</div>
           <p>Fixed transverse field = 0.17 eV. D = X₀. Ground gap = {sci(result.validation.groundGap)} eV; ground-space dimension within 10⁻⁹ eV = {result.validation.groundDegeneracy}.</p>
           <p className="muted">Export records parameters, Pauli ordering, ground state, units, all numerical arrays, signed and clipped spectra, gates, diagnostics, caveats and optional SciPy output. Numerical residuals do not quantify uncertainty in a chemical model.</p>
-          {warnings.map(w => <p key={w} role="alert" className="callout">{w}</p>)}
+          {warnings.map(w => <p key={w} role="alert" className="callout">{readableCaveat(w)}</p>)}
           <Disclosure title="Inspect ground state in the computational basis"><div className="table-wrap"><table><thead><tr><th>Basis |q₀…qₙ〉</th><th>Real amplitude</th><th>Probability</th></tr></thead><tbody>{result.groundState.map((v, i) => <tr key={i}><td>|{i.toString(2).padStart(result.params.qubits, '0')}〉</td><td>{v.re.toFixed(7)}</td><td>{(v.re ** 2 + v.im ** 2).toFixed(7)}</td></tr>)}</tbody></table></div></Disclosure>
         </> : <div className="callout"><Cpu size={24}/><p>The browser is diagonalizing the model and checking its evolution. Numerical results appear after a completed calculation.</p></div>}
       </Panel>
@@ -201,13 +205,13 @@ export function QuantumPanel() {
 
     {result && <>
       <div className="two-col" id="quantum-correlations">
-        <Panel title="The time-domain signal" eyebrow="COMPLEX DIPOLE CORRELATION"><Plot exportName="quantum-correlations" xLabel="Time (eV⁻¹; ℏ = 1)" yLabel="C(t), toy dipole strength" series={[
+        <Panel title="The time-domain signal" eyebrow="Complex dipole correlation"><Plot exportName="quantum-correlations" xLabel="Time (eV⁻¹; ℏ = 1)" yLabel="C(t), toy dipole strength" series={[
           { name: 'Exact Re C', color: '#a28aff', x: result.times, y: result.correlationReal }, { name: 'Exact Im C', color: '#70dfac', x: result.times, y: result.correlationImag },
           { name: 'Trotter Re C', color: '#f4c777', x: result.times, y: result.trotterReal, dashed: true }, { name: 'Trotter Im C', color: '#ff686b', x: result.times, y: result.trotterImag, dashed: true },
         ]}/></Panel>
-        <Panel title="Approximation under a microscope" eyebrow="STATE FIDELITY"><Plot exportName="quantum-fidelity" xLabel="Time (eV⁻¹; ℏ = 1)" yLabel="|〈ψ exact(t)|ψ Trotter(t)〉|²" minY={0} series={[{ name: 'Fidelity on D|g〉', color: '#70dfac', x: result.times, y: result.fidelity }]}/><p className="muted">Fidelity measures this input state, not average gate fidelity. Pointwise errors can oscillate. Increase steps and compare the spectral output error as well.</p></Panel>
+        <Panel title="Exact and Trotter fidelity" eyebrow="State fidelity"><Plot exportName="quantum-fidelity" xLabel="Time (eV⁻¹; ℏ = 1)" yLabel="|〈ψ exact(t)|ψ Trotter(t)〉|²" minY={0} series={[{ name: 'Fidelity on D|g〉', color: '#70dfac', x: result.times, y: result.fidelity }]}/><p className="muted">Fidelity measures this input state, not average gate fidelity. Pointwise errors can oscillate. Increase steps and compare the spectral output error as well.</p></Panel>
       </div>
-      <Panel title="Excitation spectrum" eyebrow="FOURIER RECONSTRUCTION ↔ EIGENSTATE REFERENCE" aside={<label><input type="checkbox" checked={signed} onChange={e => setSigned(e.target.checked)}/> Show signed Fourier diagnostic</label>}>
+      <Panel title="Excitation spectrum" eyebrow="Fourier and eigenstate comparison" aside={<label><input type="checkbox" checked={signed} onChange={e => setSigned(e.target.checked)}/> Show signed Fourier diagnostic</label>}>
         <Plot exportName="quantum-excitation-spectrum" xLabel="Effective excitation energy (eV; not Mn K-edge energy)" yLabel={signed ? 'Signed S(ω), toy strength/eV' : 'Absorption-like S(ω), toy strength/eV'} series={[
           { name: 'Eigenstate Lorentzians', color: '#70dfac', x: result.spectralEnergy, y: result.spectrumReference },
           { name: signed ? 'Exact Fourier · signed' : 'Exact Fourier · clipped', color: '#a28aff', x: result.spectralEnergy, y: signed ? result.spectrumFourierSigned : result.spectrumFourierClipped },
@@ -215,30 +219,30 @@ export function QuantumPanel() {
         ]}/>
         <div className="metric-grid"><Metric label="Nominal 2π/T resolution" value={result.validation.resolution.toFixed(4)} unit="eV"/><Metric label="Padded grid spacing" value={result.validation.paddedGridSpacing.toFixed(4)} unit="eV"/><Metric label="Nyquist energy" value={result.validation.nyquist.toFixed(3)} unit="eV"/><Metric label="Fourier / Lorentzian L¹" value={percent(result.validation.spectralL1FourierVsReference)}/></div>
         <p className="muted">Zero padding changes grid density, not physical resolution. η = {result.params.broadening.toFixed(2)} eV is HWHM; the {result.params.window} time taper and finite observation time add broadening. The reference has only Lorentzian lifetime broadening, so a finite-window mismatch is expected. L¹ errors integrate signed-array absolute differences over the returned nonnegative energy grid.</p>
-        <div className="table-wrap"><table><caption>Clipping audit — raw signed arrays remain in the JSON export</caption><thead><tr><th>Trace</th><th>Minimum signed value</th><th>Negative bins (&lt; −10⁻¹²)</th><th>Area removed</th></tr></thead><tbody><tr><td>Exact Fourier</td><td>{sci(result.validation.fftMinimum)}</td><td>{result.validation.negativeBins}</td><td>{sci(result.validation.clippedArea)}</td></tr><tr><td>Trotter Fourier</td><td>{sci(result.validation.trotterFftMinimum)}</td><td>{result.validation.trotterNegativeBins}</td><td>{sci(result.validation.trotterClippedArea)}</td></tr></tbody></table></div>
+        <div className="table-wrap"><table><caption>Clipping audit: raw signed arrays remain in the JSON export</caption><thead><tr><th>Trace</th><th>Minimum signed value</th><th>Negative bins (&lt; −10⁻¹²)</th><th>Area removed</th></tr></thead><tbody><tr><td>Exact Fourier</td><td>{sci(result.validation.fftMinimum)}</td><td>{result.validation.negativeBins}</td><td>{sci(result.validation.clippedArea)}</td></tr><tr><td>Trotter Fourier</td><td>{sci(result.validation.trotterFftMinimum)}</td><td>{result.validation.trotterNegativeBins}</td><td>{sci(result.validation.trotterClippedArea)}</td></tr></tbody></table></div>
         <Disclosure title="Transition energies and dipole weights"><p>Weights below 10⁻¹² are omitted from this table. Elastic zero-gap weight is retained in all curves; it is not a core absorption line.</p><div className="table-wrap"><table><thead><tr><th>Eₙ − E_g (eV)</th><th>|〈n|D|g〉|²</th><th>Contribution</th></tr></thead><tbody>{result.transitions.map((t, i) => <tr key={i}><td>{t.energy.toFixed(6)}</td><td>{t.weight.toExponential(5)}</td><td>{t.kind === 'elastic' ? 'Elastic · not absorption' : 'Inelastic toy transition'}</td></tr>)}</tbody></table></div></Disclosure>
       </Panel>
 
-      <div id="quantum-circuit"><Panel title="Inspect the product-formula circuit" eyebrow="EXPLICIT GATE DECOMPOSITION">
+      <div id="quantum-circuit"><Panel title="Inspect the product-formula circuit" eyebrow="Gate decomposition">
         <div className="metric-grid"><Metric label="Gates per step" value={result.resources.gatesPerStep}/><Metric label="Total serial depth" value={result.resources.depth}/><Metric label="Total CX gates" value={result.resources.entanglingGates}/><Metric label="Product-formula order" value="1"/></div><Circuit result={result}/>
       </Panel></div>
       <div className="two-col">
-        <Panel title="Numerical validation" eyebrow="CHECK THE INVARIANTS" aside={<CheckCircle2 size={20}/>}>
+        <Panel title="Numerical validation" eyebrow="Residuals" aside={<CheckCircle2 size={20}/>}>
           <div className="table-wrap"><table><thead><tr><th>Check</th><th>Max error / residual</th></tr></thead><tbody>{[
             ['Hermiticity, max |H − H†|', result.validation.hermiticityError], ['Exact propagator, max |U†U − I|', result.validation.unitarityError], ['Exact / Trotter state norm', result.validation.normError], ['Ground-state residual', result.validation.groundResidual], ['C(0) − 〈g|D†D|g〉', result.validation.correlationAtZeroError], ['Sum of transition weights − 1', result.validation.transitionWeightError], ['Fourier / reference RMSE', result.validation.spectralRmseFourierVsReference],
           ].map(([label, value]) => <tr key={label as string}><td>{label}</td><td>{sci(value as number)}</td></tr>)}</tbody></table></div>
           <p className="muted">These residuals check the chosen model and implementation. They do not validate the model against a material or experiment.</p>
         </Panel>
-        <Panel title="Independent SciPy reference" eyebrow="OPTIONAL · LOCAL COMPUTATION" aside={<FlaskConical size={20}/>}>
+        <Panel title="Independent SciPy reference" eyebrow="Optional local calculation" aside={<FlaskConical size={20}/>}>
           <p>The deployed GitHub Pages laboratory computes fully in the browser. For local research checks, the optional Python service independently uses SciPy <code>eigh</code> and <code>expm</code> on the same completed run.</p>
           {local ? <button className="button secondary" disabled={busy || referenceBusy} onClick={crossCheck}>{referenceBusy ? 'Cross-checking…' : 'Run local SciPy cross-check'}</button> : <p className="callout">Available only when running the app on localhost. Follow the README to start the optional science service. This hosted page does not contact a Python server.</p>}
           {referenceError && <p role="alert" className="callout">{referenceError}</p>}
           {reference && maxEigenError !== null && maxCorrelationError !== null && <><div className="metric-grid"><Metric label="Eigenvalue max difference" value={sci(maxEigenError)} unit="eV"/><Metric label="Complex C(t) max difference" value={sci(maxCorrelationError)}/><Metric label="SciPy expm cross-check" value={sci(reference.validation.expmError!)}/></div><p className="muted">Independent reference completed. Ground eigenvector signs can differ; degenerate ground spaces can yield different selected states. The full reference is included in subsequent run exports.</p></>}
         </Panel>
       </div>
-      <Panel title="Where the research begins" eyebrow="RESEARCH MOTIVATION, WITH BOUNDARIES">
+      <Panel title="Related research" eyebrow="Background">
         <p>The dipole → time evolution → correlation → spectrum connection is motivated by <a href="https://arxiv.org/abs/2405.11015" target="_blank" rel="noreferrer">Fomichev et al. (2024)</a>. Spectral error, time truncation and broadening controls also connect to the questions studied in <a href="https://arxiv.org/abs/2506.15784" target="_blank" rel="noreferrer">Fomichev et al. (2025)</a>. This lab does not implement their chemical active spaces, specialized factorizations or fault-tolerant resource estimates.</p>
-        <Disclosure title="Complete conventions and limitations"><ul>{result.caveats.map(c => <li key={c}>{c}</li>)}</ul></Disclosure>
+        <Disclosure title="Complete conventions and limitations"><ul>{result.caveats.map(c => <li key={c}>{readableCaveat(c)}</li>)}</ul></Disclosure>
       </Panel>
     </>}
   </div>;

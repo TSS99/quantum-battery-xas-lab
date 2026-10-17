@@ -44,10 +44,10 @@ test('lithium slider obeys charge balance and remains synchronized across module
   await expect(metric(page, 'Nominal Mn oxidation')).toContainText('+4.00');
 });
 
-test('beamline energy and thickness update actual counts while retaining provenance', async ({ page }) => {
+test('beamline energy and thickness update actual counts with a provenance link', async ({ page }) => {
   await page.goto('./beamline/');
   await expect(page.getByText('Synthetic educational model', { exact: true })).toBeVisible();
-  await expect(page.getByText(/NOT quantitatively predictive data/).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Model provenance and limits' })).toBeVisible();
   const energy = page.getByRole('slider', { name: 'Photon energy', exact: true });
   await energy.focus();
   await energy.press('Home');
@@ -107,10 +107,86 @@ test('spectra validates imports without losing valid runs and exports provenance
 test('mobile modules fit the viewport and respect reduced-motion preference', async ({ page }) => {
   await page.goto('./');
   expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
-  for (const [name] of modules) {
+  for (const width of [375, 390]) {
+   await page.setViewportSize({ width, height: 844 });
+   for (const [name] of modules) {
     await page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link', { name, exact: false }).click();
     await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toBeVisible();
     const geometry = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: innerWidth }));
     expect(geometry.content, `${name} should not cause page-wide horizontal overflow`).toBeLessThanOrEqual(geometry.viewport + 1);
+   }
   }
+});
+
+
+test('overview starting paths choose a module and explanation level', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.getByText('Synthetic educational model', { exact: true })).toBeVisible();
+  await expect(page.getByText(/not quantitatively predictive data/)).toBeVisible();
+  for (const [audience, route, mode] of [['Student', 'crystal', 'Explore'], ['Researcher', 'quantum', 'Research'], ['Industry R&D', 'spectra', 'Research']]) {
+    await page.goto('./');
+    await page.locator('.module-card').filter({ hasText: audience }).click();
+    await expect(page).toHaveURL(new RegExp('/' + route + '/$'));
+    await expect(page.getByRole('button', { name: mode, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  }
+});
+
+test('explanation level changes the guidance in every module', async ({ page }) => {
+  await page.goto('./');
+  for (const [name] of modules) {
+    await page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link', { name, exact: true }).click();
+    await page.getByRole('button', { name: 'Explore', exact: true }).click();
+    await expect(page.getByRole('complementary', { name: 'Try this', exact: true }).first()).toBeVisible();
+    const explanation = await page.locator('.try-this').first().innerText();
+    await page.getByRole('button', { name: 'Research', exact: true }).click();
+    await expect(page.getByRole('complementary', { name: 'Model note', exact: true }).first()).toBeVisible();
+    await expect(page.locator('.try-this').first()).not.toHaveText(explanation);
+  }
+});
+
+test('guided controls report composition and orbital changes', async ({ page }) => {
+  await page.goto('./crystal/');
+  const lithium = page.getByRole('slider', { name: 'Lithium content', exact: true });
+  await lithium.focus();
+  await lithium.press('End');
+  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('At x = 1.00, nominal Mn is +3.00');
+  await expect(page.locator('.delta-readout')).toContainText('+0.50');
+  await page.getByRole('navigation').getByRole('link', { name: 'Electronic structure', exact: true }).click();
+  await page.getByRole('button', { name: /1s → d-like character/ }).click();
+  await page.getByRole('button', { name: 'Illustrate excitation' }).click();
+  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('dashed circle marks the core hole');
+});
+
+test('plot inspection includes units and SVG export remains standalone', async ({ page }) => {
+  await page.goto('./spectra/');
+  await page.getByRole('button', { name: 'Derivative', exact: true }).click();
+  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('dμ/dE');
+  const plot = page.getByRole('img', { name: /spectra-derivative:/ });
+  await plot.focus();
+  await plot.press('ArrowRight');
+  await expect(page.locator('.plot-readout').first()).toContainText('eV');
+  await expect(page.locator('.plot-legend').first()).toContainText('cm⁻¹ eV⁻¹');
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download spectra-derivative as SVG' }).click();
+  const file = await downloading;
+  const svg = await readFile((await file.path())!, 'utf8');
+  expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+  expect(svg).toContain('<title>dμ/dE (cm⁻¹ eV⁻¹) versus Photon energy (eV)</title>');
+  expect(svg).toContain('eV</text>');
+});
+
+test('quantum reference compares completed runs and validation reports actual checks', async ({ page }) => {
+  await page.goto('./quantum/');
+  const keep = page.getByRole('button', { name: 'Keep run as reference' });
+  await expect(keep).toBeEnabled({ timeout: 30_000 });
+  await keep.click();
+  const steps = page.getByRole('slider', { name: 'Trotter steps', exact: true });
+  await steps.focus();
+  await steps.press('Home');
+  await page.getByRole('button', { name: 'Run simulation', exact: true }).click();
+  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('Trotter spectral L¹ error changed from', { timeout: 30_000 });
+  await page.getByRole('navigation').getByRole('link', { name: 'Methods & validation', exact: true }).click();
+  await expect(page.getByText(/not quantitatively predictive data/)).toBeVisible();
+  await page.getByRole('button', { name: 'Run sanity checks' }).click();
+  await expect(page.getByRole('complementary', { name: 'Try this' })).toContainText('9 of 9 checks passed', { timeout: 30_000 });
 });

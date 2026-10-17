@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Download, FlaskConical, Plus, Trash2, Upload } from 'lucide-react';
 import { useLab } from './lab-context';
 import { Plot, type Series } from './plot';
-import { Badge, Disclosure, Metric, Panel, Range, download } from './ui';
+import { Badge, Disclosure, Metric, Panel, Range, TryThis, download } from './ui';
 import { MAX_SPECTRUM_BYTES, estimateEdge, parseSpectrum, snapshotSpectrum, spectrumManifest, spectrumProvenance, spectrumToCSV, spectrumToJSON, spectrumView, validateSpectrum, type FitResult, type Spectrum, type SpectrumView } from '@/lib/spectra';
-import { SYNTHETIC_DISCLOSURE, type XASParams } from '@/lib/xas';
+import { type XASParams } from '@/lib/xas';
 
 const colors = ['#a28aff', '#70dfac', '#f4c777', '#ff686b', '#6dc5f5', '#ef9dde'];
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'The operation could not be completed.';
@@ -33,7 +33,7 @@ function MetadataEditor({ spectrum, onSave }: { spectrum: Spectrum; onSave: (spe
     <label>Sample ID<input value={sampleId} maxLength={200} placeholder="Your sample or batch identifier" onChange={event => setSampleId(event.target.value)} /></label>
     <label>Calibration status<select value={status} onChange={event => setStatus(event.target.value as typeof status)}><option value="uncalibrated">Uncalibrated / unknown</option><option value="user-declared">User-declared reference</option></select></label>
     <div className="two-col"><label>Reference / method<input value={reference} maxLength={512} placeholder="Foil, standard and procedure" onChange={event => setReference(event.target.value)} /></label><label>Energy offset (eV)<input type="number" min={-1000} max={1000} step="any" value={offset} onChange={event => setOffset(event.target.value)} /></label></div>
-    <label>Acquisition / processing notes<textarea value={notes} maxLength={8000} rows={3} placeholder="Date, mode, cycle, SOC, temperature, units and uncertainty source when known. Leave unknown facts unknown." onChange={event => setNotes(event.target.value)} /></label>
+    <label>Acquisition / processing notes<textarea value={notes} maxLength={8000} rows={3} placeholder="Record acquisition mode, cycle, state of charge, temperature and uncertainty source, if known." onChange={event => setNotes(event.target.value)} /></label>
     <p className="muted">Saving a reference records your declaration; it does not verify calibration. Offset metadata never changes raw energies. Use the explicit display-offset switch above to view a correction.</p>
     {error && <p className="callout" role="alert">{error}</p>}
     <button type="submit" className="button secondary small">{spectrum.id === 'live' ? 'Save as a new run' : 'Save run metadata'}</button>
@@ -55,7 +55,7 @@ export function SpectraPanel() {
   const fitWorker = useRef<Worker | null>(null);
   const requestId = useRef(0);
   const shapeKey = JSON.stringify([state.x, state.edge, state.shift, state.width, state.whiteLine, state.preEdge, state.oscillation]);
-  const live = useMemo(() => ({ ...snapshotSpectrum(state, 'Live • synthetic'), id: 'live' }), [shapeKey]); // Only shape controls change a spectrum.
+  const live = useMemo(() => ({ ...snapshotSpectrum(state, 'Live synthetic spectrum'), id: 'live' }), [shapeKey]); // Only shape controls change a spectrum.
   const selected = runs.find(run => run.id === selectedId) ?? live;
   const allSpectra = [live, ...runs];
 
@@ -83,7 +83,7 @@ export function SpectraPanel() {
   const yLabel = view === 'raw' ? 'μ (cm⁻¹)' : view === 'normalized' ? 'Endpoint-normalized μ (dimensionless)' : 'dμ/dE (cm⁻¹ eV⁻¹)';
 
   function snapshot() {
-    const run = snapshotSpectrum(state); addRun(run); setSelectedId(run.id); notify('Synthetic snapshot saved. Raw data and model parameters are retained.');
+    const run = snapshotSpectrum(state); addRun(run); setSelectedId(run.id); notify('Snapshot saved with its raw data and model settings.');
   }
   async function importFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
@@ -129,18 +129,18 @@ export function SpectraPanel() {
   }
 
   return <div className="module-content">
-    <div className="callout"><strong>{SYNTHETIC_DISCLOSURE}</strong> Imported files remain user supplied. Experimental origin, calibration and uncertainty are not independently verified.</div>
+    <TryThis done={view==='derivative'} research={<>Raw μ in cm⁻¹; endpoint normalization uses the first and last 10% of points. Derivatives use a three-point unequal grid; neither transform propagates uncertainty.</>}>{view==='derivative'?'The vertical axis now shows dμ/dE in cm⁻¹ eV⁻¹. Peaks mark rapid changes in absorption; noise can also produce peaks.':'Save a live snapshot, move Lithium loading x, then select Derivative to compare where each curve rises fastest.'}</TryThis>
     <div className="toolbar"><button className="button" onClick={snapshot}><Plus size={16}/>Snapshot live spectrum</button><label className="button secondary"><Upload size={16}/>{importing ? 'Validating file…' : 'Import CSV / JSON'}<input type="file" accept=".csv,.json,text/csv,application/json" disabled={importing} onChange={importFile} style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }} aria-label="Import spectrum CSV or JSON" /></label><span className="muted">Up to 12 saved runs • 20,000 rows / file • 5 MB maximum</span></div>
     {error && <p className="callout" role="alert">{error}</p>}
     <div className="two-col">
-      <Panel title="Spectral comparison" eyebrow="SYNCHRONIZED WORKSPACE" aside={<Badge tone="amber">{view}</Badge>}>
+      <Panel title="Spectral comparison" eyebrow="Spectrum display" aside={<Badge tone="amber">{view}</Badge>}>
         <div className="toolbar" role="group" aria-label="Spectrum transform">{(['raw', 'normalized', 'derivative'] as const).map(mode => <button key={mode} className={`button small ${view === mode ? '' : 'secondary'}`} aria-pressed={view === mode} onClick={() => setView(mode)}>{mode === 'raw' ? 'Raw μ' : mode === 'normalized' ? 'Normalize' : 'Derivative'}</button>)}</div>
         <Plot series={plotted.series} yLabel={yLabel} exportName={`spectra-${view}`} height={310} />
         {plotted.problems.map(problem => <p className="callout" key={problem} role="status">{problem}</p>)}
         <div className="toolbar"><label><input type="checkbox" checked={showLive} onChange={event => setShowLive(event.target.checked)} /> Live synthetic overlay</label><label><input type="checkbox" checked={applyOffset} onChange={event => setApplyOffset(event.target.checked)} /> Apply user-declared offsets to display</label></div>
         <p className="muted">{view === 'raw' ? 'Shading shows supplied ±1σ pointwise uncertainty where available; it does not include unspecified systematic errors.' : view === 'normalized' ? 'Simple first/last 10% endpoint-window normalization. No polynomial background fit or uncertainty propagation.' : 'Three-point unequal-grid derivative; endpoints use two points. No smoothing or uncertainty propagation.'} {applyOffset ? 'Displayed E = raw E + declared offset. Raw exports are unchanged.' : 'Calibration offsets are metadata only; raw energy axes are displayed.'}</p>
       </Panel>
-      <Panel title="Live model & selection" className="control-panel" eyebrow="ONE CONNECTED EXPERIMENT">
+      <Panel title="Live model & selection" className="control-panel" eyebrow="Sample and run">
         <Range label="Lithium loading x" value={state.x} min={0} max={1} step={0.01} digits={2} onChange={x => set({ x })} />
         <Range label="Illustrative edge shift per x" value={state.shift} min={-10} max={10} step={0.1} digits={1} unit="eV" onChange={shift => set({ shift })} hint="Assumed synthetic relationship; no measured valence calibration." />
         <label>Selected run<select value={selected.id} onChange={event => setSelectedId(event.target.value)}>{allSpectra.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
@@ -151,19 +151,19 @@ export function SpectraPanel() {
         {edgeError && <p className="callout">{edgeError}</p>}
       </Panel>
     </div>
-    <Panel title="Run ledger" eyebrow="IDENTITY / TRACEABILITY / EXPORTS">
-      <div className="table-wrap"><table><thead><tr><th scope="col">Overlay</th><th scope="col">Run / sample</th><th scope="col">Provenance</th><th scope="col">Calibration</th><th scope="col">Actions</th></tr></thead><tbody>{allSpectra.map((item, index) => <tr key={item.id}><td>{item.id === 'live' ? <span style={{ color: colors[0] }}>LIVE</span> : <input type="checkbox" checked={!hidden.includes(item.id)} aria-label={`Show ${item.name}`} onChange={event => setHidden(current => event.target.checked ? current.filter(id => id !== item.id) : [...current, item.id])} />}</td><td><button className="text-button" onClick={() => setSelectedId(item.id)} style={{ color: colors[index % colors.length] }}>{item.name}</button><small>{item.sampleId || 'No sample identifier'}</small></td><td>{spectrumProvenance(item)}</td><td>{item.calibration?.status ?? 'uncalibrated'}<small>{item.calibration?.offset_eV ?? 0} eV offset {applyOffset && item.calibration?.status === 'user-declared' ? 'applied to display' : 'metadata only'}</small></td><td>{item.id !== 'live' && <button className="icon-button" aria-label={`Remove ${item.name}`} onClick={() => { removeRun(item.id); if (selectedId === item.id) setSelectedId('live'); }}><Trash2 size={15}/></button>}</td></tr>)}</tbody></table></div>
+    <Panel title="Run ledger" eyebrow="Saved runs">
+      <div className="table-wrap"><table><thead><tr><th scope="col">Overlay</th><th scope="col">Run / sample</th><th scope="col">Provenance</th><th scope="col">Calibration</th><th scope="col">Actions</th></tr></thead><tbody>{allSpectra.map((item, index) => <tr key={item.id}><td>{item.id === 'live' ? <span style={{ color: colors[0] }}>Live</span> : <input type="checkbox" checked={!hidden.includes(item.id)} aria-label={`Show ${item.name}`} onChange={event => setHidden(current => event.target.checked ? current.filter(id => id !== item.id) : [...current, item.id])} />}</td><td><button className="text-button" onClick={() => setSelectedId(item.id)} style={{ color: colors[index % colors.length] }}>{item.name}</button><small>{item.sampleId || 'No sample identifier'}</small></td><td>{spectrumProvenance(item)}</td><td>{item.calibration?.status ?? 'uncalibrated'}<small>{item.calibration?.offset_eV ?? 0} eV offset {applyOffset && item.calibration?.status === 'user-declared' ? 'applied to display' : 'metadata only'}</small></td><td>{item.id !== 'live' && <button className="icon-button" aria-label={`Remove ${item.name}`} onClick={() => { removeRun(item.id); if (selectedId === item.id) setSelectedId('live'); }}><Trash2 size={15}/></button>}</td></tr>)}</tbody></table></div>
       <p className="muted">Runs stay in this browser session. Export important data before reloading. Adding a thirteenth saved run removes the oldest from this in-memory ledger.</p>
       <div className="toolbar"><button className="button secondary small" onClick={() => download(`${filename(selected.name)}-raw.csv`, spectrumToCSV(selected), 'text/csv')}><Download size={14}/>Raw CSV</button><button className="button secondary small" onClick={() => download(`${filename(selected.name)}-raw.json`, spectrumToJSON(selected))}>Raw JSON</button><button className="button secondary small" onClick={exportView}>Current view CSV</button><button className="button secondary small" onClick={() => { try { download(`${filename(selected.name)}-manifest.json`, JSON.stringify(spectrumManifest(selected, state, view, applyOffset, fit && fit.spectrum.id === selected.id ? { parameters: fit.parameters, result: fit.result } : undefined), null, 2)); } catch (issue) { setError(errorText(issue)); } }}>Run manifest</button></div>
       <Disclosure title="Accepted import format and data integrity"><p>CSV headers must be <code>energy_eV,mu_cm_inv</code>, optionally <code>sigma_mu_cm_inv</code>. Energies must strictly increase; coefficients must be absolute linear coefficients in cm⁻¹. Dimensionless optical depth and normalized absorption are different quantities and are rejected as substitutes. JSON uses those array field names, or the versioned envelope produced by Raw JSON.</p><p>Original numerical arrays are preserved through all display operations. Imports receive a new internal ID. On supported secure origins, SHA-256 records the original file bytes; it is an integrity fingerprint, not proof of measurement authenticity. Metadata can contain notes supplied by you and should be reviewed before sharing.</p></Disclosure>
     </Panel>
     <div className="two-col">
-      <Panel title="Selected run metadata" eyebrow="RESEARCH RECORD"><MetadataEditor key={selected.id} spectrum={selected} onSave={updated => {
+      <Panel title="Selected run metadata" eyebrow="Run metadata"><MetadataEditor key={selected.id} spectrum={selected} onSave={updated => {
         if (updated.id === 'live') { const run = { ...updated, id: newId() }; addRun(run); setSelectedId(run.id); }
         else { updateRun(updated); }
         notify('Metadata saved. Raw energies and absorption values remain unchanged.');
       }} />{selected.sourceSha256 && <p className="muted" style={{ overflowWrap: 'anywhere' }}>Original file SHA-256: <code>{selected.sourceSha256}</code></p>}</Panel>
-      <Panel title="Illustrative shape fit" eyebrow="BROWSER WORKER / DESCRIPTIVE ONLY" aside={<FlaskConical size={20}/> }>
+      <Panel title="Illustrative shape fit" eyebrow="Descriptive fit" aside={<FlaskConical size={20}/> }>
         <p>Fit the selected raw curve with the current synthetic shape. Search a shift of ±10 eV in 0.1 eV steps, with a nonnegative amplitude and constant baseline solved at each step.</p>
         <div className="equation">μfit(E) = b + a · μsynthetic(E; E₀ + ΔE), a ≥ 0</div>
         <p className="muted">{selected.sigma_mu_cm_inv ? 'Weighted least squares uses the supplied 1/σ² point weights.' : 'No pointwise σ supplied: ordinary unweighted least squares.'} Fits use raw energies; display calibration offsets are excluded. These parameters do not infer lithium content, oxidation state, structure or instrument calibration.</p>
@@ -172,7 +172,7 @@ export function SpectraPanel() {
         {fit && <><div className="metric-grid"><Metric label="Shift grid result" value={fit.result.shift_eV.toFixed(1)} unit=" eV"/><Metric label="Scale" value={fit.result.scale.toFixed(4)}/><Metric label="Baseline" value={fit.result.baseline_cm_inv.toFixed(3)} unit=" cm⁻¹"/><Metric label="RMSE" value={fit.result.rmse_cm_inv.toPrecision(4)} unit=" cm⁻¹"/></div><p>Reduced χ²: {fit.result.reducedChiSquare === null ? 'unavailable without supplied σ' : fit.result.reducedChiSquare.toPrecision(4)}. {fit.result.boundary && <strong>Boundary solution: inspect identifiability and model mismatch.</strong>}</p><p className="muted">{fit.result.caveat}</p></>}
       </Panel>
     </div>
-    {fit && <Panel title="Fit audit" eyebrow={`${fit.spectrum.name} / RAW ENERGY AXIS`}><div className="two-col"><Plot series={[{ name: `${spectrumProvenance(fit.spectrum)} · ${fit.spectrum.name}`, color: '#a28aff', x: fit.spectrum.energy_eV, y: fit.spectrum.mu_cm_inv, sigma: fit.spectrum.sigma_mu_cm_inv }, { name: 'Illustrative shape fit', color: '#f4c777', x: fit.spectrum.energy_eV, y: fit.result.fitted, dashed: true }]} yLabel="μ (cm⁻¹)" exportName="fit-audit" /><Plot series={[{ name: 'Residual: data − model', color: '#70dfac', x: fit.spectrum.energy_eV, y: fit.result.residuals }]} yLabel="Residual (cm⁻¹)" exportName="fit-residual" /></div></Panel>}
-    <Disclosure title="Why this matters in research and industry"><p>Repeat-scan comparison, source records, explicit calibration status, raw-data preservation and residual inspection help teams discuss whether a difference comes from the material, measurement or processing. This workspace supports an auditable exploratory handoff; it is not qualified for manufacturing release decisions.</p><p>Background choices introduce uncertainty beyond counting statistics. This is a motivation for retaining processing records and avoiding overconfident shape fits; the lab does not implement the full methods in <a href="https://arxiv.org/abs/physics/0003086" target="_blank" rel="noreferrer">Klementev, XAFS spectroscopy (2000)</a>. The near-edge oscillation is a synthetic feature, not an EXAFS scattering-path fit.</p></Disclosure>
+    {fit && <Panel title="Fit audit" eyebrow={`${fit.spectrum.name} / Raw energy axis`}><div className="two-col"><Plot series={[{ name: `${spectrumProvenance(fit.spectrum)} · ${fit.spectrum.name}`, color: '#a28aff', x: fit.spectrum.energy_eV, y: fit.spectrum.mu_cm_inv, sigma: fit.spectrum.sigma_mu_cm_inv }, { name: 'Illustrative shape fit', color: '#f4c777', x: fit.spectrum.energy_eV, y: fit.result.fitted, dashed: true }]} yLabel="μ (cm⁻¹)" exportName="fit-audit" /><Plot series={[{ name: 'Residual: data − model', color: '#70dfac', x: fit.spectrum.energy_eV, y: fit.result.residuals }]} yLabel="Residual (cm⁻¹)" exportName="fit-residual" /></div></Panel>}
+    <Disclosure title="Why this matters in research and industry"><p>Repeat-scan comparison, source records, explicit calibration status, raw-data preservation and residual inspection help teams discuss whether a difference comes from the material, measurement or processing. Use these records for exploratory comparisons, not manufacturing release decisions.</p><p>Background choices introduce uncertainty beyond counting statistics. This is a motivation for retaining processing records and avoiding overconfident shape fits; the lab does not implement the full methods in <a href="https://arxiv.org/abs/physics/0003086" target="_blank" rel="noreferrer">Klementev, XAFS spectroscopy (2000)</a>. The near-edge oscillation is a synthetic feature, not an EXAFS scattering-path fit.</p></Disclosure>
   </div>;
 }
