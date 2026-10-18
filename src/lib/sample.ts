@@ -31,6 +31,12 @@ export function validateSample(value: unknown): Sample {
   return { formula, density: v.density, absorber: v.absorber, edge: v.edge, preset: v.preset };
 }
 
+/** The edge picked when only an absorber is chosen: K, then L3, then any edge inside 100 eV to 100 keV, else the highest. */
+export function defaultEdge(formula: string, absorber: string): XrayEdge | undefined {
+  const options = edgesOf(formula).filter(e => e.element === absorber), inRange = (e: XrayEdge) => e.energy_eV > 100 && e.energy_eV < 100000;
+  return options.find(e => e.edge === 'K' && inRange(e)) ?? options.find(e => e.edge === 'L3' && inRange(e)) ?? options.find(inRange) ?? options[options.length - 1];
+}
+
 /** Semantic edge check after loadXrayData; outside-range edges remain inspectable. */
 export function resolveSample(sample: Sample): { edge: XrayEdge; inRange: boolean; start: number; end: number } {
   const checked = validateSample(sample);
