@@ -138,6 +138,10 @@ Then set `PLAYWRIGHT_CHANNEL=chromium` when running `npm run test:ui`. PowerShel
 
 Executed results for this delivery will be recorded here after the final verification run. A documented command or source-review checklist alone is not a passed test.
 
+## Install as an app and offline use
+
+Browsers that support web apps (Chrome, Edge, and Safari through Add to Dock or Add to Home Screen) can install XAS Lab from the "Install app" link in the footer. `src/app/manifest.ts` describes the app and `scripts/make-sw.mjs` writes `out/sw.js` after every build, stamped with the build id. Pages and route data are fetched network first, so an online visitor always sees the current site; hashed build assets are cached. Only the installed app downloads every asset (about 4.4 MB) for offline use, which suits beamline computers without internet. Install icons are drawn by `scripts/make-share-assets.mjs`.
+
 ## Search and sharing assets
 
 Titles, descriptions, canonical URLs, Open Graph and Twitter tags and JSON-LD come from `src/data/site-pages.json` through `src/lib/site.ts`. The build also writes `sitemap.xml`, `robots.txt` and a `404.html`. After changing a page title or description, regenerate the share images and icons with `PLAYWRIGHT_CHANNEL=chrome node scripts/make-share-assets.mjs`. To rebuild the X-ray tables, run `scripts/build-xray-data.py` with the `xraydb` package installed (see `src/data/xray/README.md`).

@@ -12,6 +12,8 @@ import { nominalMnOxidation, transmission, logisticEdge } from '@/lib/xas';
 import { isBattery } from '@/lib/sample';
 import { validateSpectrum, type Spectrum } from '@/lib/spectra';
 import type { QuantumResult } from '@/lib/quantum';
+import { loadXrayData } from '@/lib/xraydata';
+import { benchmarkDeviations, summarizeAgreement, type Agreement, type Benchmark, type BenchmarkQuantity } from '@/lib/benchmark';
 
 const presets=[
  {title:'Lithium & local redox',art:'crystal',tag:'Materials',description:'Add lithium and watch manganese change charge.',route:'crystal',patch:{x:.25},question:'How does charge neutrality constrain nominal oxidation?'},
@@ -79,11 +81,42 @@ const papers: [string, string, string, ReactNode][] = [
  ['2610.13189','Insights on the volume variation of LiCoxMn2-xO4 electrode upon cycling: a correlative operando XRD and XAS study','Mahayoni et al., 2026','Measured cycling data as context for the battery example.'],
  ['2609.33776','Benchmark of First-Principles Titanium K-Edge X-Ray Absorption Spectral Simulations on Titanium-containing Oxides','Cao et al., 2026','Motivates comparing several similarity scores over a stated energy window.'],
 ];
+const AGREEMENT_LABELS: Record<BenchmarkQuantity, ReactNode> = {
+  total: <>Total attenuation <Tex>{'\\mu_{\\mathrm{total}}'}</Tex></>,
+  photo: <>Photoabsorption <Tex>{'\\mu_{\\mathrm{photo}}'}</Tex></>,
+  edgeEnergy: <>Edge energies <Tex>{'E_0'}</Tex></>,
+  edgeStep: <>Edge step <Tex>{'\\Delta\\mu'}</Tex></>,
+  thickness: <>Transmission thickness <Tex>{'d'}</Tex></>,
+};
+const percent = (value: number) => value ? (value * 100).toPrecision(2) + '%' : '0%';
+
+/** Recomputes the xraydb benchmark with the lab's own functions; loads its data only when opened. */
+function XraydbAgreement() {
+  const [result, setResult] = useState<{ version: string; materials: number; rows: Agreement[] } | null>(null), [error, setError] = useState('');
+  const started = useRef(false);
+  function load() {
+    if (started.current) return;
+    started.current = true;
+    setError('');
+    Promise.all([loadXrayData(), import('@/data/xray/benchmark.json')]).then(([, module]) => {
+      const benchmark: Benchmark = module.default;
+      setResult({ version: benchmark.xraydbVersion, materials: benchmark.cases.length, rows: summarizeAgreement(benchmarkDeviations(benchmark)) });
+    }).catch(() => { started.current = false; setError('The comparison data could not load. Close and reopen this section to try again.'); });
+  }
+  return <details className="disclosure" onToggle={e => { if (e.currentTarget.open) load(); }}><summary>Agreement with xraydb</summary><div>
+    {error ? <p className="field-error" role="alert">{error}</p> : !result ? <p className="muted" role="status">Comparing with xraydb…</p> : <>
+      <p>Your browser recomputes <Num>{String(result.materials)}</Num> materials with the lab’s own code and compares them with xraydb {result.version}, the reference Python library: every preset, one pure element per period, a hydrate and a dilute sample, from <Num>100</Num> <Unit>eV</Unit> to <Num>100</Num> <Unit>keV</Unit>. Deviation is <Tex>{'|x_{\\mathrm{lab}}/x_{\\mathrm{xraydb}} - 1|'}</Tex>.</p>
+      <div className="table-wrap"><table><thead><tr><th>Quantity</th><th>Points</th><th>Median deviation</th><th>Max deviation</th></tr></thead><tbody>{result.rows.map(row => <tr key={row.quantity}><td>{AGREEMENT_LABELS[row.quantity]}</td><td><Num>{String(row.points)}</Num></td><td><Num>{percent(row.median)}</Num></td><td><Num>{percent(row.max)}</Num></td></tr>)}</tbody></table></div>
+      <p className="muted">The lab’s tables were derived from the same Elam data in XrayDB, so this checks the implementation (table compression, interpolation, formula parsing and mixing), not the physics data. Energies within <Num>1</Num> <Unit>eV</Unit> of an edge are left out, because there the rounded edge position and xraydb’s spline can legitimately differ.</p>
+    </>}
+  </div></details>;
+}
+
 type CheckResult={id:string;label:ReactNode;value:ReactNode;pass:boolean};
 export function ValidationPanel(){const {state,complete}=useLab();const [checks,setChecks]=useState<CheckResult[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');const workerRef=useRef<Worker|null>(null);
  async function runChecks(){setBusy(true);setError('');const t=transmission(100,50,100000);const values:CheckResult[]=[{id:'charge',label:<>Charge neutrality: <Tex>{'x + (4 - x) - 4'}</Tex></>,value:<><Num>0</Num> at <Tex plain>{'x = 0, 0.5, 1'}</Tex></>,pass:[0,.5,1].every(x=>Math.abs(x+nominalMnOxidation(x)-4)<1e-12)},{id:'beer',label:'Beer–Lambert log identity',value:Math.abs(Math.log(t.expectedIncident/t.expectedTransmitted)-t.opticalDepth).toExponential(2),pass:Math.abs(Math.log(t.expectedIncident/t.expectedTransmitted)-t.opticalDepth)<1e-12},{id:'counts',label:<>Deterministic <Tex>{'I_t \\le I_0'}</Tex></>,value:<Tex plain>{`${t.expectedTransmitted.toFixed(2)} \\le 100000`}</Tex>,pass:t.expectedTransmitted<=t.expectedIncident},{id:'edge',label:'Logistic edge is monotonic',value:'101 grid points',pass:Array.from({length:100},(_,i)=>logisticEdge(6530+i*.5,6550,1.2)<=logisticEdge(6530+(i+1)*.5,6550,1.2)).every(Boolean)}];setChecks(values);try{const result=await new Promise<QuantumResult>((resolve,reject)=>{const w=new Worker(new URL('../workers/quantum.worker.ts',import.meta.url));workerRef.current=w;const timeout=setTimeout(()=>{w.terminate();reject(new Error('Validation worker timed out.'));},20000);w.onmessage=e=>{clearTimeout(timeout);w.terminate();e.data.error?reject(new Error(e.data.error)):resolve(e.data.result);};w.onerror=()=>{clearTimeout(timeout);w.terminate();reject(new Error('Could not run browser solver.'));};w.postMessage({id:1,params:{qubits:2,coupling:.35,field:.7,timeMax:20,samples:128,trotterSteps:24,broadening:.12,window:'cosine',padding:4}});});const v=result.validation;setChecks([...values,...([{id:'herm',label:'Hamiltonian Hermiticity',n:v.hermiticityError},{id:'unit',label:'Exact propagator unitarity',n:v.unitarityError},{id:'ground',label:'Ground-state eigenpair residual',n:v.groundResidual},{id:'c0',label:<Tex>{'C(0) = \\langle g|D^\\dagger D|g\\rangle'}</Tex>,n:v.correlationAtZeroError},{id:'sum',label:'Transition-weight sum rule',n:v.transitionWeightError}].map(c=>({id:c.id,label:c.label,value:c.n.toExponential(3),pass:c.n<1e-10})))]);}catch(e){setError(e instanceof Error?e.message:'Validation failed.');}finally{setBusy(false);}}
  return <><TryThis steps={['validate']} done={checks.length===9&&!busy&&checks.every(c=>c.pass)} research={<>Charge and attenuation: residual <Tex>{'< 10^{-12}'}</Tex>. Quantum: residual <Tex>{'< 10^{-10}'}</Tex> for the two-qubit reference.</>}>{checks.length===9&&!busy?<>{checks.filter(c=>c.pass).length} of {checks.length} checks passed. Each one tests the code against its own equations.</>:'Run the checks to test charge balance, attenuation and the quantum solver.'}</TryThis>
- <Panel title="Check the calculations"><button className="button" disabled={busy} onClick={runChecks}>{busy?'Checking…':'Run sanity checks'}</button>{error&&<p className="field-error" role="alert"><ScienceText>{error}</ScienceText></p>}<div className="check-results" aria-live="polite">{checks.map(c=><div key={c.id}><span>{c.label}</span><code>{typeof c.value === 'string' ? <Num>{c.value}</Num> : c.value}</code><strong>{c.pass?'Pass':'Fail'}</strong></div>)}</div></Panel>
+ <Panel title="Check the calculations"><button className="button" disabled={busy} onClick={runChecks}>{busy?'Checking…':'Run sanity checks'}</button>{error&&<p className="field-error" role="alert"><ScienceText>{error}</ScienceText></p>}<div className="check-results" aria-live="polite">{checks.map(c=><div key={c.id}><span>{c.label}</span><code>{typeof c.value === 'string' ? <Num>{c.value}</Num> : c.value}</code><strong>{c.pass?'Pass':'Fail'}</strong></div>)}</div><XraydbAgreement /></Panel>
  <Panel title="What the results mean"><ul className="source-list"><li><strong>Tabulated atomic data.</strong> XrayDB / Elam data give absorption backgrounds and edge jumps for H to Cf, 100 <Unit>eV</Unit> to 100 <Unit>keV</Unit>.</li><li><strong>Teaching spectra.</strong> Adjustable peaks and edge shifts are models, not measured data.</li><li><strong>Quantum response.</strong> The browser solves a small Hamiltonian. It does not predict a material spectrum.</li><li><strong>Imported curves.</strong> Raw arrays and your notes are preserved. Origin and calibration are unverified.</li></ul><p>A passing check means the equations were solved correctly. It does not mean they are the right equations for your sample.</p><h3>Claims we do not make</h3><ul>
 <li>The quantum curve is the response of whichever Hamiltonian is loaded. That alone does not make it the XAS of a material or of a Mn K-edge.</li>
 <li>This lab does not reproduce the papers’ spectra, active spaces or resource estimates.</li>

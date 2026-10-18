@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack --hostname 127.0.0.1",
-    "build": "next build --webpack && node scripts/flatten-segments.mjs",
+    "build": "next build --webpack && node scripts/flatten-segments.mjs && node scripts/make-sw.mjs",
     "start": "node scripts/serve.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

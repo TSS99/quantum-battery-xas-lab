@@ -58,12 +58,23 @@ for (const page of site.pages) {
   await tab.screenshot({ path: `public/og/${page.slug || 'home'}.png` });
 }
 
+async function renderMaskable(size) {
+  const inner = Math.round(size * .72), pad = (size - inner) / 2;
+  await tab.setViewportSize({ width: size, height: size });
+  await tab.setContent(`<html><body style="margin:0;background:#151c24"><div style="padding:${pad}px">${icon.replace('<svg ', `<svg width="${inner}" height="${inner}" `)}</div></body></html>`);
+  return tab.screenshot({ clip: { x: 0, y: 0, width: size, height: size } });
+}
 async function renderIcon(size) {
   await tab.setViewportSize({ width: size, height: size });
   await tab.setContent(`<html><body style="margin:0;background:transparent">${icon.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`);
   return tab.screenshot({ omitBackground: true, clip: { x: 0, y: 0, width: size, height: size } });
 }
 await writeFile('src/app/apple-icon.png', await renderIcon(180));
+// Install icons for the web app manifest (src/app/manifest.ts). The maskable one keeps the mark inside the 80% safe zone.
+await mkdir('public/icons', { recursive: true });
+await writeFile('public/icons/icon-192.png', await renderIcon(192));
+await writeFile('public/icons/icon-512.png', await renderIcon(512));
+await writeFile('public/icons/icon-maskable-512.png', await renderMaskable(512));
 // favicon.ico holding one 32x32 PNG (valid ICO since Windows Vista; all current browsers accept it).
 const png = await renderIcon(32);
 const header = Buffer.alloc(22);
@@ -72,4 +83,4 @@ header.writeUInt8(32, 6); header.writeUInt8(32, 7); header.writeUInt8(0, 8); hea
 header.writeUInt16LE(1, 10); header.writeUInt16LE(32, 12); header.writeUInt32LE(png.length, 14); header.writeUInt32LE(22, 18);
 await writeFile('src/app/favicon.ico', Buffer.concat([header, png]));
 await browser.close();
-console.log(`Wrote ${site.pages.length} share images, apple-icon.png and favicon.ico.`);
+console.log(`Wrote ${site.pages.length} share images, apple-icon.png, favicon.ico and the install icons.`);
