@@ -317,9 +317,10 @@ test('installs as an app and keeps working offline', async ({ page, context }) =
   await context.setOffline(false);
 });
 
-test('element references keep all elements keyboard accessible on a narrow screen', async ({ page }) => {
+test('mobile element references keep all elements keyboard accessible with reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./elements/');
+  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
   await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveCount(1);
   await expect(page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link')).toHaveCount(8);
   await expect(page.locator('.periodic-table a')).toHaveCount(98);
@@ -333,6 +334,28 @@ test('element references keep all elements keyboard accessible on a narrow scree
     await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
     await expect(page.locator('.katex-error')).toHaveCount(0);
+  }
+});
+
+test('element references and search metadata are usable without JavaScript', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto('./elements/');
+    await page.getByRole('link', { name: 'Iron (Fe), atomic number 26', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Iron (Fe) X-ray absorption edges');
+    await expect(page).toHaveTitle('Iron (Fe) X-ray absorption edges | XAS Lab');
+    const canonical = 'https://tss99.github.io/quantum-battery-xas-lab/elements/fe/';
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonical);
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+    const row = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'K', exact: true }) });
+    await expect(row.getByRole('cell').first()).toHaveText('7,112');
+    await expect(row.getByRole('link', { name: 'Scan the Fe K edge on the beamline', exact: true })).toHaveAttribute('href', /\/beamline\/\?element=Fe&edge=K$/);
+    const graph = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!)['@graph'];
+    expect(graph.find((item: { '@type': string }) => item['@type'] === 'BreadcrumbList').itemListElement.map((item: { name: string }) => item.name)).toEqual(['Overview', 'Elements', 'Iron']);
+  } finally {
+    await context.close();
   }
 });
 

@@ -140,7 +140,7 @@ Executed results for this delivery will be recorded here after the final verific
 
 ## Install as an app and offline use
 
-Browsers that support web apps (Chrome, Edge, and Safari through Add to Dock or Add to Home Screen) can install XAS Lab from the "Install app" link in the footer. `src/app/manifest.ts` describes the app and `scripts/make-sw.mjs` writes `out/sw.js` after every build, stamped with the build id. Pages and route data are fetched network first, so an online visitor always sees the current site; hashed build assets are cached. Only the installed app downloads every asset (about 4.4 MB) for offline use, which suits beamline computers without internet. Install icons are drawn by `scripts/make-share-assets.mjs`.
+Browsers that support web apps (Chrome, Edge, and Safari through Add to Dock or Add to Home Screen) can install XAS Lab from the "Install app" link in the footer. `src/app/manifest.ts` describes the app and `scripts/make-sw.mjs` writes `out/sw.js` after every build, stamped with the build id. Pages and route data are fetched network first, so an online visitor always sees the current site; hashed build assets are cached. The installed app downloads the remaining assets for offline use, which suits beamline computers without internet. The build reports the asset count and download size; this includes the element reference pages' route data. Install icons are drawn by `scripts/make-share-assets.mjs`.
 
 ## Search and sharing assets
 
