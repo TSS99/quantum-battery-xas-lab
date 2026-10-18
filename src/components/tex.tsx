@@ -1,4 +1,5 @@
-'use client';
+// No 'use client': these have no state or handlers, so server components (the element pages)
+// typeset with them at build time without shipping KaTeX, and client components bundle them as before.
 import katex from 'katex';
 
 /** Formats a JavaScript number string for LaTeX: 1.2e-5 becomes 1.2\times10^{-5}, 100,000 becomes 100{,}000. */

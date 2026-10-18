@@ -15,6 +15,8 @@ export const BATTERY_PRESET = 'battery-example';
 export const DEFAULT_SAMPLE: Sample = { formula: 'Li0.5MnO2', density: 4.3, absorber: 'Mn', edge: 'K', preset: BATTERY_PRESET };
 export const isBattery = (sample: Sample) => sample.preset === BATTERY_PRESET;
 export const batteryFormula = (x: number) => x === 0 ? 'MnO2' : 'Li' + Number(x.toFixed(4)) + 'MnO2';
+/** Edge labels a sample may name; the tables decide which ones an element has. */
+export const EDGE_LABEL = /^(K|L[1-3]|M[1-5]|N[1-7]|O[1-7]|P[1-5])$/;
 
 /** Portable validation does not load the large cross-section table. */
 export function validateSample(value: unknown): Sample {
@@ -26,7 +28,7 @@ export function validateSample(value: unknown): Sample {
   if (Object.values(composition).some(n => !Number.isFinite(n) || n > 1e12)) throw new Error('Formula counts are too large.');
   if (typeof v.density !== 'number' || !Number.isFinite(v.density) || v.density <= 0 || v.density > 1000) throw new Error('Density must be greater than 0 and at most 1000 g/cm³.');
   if (typeof v.absorber !== 'string' || !(v.absorber in composition)) throw new Error('Choose an absorber that is in the formula.');
-  if (typeof v.edge !== 'string' || !/^(K|L[1-3]|M[1-5]|N[1-7]|O[1-7]|P[1-5])$/.test(v.edge)) throw new Error('Choose an edge such as K, L3 or M5.');
+  if (typeof v.edge !== 'string' || !EDGE_LABEL.test(v.edge)) throw new Error('Choose an edge such as K, L3 or M5.');
   if (v.preset !== null && (typeof v.preset !== 'string' || v.preset.length > 80)) throw new Error('Invalid sample preset.');
   return { formula, density: v.density, absorber: v.absorber, edge: v.edge, preset: v.preset };
 }

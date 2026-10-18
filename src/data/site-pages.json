@@ -3,6 +3,13 @@
   "siteUrl": "https://tss99.github.io/quantum-battery-xas-lab",
   "author": { "name": "TSS99", "url": "https://github.com/TSS99" },
   "repository": "https://github.com/TSS99/quantum-battery-xas-lab",
+  "elements": {
+    "slug": "elements",
+    "name": "Elements",
+    "title": "X-ray absorption edges by element",
+    "description": "K, L and M edge energies, jump ratios and fluorescence yields for every element from hydrogen to californium, with links to plan an XAS sample.",
+    "ogAlt": "Elements card: X-ray absorption edge energies for hydrogen to californium"
+  },
   "pages": [
     {
       "slug": "",
