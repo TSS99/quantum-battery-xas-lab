@@ -45,7 +45,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   {
     name: 'mu', usage: 'mu <formula> <density> <energy>', summary: 'Attenuation of a material at one photon energy.', counts: [3, 4],
     needs: 'a formula, a density in g/cm³ and an energy', example: 'mu Fe2O3 5.26 7.2keV', data: true, formula: true,
-    details: ['Density is in g/cm³. Energy is in eV unless you add keV: 7200, 7200eV and 7.2keV are the same.'],
+    details: ['Density is in g/cm³. Energy is in eV unless you add keV: 7200, 7200eV and 7.2keV are the same.', 'The listed edge energy and the tabulated discontinuity can differ slightly. Use plan for the edge step and thickness.'],
   },
   {
     name: 'plan', usage: 'plan <formula> <density> <absorber> <edge>', summary: 'Transmission sample thickness and measurement mode.', counts: [0, 4],
@@ -287,7 +287,7 @@ const HANDLERS: Record<string, Handler> = {
       lines: [
         { kind: 'title', text: `xraydb script for ${sample.formula}, ${sample.absorber} ${sample.edge} edge` },
         { kind: 'code', filename, text: code },
-        { kind: 'hint', text: `Run it with: pip install "xraydb>=4.5,<5", then python ${filename}. Its numbers agree with the lab to within about 1 %.` },
+        { kind: 'hint', text: `Run it with: pip install "xraydb>=4.5,<4.6", then python ${filename}. Interpolation and rounding can differ from the browser tables, especially at a discontinuity.` },
       ],
     };
   },
@@ -299,6 +299,7 @@ const fail = (text: string): ConsoleResult => ({ lines: [{ kind: 'error', text }
 
 /** Runs one input line. Never throws: problems come back as error lines. */
 export function runCommand(input: string, context: ConsoleContext): ConsoleResult {
+  if (input.length > 1000) return fail('Keep commands under 1000 characters; formulas can have at most 240 characters.');
   const [name = '', ...args] = input.trim().split(/\s+/).filter(Boolean);
   if (!name) return { lines: [] };
   const info = COMMANDS.find(c => c.name === name.toLowerCase());
@@ -336,7 +337,7 @@ export function completeInput(input: string): Completion {
   const index = words.length - 1, partial = words[index], command = words[0].toLowerCase();
   let candidates: readonly string[] = [];
   if (index === 0 || (command === 'help' && index === 1)) candidates = COMMANDS.map(c => c.name);
-  else if (command === 'edges' && index === 1) candidates = ELEMENT_SYMBOLS;
+  else if (['edges', 'mu', 'plan', 'sample'].includes(command) && index === 1) candidates = ELEMENT_SYMBOLS;
   else if ((command === 'plan' || command === 'sample') && index === 3) candidates = symbolsIn(words[1]) ?? ELEMENT_SYMBOLS;
   else if (command === 'open' && index === 1) candidates = MODULES.map(m => m.name);
   const lower = partial.toLowerCase(), matches = candidates.filter(c => c.toLowerCase().startsWith(lower));
@@ -350,11 +351,16 @@ export function completeInput(input: string): Completion {
 
 // ---------------------------------------------------------------- python
 
-/** Atom count for a flat formula: 1 is left out, and no exponent notation (xraydb.chemparse reads plain decimals). */
+/** Explicit counts avoid material-name collisions such as CO (cobalt in xraydb). */
 function countText(count: number): string {
-  if (count === 1) return '';
   const text = String(Number(count.toPrecision(12)));
-  return /e/i.test(text) ? count.toFixed(15).replace(/0+$/, '').replace(/\.$/, '') : text;
+  if (!/e/i.test(text)) return text;
+  const [mantissa, exponent] = text.split('e');
+  const digits = mantissa.replace('.', '');
+  const point = (mantissa.indexOf('.') < 0 ? mantissa.length : mantissa.indexOf('.')) + Number(exponent);
+  return point <= 0 ? '0.' + '0'.repeat(-point) + digits
+    : point >= digits.length ? digits + '0'.repeat(point - digits.length)
+      : digits.slice(0, point) + '.' + digits.slice(point);
 }
 
 /**
@@ -363,6 +369,8 @@ function countText(count: number): string {
  * (edge step Δμ·d = 1 unless μ·d above the edge would pass 3).
  */
 export function pythonScript(sample: Sample, energy_eV: number): { filename: string; code: string } {
+  validateSample(sample);
+  mu(sample.formula, sample.density, energy_eV); // Validate the exported photon energy too.
   // xraydb.chemparse cannot read square brackets or a '.' hydrate dot, so the formula is written out as atom counts.
   const flat = Object.entries(parseFormula(sample.formula)).map(([symbol, count]) => symbol + countText(count)).join('');
   const { absorber, edge, density } = sample;
@@ -373,9 +381,10 @@ export function pythonScript(sample: Sample, energy_eV: number): { filename: str
     `"""XAS Lab numbers for ${sample.formula} at the ${absorber} ${edge} edge, recomputed with xraydb.`,
     '',
     'Written by the XAS Lab console (https://tss99.github.io/quantum-battery-xas-lab/).',
-    'Install xraydb 4.5 first:  pip install "xraydb>=4.5,<5"',
-    'XAS Lab stores the same XrayDB tables in compressed form, so the two agree to',
-    'within about 1 %.',
+    'Install xraydb 4.5 first:  pip install "xraydb>=4.5,<4.6"',
+    'XAS Lab interpolates compressed XrayDB tables. Rounding and interpolation',
+    'can differ, especially at a discontinuity. These are isolated-atom values,',
+    'without chemical shifts or near-edge fine structure.',
     '"""',
     'import math',
     '',
@@ -389,13 +398,12 @@ export function pythonScript(sample: Sample, energy_eV: number): { filename: str
     '',
     "# material_mu() first looks the name up in xraydb's list of materials, where",
     "# formulas are compared without regard to case: 'CO' would be read as cobalt.",
-    '# Brackets around the formula skip that lookup.',
-    "xdb_formula = '(' + formula + ')'",
+    '# Explicit atom counts avoid this ambiguity (C1O1 means carbon monoxide).',
     '',
     "# Linear attenuation coefficient mu in 1/cm. kind='total' includes coherent and",
     "# incoherent scattering; kind='photo' is photoabsorption alone.",
-    "mu_total = xraydb.material_mu(xdb_formula, energy, density=density, kind='total')",
-    "mu_photo = xraydb.material_mu(xdb_formula, energy, density=density, kind='photo')",
+    "mu_total = xraydb.material_mu(formula, energy, density=density, kind='total')",
+    "mu_photo = xraydb.material_mu(formula, energy, density=density, kind='photo')",
     "print(f'mu total at {energy} eV: {mu_total:.4g} 1/cm')",
     "print(f'mu photo at {energy} eV: {mu_photo:.4g} 1/cm')",
     "print(f'attenuation length 1/mu: {1e4 / mu_total:.4g} um')",
@@ -418,15 +426,17 @@ export function pythonScript(sample: Sample, energy_eV: number): { filename: str
     '',
     "# Edge step. Only the absorber's cross section jumps at its own edge, so",
     "# delta_mu = density * (absorber mass fraction) * (jump in the absorber's mu/rho).",
-    'counts = xraydb.chemparse(xdb_formula)',
+    'counts = xraydb.chemparse(formula)',
     'masses = {element: n * xraydb.atomic_mass(element) for element, n in counts.items()}',
     'mass_fraction = masses[absorber] / sum(masses.values())',
-    '# The tabulated jump lies within 0.005 % of the listed edge energy,',
-    '# so points 0.01 % below and above it bracket the jump.',
+    '# Estimate one-sided values at offsets of 0.01 % of the listed edge energy.',
+    '# The browser instead reads the stored knots on either side of the jump.',
     'e_below, e_above = e0 * (1 - 1e-4), e0 * (1 + 1e-4)',
     'mu_rho_below, mu_rho_above = xraydb.mu_elam(absorber, [e_below, e_above])  # cm^2/g',
     'delta_mu = density * mass_fraction * (mu_rho_above - mu_rho_below)  # 1/cm',
-    'mu_above = xraydb.material_mu(xdb_formula, e_above, density=density)  # 1/cm, total',
+    'if delta_mu <= 0:',
+    "    raise ValueError('No positive edge step at these offsets; inspect the tabulated edge before planning thickness.')",
+    'mu_above = xraydb.material_mu(formula, e_above, density=density)  # 1/cm, total',
     "print(f'edge step delta_mu: {delta_mu:.4g} 1/cm')",
     "print(f'mu just above the edge: {mu_above:.4g} 1/cm')",
     '',

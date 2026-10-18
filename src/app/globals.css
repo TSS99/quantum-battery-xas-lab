@@ -66,6 +66,50 @@ main:focus {outline:none}
 .mode-switch {display:flex;flex:none;padding:3px;gap:4px;border:1px solid var(--control-edge);border-radius:var(--r-pill)}
 .mode-switch button {min-height:44px;padding:8px 16px;font-size:14px;border:0;border-radius:var(--r-pill);background:transparent;color:var(--text-2)}
 .mode-switch button.selected {background:var(--accent);color:var(--accent-ink);font-weight:600}
+.topbar-actions {display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
+.console-toggle {min-height:44px;padding:8px 10px;border:1px solid var(--control-edge);border-radius:8px;background:transparent;color:var(--text-2);font-size:13px}
+.console-toggle>span {color:var(--accent);font-family:var(--font-mono)}
+.lab-console {position:fixed;inset:auto 0 0;margin:0;width:100%;max-width:100%;height:min(620px,75dvh);max-height:90dvh;padding:0;border:0;border-top:1px solid var(--control-edge);border-radius:16px 16px 0 0;background:rgb(8 15 20/.97);color:var(--text);box-shadow:0 -16px 60px #0008;backdrop-filter:blur(20px);font:14px/1.6 var(--font-tex-digits),var(--font-mono);overflow:hidden}
+.lab-console[open] {display:flex;flex-direction:column;animation:console-rise .2s ease-out}
+.lab-console::backdrop {background:rgb(0 0 0/.28)}
+.console-header {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;border-bottom:1px solid var(--hairline);flex-shrink:0}
+.console-header h2 {font:600 15px var(--font-mono);letter-spacing:0}
+.console-header h2>span {color:var(--accent);margin-right:10px}
+.lab-console button {min-height:44px;border:1px solid var(--control-edge);border-radius:6px;padding:6px 12px;background:#192630;color:var(--text);font:inherit;cursor:pointer}
+.lab-console button:hover {background:#253a46}
+.lab-console kbd {margin-left:6px;color:var(--muted);font:inherit}
+.console-output {flex:1;min-height:0;padding:16px 24px;overflow:auto;overscroll-behavior:contain;overflow-wrap:anywhere;scroll-padding:12px}
+.lab-console p {max-width:none;margin:0;color:inherit}
+.console-entry+.console-entry {margin-top:18px}
+.console-output .console-command {color:var(--accent);font-family:var(--font-mono);white-space:pre-wrap;margin-bottom:6px}
+.console-output .console-title {color:var(--text);font-weight:600;margin-bottom:4px}
+.console-output .console-hint,.console-row small {color:#aab9c6}
+.console-output .console-error {color:#ff9c9c}
+.console-output .console-ok {color:#91e0b4}
+.console-row {display:grid;grid-template-columns:minmax(0,25ch) minmax(0,1fr);gap:12px;padding:2px 0}
+.console-row>span:first-child {color:#c0d1de}
+.console-row small {display:block;font-size:12px}
+.console-code {min-width:0;margin-top:8px}
+.console-code-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.console-code-actions>span {flex:1;overflow-wrap:anywhere;min-width:0}
+.console-code pre {max-width:100%;overflow:auto;padding:12px;background:#050b10;border:1px solid var(--control-edge);border-radius:6px;white-space:pre;font:12px/1.6 var(--font-mono)}
+.console-code code {font:inherit}
+.console-footer {flex-shrink:0;padding:8px 24px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--hairline)}
+.console-footer p {color:#aab9c6;font-size:12px;overflow-wrap:anywhere}
+.console-form {display:flex;align-items:center;gap:10px;margin:6px 0}
+.console-form input {min-width:0;flex:1;min-height:44px;padding:8px;border:1px solid var(--control-edge);border-radius:6px;background:#050b10;color:var(--text);font:16px var(--font-mono);caret-color:var(--accent)}
+.console-prompt {color:var(--accent);display:flex;gap:3px;align-items:center}
+.console-caret {width:5px;height:15px;background:currentColor;animation:console-blink 1.2s step-end infinite}
+#console-suggestions:empty {display:none}
+@keyframes console-rise {from {transform:translateY(100%)} to {transform:translateY(0)}}
+@keyframes console-blink {50% {opacity:0}}
+@media(max-width:600px) {
+  .topbar-actions {gap:8px}
+  .console-header,.console-output {padding:12px 16px}
+  .console-footer {padding:8px 16px max(12px,env(safe-area-inset-bottom))}
+  .console-row {grid-template-columns:minmax(0,1fr);gap:0;padding:4px 0}
+}
+@media(prefers-reduced-motion:reduce) {.console-form input {caret-animation:manual}}
 main {flex:1;min-width:0}
 footer {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:24px 32px;border-top:1px solid var(--hairline);color:var(--muted);font-size:13px}
 footer a {display:inline-flex;align-items:center;min-height:44px}
