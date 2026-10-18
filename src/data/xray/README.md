@@ -1,6 +1,6 @@
 # X-ray data (Z = 1-98)
 
-`elements.json` holds tabulated X-ray absorption data for every element from H to Cf. `src/lib/xraydata.ts` loads it lazily and builds compound values from it. `test-fixtures.json` holds reference values computed directly with xraydb, for the unit tests only.
+`elements.json` holds tabulated X-ray absorption data for every element from H to Cf. `src/lib/xraydata.ts` loads it lazily and builds compound values from it. `test-fixtures.json` holds reference values computed directly with xraydb, for the unit tests only. `benchmark.json` is the accuracy benchmark against xraydb (see below).
 
 ## Source, license and citation
 
@@ -32,6 +32,22 @@ The generator compares every element against xraydb on an independent grid of 20
 
 The exact measured numbers are in the `accuracy` field of the `elements.json` header.
 
+## Benchmark against xraydb
+
+`benchmark.json` is written by `scripts/make-benchmark.py` straight from xraydb. It covers every compound preset, one pure element per period (H, C, Al, Ag and U, plus the Cu and Pt presets), a hydrate (FeSO4.7H2O) and a dilute sample (Fe0.002(SiO2)0.998). For each it holds total and photoabsorption μ on a grid from 100 eV to 100 keV and at the chosen edge ±10 and ±50 eV, total μ just below and just above the edge, the edge step, the transmission thickness, and every listed edge energy. The exact xraydb calls are in its `calls` field. `src/lib/benchmark.ts` recomputes the same values with the lab's functions, `src/lib/benchmark.test.ts` asserts the agreement, and the Methods & validation page shows it.
+
+| Quantity | Values | Median deviation | Max deviation |
+| --- | --- | --- | --- |
+| Total μ | 343 | 0.009 % | 0.28 % |
+| Photoabsorption μ | 301 | 0.011 % | 0.26 % |
+| Edge energies | 165 | 0 | 0 |
+| Edge step Δμ | 21 | 0.007 % | 0.075 % |
+| Transmission thickness | 21 | 0.009 % | 0.075 % |
+
+Both sides use the same Elam data, so the deviations measure the table compression (knots fitted to 0.3 % in ln μ/ρ, stored to 4 significant digits) and the implementation, not the physics. Energies within 1 eV of an edge are skipped: there the result depends on conventions (edge position rounded to 0.01 eV here, listed edge energy up to about 1 eV from the table step) rather than on the code.
+
+xraydb's `material_mu` first looks its argument up in the materials list and matches formulas without regard to case, so `material_mu('CO', ...)` returns cobalt. The generator passes such formulas with explicit counts (`C1O1`) and checks every `material_mu` value against the mass-fraction sum of `mu_elam`.
+
 ## Limitations
 
 These are isolated-atom cross sections. They give the smooth background and the size of each edge jump, nothing more:
@@ -58,6 +74,7 @@ Use a virtual environment outside the repository:
 python -m venv <venv>
 <venv>/Scripts/python -m pip install xraydb==4.5.8     # bin/python on Linux/macOS
 <venv>/Scripts/python scripts/build-xray-data.py
+<venv>/Scripts/python scripts/make-benchmark.py      # after build-xray-data.py or a preset change
 ```
 
 The output is deterministic for a given xraydb version: it contains no timestamps and no randomness.
