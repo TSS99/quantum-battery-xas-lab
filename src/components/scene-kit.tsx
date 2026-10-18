@@ -62,7 +62,16 @@ export function IonChamber({ x0, x1, y0, y1, z, beam, readout, id }: { x0: numbe
     </g>
     <rect x={gx0} y={gy0} width={gx1 - gx0} height={gy1 - gy0} rx={3} fill="none" stroke="#6b7a8c" strokeOpacity={.6} />
     {readout && <g><rect x={(gx0 + gx1) / 2 - 27} y={B - y1 - Q * fz + 4} width={54} height={13} rx={2} fill="#06130f" stroke="#2c3a46" /><text x={(gx0 + gx1) / 2} y={B - y1 - Q * fz + 13.6} className="bl-lcd">{readout}</text></g>}
+    {/* Countersunk face screws and ribbed cable strain reliefs. */}
+    {[[x0 + 5 + K * fz, B - y1 - Q * fz + 5], [x1 - 5 + K * fz, B - y1 - Q * fz + 5], [x0 + 5 + K * fz, B - y0 - Q * fz - 5], [x1 - 5 + K * fz, B - y0 - Q * fz - 5]].map(([sx, sy], i) => <g key={i}>
+      <circle cx={sx} cy={sy} r={2.1} fill="url(#bl-steel-top)" stroke="#26303a" strokeWidth={.7} />
+      <path d={`M${sx - .9} ${sy + .9}l1.8 -1.8`} stroke="#38434f" strokeWidth={.8} />
+    </g>)}
     <CylY x={x0 + 14} y0={y1} y1={y1 + 9} r={4} /><CylY x={x1 - 14} y0={y1} y1={y1 + 9} r={4} />
+    {[x0 + 14, x1 - 14].map(x => { const [sx, sy] = P(x, y1 + 9, 0); return <g key={x}>
+      <rect x={sx - 3} y={sy - 5} width={6} height={8} rx={2} fill="#18212b" />
+      <path d={`M${sx - 2.5} ${sy - 3}h5m-5 2h5m-5 2h5`} fill="none" stroke="#647182" strokeWidth={.7} />
+    </g>; })}
     <path d={`M${P(x0 + 14, y1 + 9, 0).join(' ')}c-2 -18 14 -30 34 -38`} className="bl-cable" />
     <path d={`M${P(x1 - 14, y1 + 9, 0).join(' ')}c-2 -16 12 -26 30 -32`} className="bl-cable" />
   </g>;

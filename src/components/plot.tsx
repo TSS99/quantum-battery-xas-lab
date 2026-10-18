@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Download } from 'lucide-react';
 import { download } from './ui';
@@ -10,9 +10,9 @@ const TEX_FONT = "KaTeX_Main, 'Latin Modern Roman', 'Times New Roman', serif";
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 /** 1.2e+5 as 1.2×10⁵ with a true minus sign, for SVG text that cannot hold KaTeX. */
 const sciText = (s: string) => s.replace(/^-/, '−').replace(/e([+-]?)(\d+)$/, (_, sign: string, exp: string) => '×10' + (sign === '-' ? '⁻' : '') + [...exp].map(d => SUP[+d]).join(''));
-export interface Series { name: string; color: string; x: number[]; y: number[]; dashed?: boolean; sigma?: number[] }
-interface Props { series: Series[]; xLabel?: string; yLabel?: string; yTex?: string; cursor?: number; onCursor?: (n: number) => void; height?: number; exportName?: string; minY?: number; ghostKey?: string; edge?: number; reveal?: number }
-export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm⁻¹)', yTex = yLabel === 'μ (cm⁻¹)' ? '\\mu\\ (\\mathrm{cm}^{-1})' : undefined, cursor, onCursor, height = 240, exportName = 'spectrum', minY, ghostKey, edge, reveal = 1 }: Props) {
+export interface Series { name: string; label?: ReactNode; color: string; x: number[]; y: number[]; dashed?: boolean; sigma?: number[] }
+interface Props { series: Series[]; xLabel?: string; yLabel?: string; yTex?: string; yUnit?: string; cursor?: number; onCursor?: (n: number) => void; height?: number; exportName?: string; minY?: number; ghostKey?: string; edge?: number; reveal?: number }
+export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm⁻¹)', yTex = yLabel === 'μ (cm⁻¹)' ? '\\mu\\ (\\mathrm{cm}^{-1})' : undefined, yUnit: explicitYUnit, cursor, onCursor, height = 240, exportName = 'spectrum', minY, ghostKey, edge, reveal = 1 }: Props) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, ''), reduced = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null), ref = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(700), [hover, setHover] = useState<number | null>(null);
@@ -49,14 +49,14 @@ export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm�
   const line = (s: Series) => s.y.map((v, i) => (i ? 'L' : 'M') + px(s.x[i]).toFixed(2) + ',' + py(v).toFixed(2)).join(' ');
   const cx = Math.max(x0, Math.min(x1, hover ?? cursor ?? x0));
   const xUnit = xLabel.match(/\(([^)]+)\)/)?.[1].split(';')[0] ?? '';
-  const yUnit = yLabel.match(/\(([^)]+)\)/)?.[1] ?? '';
+  const yUnit = explicitYUnit ?? yLabel.match(/(?:^|\s)\(([^()]+)\)$/)?.[1] ?? '';
   const nearest = (s: Series) => s.x.reduce((best, x, j) => Math.abs(x - cx) < Math.abs(s.x[best] - cx) ? j : best, 0);
   const ticks = Array.from({ length: width < 400 ? 3 : 5 }, (_, i) => i / (width < 400 ? 2 : 4));
   const fmt = (n: number) => Math.abs(n) >= 100000 || (Math.abs(n) < .01 && n !== 0) ? n.toExponential(1) : Math.abs(n) > 100 ? n.toFixed(0) : n.toFixed(2);
   const inspect = (value: number, commit: boolean) => { setHover(value); if (commit) onCursor?.(value); };
   const pointerValue = (event: React.PointerEvent<SVGSVGElement>) => { const b = event.currentTarget.getBoundingClientRect(); return Math.max(x0, Math.min(x1, x0 + (((event.clientX - b.left) / b.width * W - L) / (W - L - R)) * (x1 - x0))); };
   return <div ref={wrapRef} className="plot-wrap">
-    <div className="plot-top"><span>{yTex ? <Tex>{yTex}</Tex> : yLabel}</span>{ghost?.delta != null && <span className="edge-delta">edge {ghost.delta > 0 ? '+' : ''}{ghost.delta.toFixed(2)} eV</span>}<button className="icon-button" aria-label={'Download ' + exportName + ' as SVG'} onClick={() => ref.current && download(exportName + '.svg', new XMLSerializer().serializeToString(ref.current), 'image/svg+xml')}><Download size={16} /></button></div>
+    <div className="plot-top"><span>{yTex ? <Tex>{yTex}</Tex> : yLabel}</span>{ghost?.delta != null && <span className="edge-delta">edge {ghost.delta > 0 ? '+' : ''}<Num>{ghost.delta.toFixed(2)}</Num> <Unit>eV</Unit></span>}<button className="icon-button" aria-label={'Download ' + exportName + ' as SVG'} onClick={() => ref.current && download(exportName + '.svg', new XMLSerializer().serializeToString(ref.current), 'image/svg+xml')}><Download size={16} /></button></div>
     <svg ref={ref} xmlns="http://www.w3.org/2000/svg" role="slider" tabIndex={0} aria-label={exportName + ': ' + yLabel + ' versus ' + xLabel} aria-valuemin={x0} aria-valuemax={x1} aria-valuenow={cx} aria-valuetext={cx.toFixed(2) + ' ' + xUnit + '; ' + valid[0].name + ' ' + fmt(valid[0].y[nearest(valid[0])]) + ' ' + yUnit} aria-describedby={uid + '-help'} viewBox={'0 0 ' + W + ' ' + H}
       onKeyDown={e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) { e.preventDefault(); inspect(e.key === 'Home' ? x0 : e.key === 'End' ? x1 : Math.max(x0, Math.min(x1, cx + (['ArrowLeft', 'ArrowDown'].includes(e.key) ? -1 : 1) * (x1 - x0) / 100)), true); } }}
       onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); inspect(pointerValue(e), true); }}
@@ -81,6 +81,6 @@ export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm�
     </svg>
     <span id={uid + '-help'} className="sr-only">Use arrow keys, Home or End to inspect the curve. Drag to move the cursor.</span>
     <div className="plot-readout" aria-live="polite" aria-atomic="true"><Num>{cx.toFixed(2)}</Num> <Unit>{xUnit}</Unit>; values at the nearest samples.</div>
-    <div className="plot-legend">{valid.map((s, i) => <span key={i}><i style={{ background: s.color }} />{s.name}<b><Num>{fmt(s.y[nearest(s)])}</Num> <Unit>{yUnit}</Unit></b></span>)}</div>
+    <div className="plot-legend">{valid.map((s, i) => <span key={i}><i style={{ background: s.color }} />{s.label ?? s.name}<b><Num>{fmt(s.y[nearest(s)])}</Num> <Unit>{yUnit}</Unit></b></span>)}</div>
   </div>;
 }

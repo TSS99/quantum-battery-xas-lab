@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Tex, Unit, formulaTex } from './tex';
+import { Num, Tex, Unit, formulaTex } from './tex';
 import { B, Beam, Box, CylY, CylZ, IonChamber, K, P, Q, SceneDefs, YB, circleYZ, line, pts, type V3 } from './scene-kit';
 
 /* A transmission XAS beamline drawn in cabinet projection: X runs along the beam, Y is up, Z is depth.
@@ -40,7 +40,7 @@ export function BeamScene({ energy, edgeEnergy, transmittance, incident, transmi
   const wiggle = 'M' + Array.from({ length: 125 }, (_, i) => { const x = i * 1.25, z = x < 26 ? 0 : 6 * Math.sin(2 * Math.PI * (x - 26) / 20.67); return P(x, YB0, z).map(v => v.toFixed(1)).join(','); }).join('L');
   const bend = line([155, YB0, 0], [162, YB0, 3], [168, YB0, 12], [173, YB0, 26], [177, YB0, 42], [180, YB0, 58]);
   const fmt = (v: number) => Math.round(v).toLocaleString('en-US');
-  const absorbed = (1 - transmittance) * 100, edgeName = `${absorber} ${edge} edge (${edgeEnergy.toFixed(1)} eV)`;
+  const absorbed = (1 - transmittance) * 100, edgeName = <>{absorber} <Tex plain>{formulaTex(edge)}</Tex> edge (<Num>{edgeEnergy.toFixed(1)}</Num> <Unit>eV</Unit>)</>;
   const label = `Beamline drawing. The monochromator passes ${energy.toFixed(1)} eV and ${(transmittance * 100).toFixed(1)}% of the photons reach detector 2.`;
 
   return <div className={'beam-graphic' + (scanning ? ' scanning' : '')}>
@@ -168,11 +168,11 @@ export function BeamScene({ energy, edgeEnergy, transmittance, incident, transmi
     </div>
     <ol className="beam-legend">
       <li><strong>Source</strong>Electrons weave through alternating magnets and give off a white X-ray beam.</li>
-      <li><strong>Monochromator</strong>{crystal ? <>Si(111) crystals at a Bragg angle of <Tex plain>{`\\theta = ${theta.toFixed(2)}^\\circ`}</Tex> pass {energy.toFixed(1)} <Unit>eV</Unit>.</> : <>A ruled grating picks out {energy.toFixed(1)} <Unit>eV</Unit>, all in vacuum.</>}</li>
-      <li><strong><Tex plain>{'I_0'}</Tex> · detector 1</strong>{crystal ? 'Ion chamber' : 'Gold mesh'} counting photons in: {fmt(incident)}.</li>
-      <li><strong>Sample</strong><Tex plain>{formulaTex(formula)}</Tex>, {thickness.toFixed(thickness < 1 ? 4 : 2)} <Unit>μm</Unit>, absorbs {absorbed > 99.95 ? 'over 99.9' : absorbed.toFixed(1)}%.</li>
-      <li><strong>Fluorescence detector</strong>{above ? <>Above the {edgeName} the sample emits its own X-rays.</> : <>Below the {edgeName}: no {absorber} {edge} fluorescence yet.</>}</li>
-      <li><strong><Tex plain>{'I_t'}</Tex> · detector 2</strong>{crystal ? 'Ion chamber' : 'Photodiode'} counting photons out: {fmt(transmitted)}.</li>
+      <li><strong>Monochromator</strong>{crystal ? <><Tex plain>{'\\mathrm{Si}(111)'}</Tex> crystals at a Bragg angle of <Tex plain>{`\\theta = ${theta.toFixed(2)}^\\circ`}</Tex> pass <Num>{energy.toFixed(1)}</Num> <Unit>eV</Unit>.</> : <>A ruled grating picks out <Num>{energy.toFixed(1)}</Num> <Unit>eV</Unit>, all in vacuum.</>}</li>
+      <li><strong><Tex plain>{'I_0'}</Tex> · detector 1</strong>{crystal ? 'Ion chamber' : 'Gold mesh'} counting photons in: <Num>{fmt(incident)}</Num>.</li>
+      <li><strong>Sample</strong><Tex plain>{formulaTex(formula)}</Tex>, <Num>{thickness.toFixed(thickness < 1 ? 4 : 2)}</Num> <Unit>μm</Unit>, absorbs {absorbed > 99.95 && 'over '}<Num>{(absorbed > 99.95 ? '99.9' : absorbed.toFixed(1)) + '%'}</Num>.</li>
+      <li><strong>Fluorescence detector</strong>{above ? <>Above the {edgeName} the sample emits its own X-rays.</> : <>Below the {edgeName}: no {absorber} <Tex plain>{formulaTex(edge)}</Tex> fluorescence yet.</>}</li>
+      <li><strong><Tex plain>{'I_t'}</Tex> · detector 2</strong>{crystal ? 'Ion chamber' : 'Photodiode'} counting photons out: <Num>{fmt(transmitted)}</Num>.</li>
       <li><strong>Reference · detector 3</strong>A known foil in the same beam checks the energy scale.</li>
     </ol>
     <p className="beam-note">Not to scale. The crystal angle, counts and fluorescence follow your settings.</p>

@@ -5,7 +5,7 @@ import { COMPOUND_PRESETS } from '@/data/compound-presets';
 import { loadXrayData, edgesOf, parseFormula, elementInfo } from '@/lib/xraydata';
 import { BATTERY_PRESET, DEFAULT_SAMPLE, batteryFormula, resolveSample, samplePlan, sampleScan, validateSample, type Sample } from '@/lib/sample';
 import { useLab } from './lab-context';
-import { Tex, Unit, formulaTex } from './tex';
+import { Num, ScienceText, Tex, Unit, formulaTex } from './tex';
 import { Disclosure, TryThis } from './ui';
 
 export function useXrayData() {
@@ -23,11 +23,11 @@ export function useSampleSpectrum(model = false) {
 }
 export function SampleSummary() {
   const { state } = useLab();
-  return <p className="sample-summary"><strong><Tex plain>{formulaTex(state.sample.formula)}</Tex></strong> <span>{state.sample.absorber} {state.sample.edge} edge · {state.sample.density} <Unit>g/cm³</Unit></span> <Link href="/crystal/">Change sample</Link></p>;
+  return <p className="sample-summary"><strong><Tex plain>{formulaTex(state.sample.formula)}</Tex></strong> <span>{state.sample.absorber} <Tex plain>{formulaTex(state.sample.edge)}</Tex> edge · <Num>{String(state.sample.density)}</Num> <Unit>g/cm³</Unit></span> <Link href="/crystal/">Change sample</Link></p>;
 }
 /** Shown until the X-ray tables load, so the prerendered page already says what it does. */
 export function DataLoading({ error, children }: { error: string; children: React.ReactNode }) {
-  return <><SampleSummary /><p role="status" className="muted">{error ? <>{error} <Link href="/crystal/">Choose a sample</Link></> : <>Loading tabulated X-ray data. {children}</>}</p></>;
+  return <><SampleSummary /><p role="status" className="muted">{error ? <><ScienceText>{error}</ScienceText> <Link href="/crystal/">Choose a sample</Link></> : <>Loading tabulated X-ray data. {children}</>}</p></>;
 }
 export function SamplePicker({guide=true}:{guide?:boolean}) {
   const { state, set } = useLab(), { ready, error: loadError } = useXrayData();
@@ -65,20 +65,20 @@ export function SamplePicker({guide=true}:{guide?:boolean}) {
       } catch (e) { setError(e instanceof Error ? e.message : 'Check the formula.'); }
     }}>
       <div className="two-col"><label className="field-label" htmlFor="sample-formula">Chemical formula<input id="sample-formula" value={formula} maxLength={240} placeholder="For example, Fe2O3" aria-invalid={!!error} aria-describedby="formula-help sample-error" onChange={e => { setFormula(e.target.value); setError(''); }} /></label>
-      <label className="field-label" htmlFor="sample-density">Density (g/cm³)<input id="sample-density" type="number" min="0.000001" max="1000" step="any" required value={density} onChange={e => setDensity(e.target.value)} /></label></div>
-      <p id="formula-help" className="muted">Use element symbols, counts and brackets, such as Ca3(PO4)2 or CuSO4·5H2O.</p>
-      <p id="sample-error" role={error ? 'alert' : undefined} className="field-error">{error || loadError}</p>
+      <label className="field-label" htmlFor="sample-density">Density (<Unit>g/cm³</Unit>)<input id="sample-density" aria-label="Density (g/cm³)" type="number" min="0.000001" max="1000" step="any" required value={density} onChange={e => setDensity(e.target.value)} /></label></div>
+      <p id="formula-help" className="muted">Use element symbols, counts and brackets, such as <Tex plain>{formulaTex('Ca3(PO4)2')}</Tex> or <Tex plain>{formulaTex('CuSO4·5H2O')}</Tex>.</p>
+      <p id="sample-error" role={error ? 'alert' : undefined} className="field-error"><ScienceText>{error || loadError}</ScienceText></p>
       <button className="button secondary" type="submit" disabled={!ready}>{ready ? 'Use this formula' : 'Loading X-ray data…'}</button>
     </form>
     {ready && <div className="two-col edge-controls">
       <label className="field-label">Absorber<select aria-label="Absorber" value={state.sample.absorber} onChange={e => pickElement(e.target.value)}>{symbols.map(s => <option key={s} value={s}>{s} · {elementInfo(s).name}</option>)}</select></label>
       <label className="field-label">Absorption edge<select aria-label="Absorption edge" value={state.sample.edge} onChange={e => apply({ ...state.sample, edge: e.target.value })}>{edges.filter(e => e.element === state.sample.absorber).map(e => <option key={e.edge} value={e.edge}>{e.edge} · {e.energy_eV.toLocaleString('en-US')} eV{e.energy_eV <= 100 || e.energy_eV >= 100000 ? ' · outside range' : ''}</option>)}</select></label>
     </div>}
-    {guide&&<TryThis steps={['sample']} done={chosen} research={<>Density scales <Tex plain>{'\\mu'}</Tex>. Formula sets mass fractions; it does not set chemical shifts or local structure.</>}>{chosen ? <>The lab now uses {state.sample.formula}, with the {state.sample.absorber} {state.sample.edge} edge selected.</> : 'Choose a sample, then pick an element and its absorption edge.'}</TryThis>}
+    {guide&&<TryThis steps={['sample']} done={chosen} research={<>Density scales <Tex plain>{'\\mu'}</Tex>. Formula sets mass fractions; it does not set chemical shifts or local structure.</>}>{chosen ? <>The lab now uses <Tex plain>{formulaTex(state.sample.formula)}</Tex>, with the {state.sample.absorber} <Tex plain>{formulaTex(state.sample.edge)}</Tex> edge selected.</> : 'Choose a sample, then pick an element and its absorption edge.'}</TryThis>}
     <Disclosure title="All edges and density source">
-      {symbols.map(s => <div key={s}><h3>{s}</h3><p>{edges.filter(e => e.element === s).map(e => e.edge + ' ' + e.energy_eV.toLocaleString('en-US') + ' eV').join('; ')}</p></div>)}
-      <p>{preset?.densitySource ?? (state.sample.preset === BATTERY_PRESET ? <>4.3 <Unit>g/cm³</Unit> is an assumed density for the battery example. Enter the density of your sample for planning.</> : 'Density entered by you. Use the bulk density of your sample.')}</p>
-      <p>Tables cover H to Cf (<Tex>{'Z = 1\\text{ to }98'}</Tex>) from 100 eV to 100 keV.</p>
+      {symbols.map(s => <div key={s}><h3>{s}</h3><p>{edges.filter(e => e.element === s).map((e, i) => <span key={e.edge}>{i > 0 && '; '}<Tex plain>{formulaTex(e.edge)}</Tex> <Num>{e.energy_eV.toLocaleString('en-US')}</Num> <Unit>eV</Unit></span>)}</p></div>)}
+      <p>{preset ? <ScienceText>{preset.densitySource}</ScienceText> : (state.sample.preset === BATTERY_PRESET ? <>4.3 <Unit>g/cm³</Unit> is an assumed density for the battery example. Enter the density of your sample for planning.</> : 'Density entered by you. Use the bulk density of your sample.')}</p>
+      <p>Tables cover H to Cf (<Tex>{'Z = 1\\text{ to }98'}</Tex>) from 100 <Unit>eV</Unit> to 100 <Unit>keV</Unit>.</p>
     </Disclosure>
   </div>;
 }

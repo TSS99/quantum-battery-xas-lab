@@ -3,11 +3,12 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useLab } from './lab-context';
-import { Tex } from './tex';
+import { Num, Tex, Unit, formulaTex } from './tex';
 import { Disclosure, Metric, Panel, Range, TryThis } from './ui';
 import { ActiveSpacePlan } from './active-space';
 import { WorkflowRail } from './workflow';
 import { Plot } from './plot';
+import { OrbitalScene } from './orbital-scene';
 import { nominalMnOxidation, scan, edgeEnergy } from '@/lib/xas';
 import { isBattery } from '@/lib/sample';
 import { SamplePicker, SampleSummary } from './sample-controls';
@@ -21,7 +22,7 @@ const AtomicScene = dynamic(() => import('./atomic-scene'), { ssr: false, loadin
 
 const moduleInfo: Record<string, [string, string, ReactNode]> = {
   crystal: ['Sample', 'Choose a material and the atom you want to probe.', 'Formula and density set atomic attenuation. Select an absorber and shell.'],
-  beamline: ['XAS beamline', 'Scan the photon energy and watch the transmitted signal.', <><Tex>{'I_t = I_0\\,e^{-\\mu d}'}</Tex>, where <Tex>{'\\mu'}</Tex> is the tabulated total attenuation and <Tex>{'d'}</Tex> is converted from μm to cm.</>],
+  beamline: ['XAS beamline', 'Scan the photon energy and watch the transmitted signal.', <><Tex>{'I_t = I_0\\,e^{-\\mu d}'}</Tex>, where <Tex>{'\\mu'}</Tex> is the tabulated total attenuation and <Tex>{'d'}</Tex> is converted from <Unit>μm</Unit> to <Unit>cm</Unit>.</>],
   spectra: ['Spectra studio', 'Save a curve, change the sample and compare. You can also import your own data.', <>Compare <Tex>{'\\mu(E)'}</Tex>, edge estimates and residuals. Raw arrays stay unchanged.</>],
   electronic: ['Electronic structure', 'See which empty states a core electron can reach.', <>K-edge sketch: electric-dipole <Tex>{'\\Delta l = \\pm 1'}</Tex>. Energies and mixing are schematic.</>],
   quantum: ['Quantum dynamics', 'Kick the starting state, follow its motion and turn the signal into a spectrum.', <><Tex>{'D = X_0'}</Tex>, <Tex>{'\\hbar = 1'}</Tex>. Compare exact and first-order Trotter time evolution.</>],
@@ -41,7 +42,7 @@ export function ChemistryControls({ compact = false, guide = true }: { compact?:
     <Range label="Lithium content" value={state.x} min={0} max={1} step={.01} digits={2} unit="x" onChange={x => set({ x })} />
     <div className="chemistry-metrics"><Metric label="Mn oxidation" value={'+' + nominalMnOxidation(state.x).toFixed(2)} tone="violet-text" />{!compact && <Metric label={<>Share of <Tex plain>{'\\mathrm{Mn^{3+}}'}</Tex></>} value={(state.x * 100).toFixed(0)} unit="%" />}</div>
     <div className="fraction-bar" role="img" aria-label={Math.round(state.x * 100) + ' percent manganese three plus in the charge-balance model'}><span style={{ width: state.x * 100 + '%' }} /></div>
-    {guide && <TryThis steps={['sample']} done={state.x === 1} research={<><Tex>{'v_{\\mathrm{Mn}} = 4 - x'}</Tex> assumes <Tex plain>{'\\mathrm{Li^{+}}'}</Tex>, <Tex plain>{'\\mathrm{O^{2-}}'}</Tex> and <Tex plain>{'\\mathrm{Mn^{3+}}/\\mathrm{Mn^{4+}}'}</Tex> compensation. It is a formal oxidation state.</>}>{state.x === 1 ? 'At x = 1.00, Mn is +3.00 in this model. Each lithium brings one electron.' : 'Move lithium content to 1.00. Each lithium brings one electron, so Mn moves from +4 toward +3.'}</TryThis>}
+    {guide && <TryThis steps={['sample']} done={state.x === 1} research={<><Tex>{'v_{\\mathrm{Mn}} = 4 - x'}</Tex> assumes <Tex plain>{'\\mathrm{Li^{+}}'}</Tex>, <Tex plain>{'\\mathrm{O^{2-}}'}</Tex> and <Tex plain>{'\\mathrm{Mn^{3+}}/\\mathrm{Mn^{4+}}'}</Tex> compensation. It is a formal oxidation state.</>}>{state.x === 1 ? <>At <Tex plain>{'x'}</Tex> = 1.00, Mn is +3.00 in this model. Each lithium brings one electron.</> : <>Move lithium content to 1.00. Each lithium brings one electron, so Mn moves from +4 toward +3.</>}</TryThis>}
   </div>;
 }
 function Overview() {
@@ -51,7 +52,7 @@ function Overview() {
     <section className="hero">
       <div className="hero-copy"><h1>Explore X-ray absorption</h1><p>{state.expert ? 'Plan a sample, compare spectra or test time-domain quantum calculations.' : 'Choose a material and see how it absorbs X-rays.'}</p><Link className="button" href="/crystal/">Start with a sample</Link><p className="muted">Formulas can use any element from H to Cf. Calculations stay in your browser.</p></div>
       <div className="hero-demo">
-        {isBattery(state.sample) ? <><h2>Add lithium and watch the edge shift</h2><ChemistryControls compact guide={false} /><Plot ghostKey={String(state.x)+':'+state.shift} edge={edgeEnergy(state)} height={220} series={[{ name: 'Mn teaching model', x: curve.energy_eV, y: curve.mu_cm_inv, color: '#b49cff' }]} cursor={edgeEnergy(state)} /><TryThis done={state.x === 1} research={<><Tex>{`E_0 = \\text{edge} - \\text{shift}\\cdot x = ${edgeEnergy(state).toFixed(2)}\\ \\text{eV}`}</Tex>. This is the battery worked example.</>}>{state.x === 1 ? 'The model edge moved to lower energy as Mn gained electrons.' : 'Move the lithium slider and follow the edge marker.'}</TryThis><p className="muted">These spectra are a teaching model, not measured data.</p></> : <><h2>Your current sample</h2><SampleSummary /><TryThis done={false} research={<>The selected {state.sample.absorber} {state.sample.edge} edge sets the beamline window.</>}>Open the beamline to scan this sample.</TryThis><Link className="button secondary" href="/beamline/">Open beamline</Link></>}
+        {isBattery(state.sample) ? <><h2>Add lithium and watch the edge shift</h2><ChemistryControls compact guide={false} /><Plot ghostKey={String(state.x)+':'+state.shift} edge={edgeEnergy(state)} height={220} series={[{ name: 'Mn teaching model', x: curve.energy_eV, y: curve.mu_cm_inv, color: '#b49cff' }]} cursor={edgeEnergy(state)} /><TryThis done={state.x === 1} research={<><Tex>{`E_0 = \\text{edge} - \\text{shift}\\cdot x = ${edgeEnergy(state).toFixed(2)}\\ \\text{eV}`}</Tex>. This is the battery worked example.</>}>{state.x === 1 ? 'The model edge moved to lower energy as Mn gained electrons.' : 'Move the lithium slider and follow the edge marker.'}</TryThis><p className="muted">These spectra are a teaching model, not measured data.</p></> : <><h2>Your current sample</h2><SampleSummary /><TryThis done={false} research={<>The selected {state.sample.absorber} <Tex plain>{formulaTex(state.sample.edge)}</Tex> edge sets the beamline window.</>}>Open the beamline to scan this sample.</TryThis><Link className="button secondary" href="/beamline/">Open beamline</Link></>}
       </div>
     </section>
     <WorkflowRail/><div className="module-cards">{[
@@ -77,16 +78,15 @@ function Electronic() {
   return <>
     <TryThis done={transition === 'd' && excited} research={<><Tex>{'\\mathrm{1s} \\to \\mathrm{p}'}</Tex>: <Tex>{'\\Delta l = +1'}</Tex>. Pure atomic <Tex>{'\\mathrm{1s} \\to \\mathrm{3d}'}</Tex> is dipole forbidden. This sketch does not calculate transition intensity.</>}>{transition === 'd' && excited ? 'The dashed circle marks the core hole. A d-like state needs mixing or another excitation channel.' : 'Select 1s → d-like character, then excite the electron.'}</TryThis>
     <Panel title="A K-edge excitation" className="orbital-panel">
-      <div className="orbital-diagram" aria-label="Core electron and two possible excitation channels">
-        <div className={'orbital-level ' + (excited && transition === 'p' ? 'occupied' : '')}><span>Empty p-like states</span><span className="level-line" /><button className="button secondary" aria-pressed={transition === 'p'} onClick={() => { setTransition('p'); setExcited(false); }}>↑ 1s → p character</button></div>
-        <div className={'orbital-level ' + (excited && transition === 'd' ? 'occupied' : '')}><span>d-like states</span><span className="level-line dashed" /><button className="button secondary" aria-pressed={transition === 'd'} onClick={() => { setTransition('d'); setExcited(false); }}>↑ 1s → d-like character</button></div>
-        <div className="orbital-core"><span className={excited ? 'electron-hole' : 'electron'} /><span className="electron" /><strong>1s core</strong></div>
+      <OrbitalScene transition={transition} excited={excited} />
+      <div className="orbital-channels" role="group" aria-label="Excitation channel">
+        <button className="button secondary" aria-pressed={transition === 'p'} onClick={() => { setTransition('p'); setExcited(false); }}>↑ 1s → p character</button>
+        <button className="button secondary" aria-pressed={transition === 'd'} onClick={() => { setTransition('d'); setExcited(false); }}>↑ 1s → d-like character</button>
       </div>
       <div className="toolbar primary-controls"><button className="button" onClick={() => setExcited(!excited)}>{excited ? 'Return electron to core' : 'Excite the electron'}</button><span aria-live="polite">{excited ? 'A core hole is left behind.' : transition === 'p' ? 'The dipole channel can reach p character.' : 'This channel is dipole forbidden on its own.'}</span></div>
-      <p className="muted">Level spacing is a sketch. The core hole and electron interactions reshape real spectra.</p>
     </Panel>
     <details className="research-drawer" open={state.expert}><summary>Orbital mixing and the quantum model</summary><div className="drawer-body">
-      <ActiveSpacePlan/><Range label="Conceptual oxygen mixing" value={mixing} min={0} max={1} step={.05} digits={2} onChange={setMixing} /><div className="character-dots">{Array.from({ length: 20 }, (_, i) => <i key={i} style={{ background: i < Math.round(mixing * 20) ? '#ff8a8f' : '#b49cff' }} />)}</div><p>O 2p share: {(mixing * 100).toFixed(0)}%. This only redraws the sketch.</p><p>In a solid, p–d mixing can give a d-like state some dipole intensity. Quadrupole transitions can also contribute.</p><p><Tex>{'D = X_0'}</Tex> in the quantum page is a simple substitute for the X-ray kick. It acts on a small spin system.</p><Link className="button secondary" href="/quantum/">Try time-domain spectroscopy</Link>
+      <ActiveSpacePlan/><Range label="Conceptual oxygen mixing" value={mixing} min={0} max={1} step={.05} digits={2} onChange={setMixing} /><div className="character-dots">{Array.from({ length: 20 }, (_, i) => <i key={i} style={{ background: i < Math.round(mixing * 20) ? '#ff8a8f' : '#b49cff' }} />)}</div><p><Tex plain>{'\\mathrm{O}\\ 2p'}</Tex> share: <Num>{(mixing * 100).toFixed(0) + '%'}</Num>. This only redraws the sketch.</p><p>In a solid, <Tex plain>{'p'}</Tex>–<Tex plain>{'d'}</Tex> mixing can give a <Tex plain>{'d'}</Tex>-like state some dipole intensity. Quadrupole transitions can also contribute.</p><p><Tex>{'D = X_0'}</Tex> in the quantum page is a simple substitute for the X-ray kick. It acts on a small spin system.</p><Link className="button secondary" href="/quantum/">Try time-domain spectroscopy</Link>
     </div></details>
   </>;
 }

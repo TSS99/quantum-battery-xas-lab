@@ -231,14 +231,16 @@ progress::-moz-progress-bar {background:var(--accent)}
 .beam-note {margin:12px 0 0;font-size:13px;color:var(--muted)}
 .energy-window {font-size:14px;color:var(--photon)}
 .noise-result {display:flex;flex-direction:column;gap:16px}
-.orbital-diagram {padding:24px 0;display:flex;flex-direction:column;gap:40px}
-.orbital-level {display:grid;grid-template-columns:1fr minmax(48px,1fr) auto;gap:24px;align-items:center;font-size:16px}
-.level-line {display:block;height:3px;background:var(--text-2)}
-.level-line.dashed {background:none;border-top:3px dashed var(--text-2)}
-.orbital-level.occupied .level-line {background:var(--photon)}
-.orbital-core {display:flex;align-items:center;gap:16px}
-.electron,.electron-hole {width:20px;height:20px;border-radius:50%;background:var(--photon)}
-.electron-hole {background:none;border:2px dashed var(--photon)}
+.orbital-diagram {margin:0;min-width:0}
+.orbital-diagram svg {display:block;width:100%;max-width:720px;height:auto;margin:0 auto}
+.orbital-diagram figcaption {max-width:72ch;margin:12px 0 20px;color:var(--muted);font-size:14px}
+.orbital-label {fill:var(--text-2);font:20px var(--font-tex)}
+.orbital-detail,.orbital-axis {fill:#b4c4d5;font:16px var(--font-tex)}
+.orbital-photon-label {fill:var(--photon)}
+.orbital-moving-electron {transition:transform .6s ease-in-out}
+.orbital-photon {transition:opacity .3s}
+.orbital-channels {display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.orbital-channels .button {flex:1 1 200px}
 .character-dots {display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .character-dots i {width:12px;height:12px;border-radius:50%}
 .quantum-workflow {gap:8px}
@@ -317,9 +319,6 @@ progress::-moz-progress-bar {background:var(--accent)}
   .hero-demo .try-this {margin-bottom:12px}
   .module-cards {gap:16px}
   .page-heading h1 {font-size:31px}
-  .orbital-level {grid-template-columns:1fr auto;gap:12px}
-  .orbital-level .level-line {grid-column:1/-1;grid-row:2}
-  .orbital-level button {max-width:220px}
   .research-drawer .two-col {gap:32px}
   .primary-controls {position:relative}
   footer {padding:16px}
@@ -344,8 +343,6 @@ progress::-moz-progress-bar {background:var(--accent)}
   .try-this button {margin-left:0}
   .score-list {grid-template-columns:repeat(2,minmax(0,1fr))}
   .quantum-workflow {display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-  .orbital-level {grid-template-columns:1fr}
-  .orbital-level .level-line {grid-row:auto}
   .scene-canvas {height:280px}
   .table-wrap table {font-size:13px}
   th,td {padding:10px 4px}
