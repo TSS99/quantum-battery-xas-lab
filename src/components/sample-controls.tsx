@@ -5,6 +5,7 @@ import { COMPOUND_PRESETS } from '@/data/compound-presets';
 import { loadXrayData, edgesOf, parseFormula, elementInfo } from '@/lib/xraydata';
 import { BATTERY_PRESET, DEFAULT_SAMPLE, batteryFormula, resolveSample, samplePlan, sampleScan, validateSample, type Sample } from '@/lib/sample';
 import { useLab } from './lab-context';
+import { Tex, Unit, formulaTex } from './tex';
 import { Disclosure, TryThis } from './ui';
 
 export function useXrayData() {
@@ -22,7 +23,7 @@ export function useSampleSpectrum(model = false) {
 }
 export function SampleSummary() {
   const { state } = useLab();
-  return <p className="sample-summary"><strong>{state.sample.formula}</strong> {state.sample.absorber} {state.sample.edge} edge · {state.sample.density} g/cm³ <Link href="/crystal/">Change sample</Link></p>;
+  return <p className="sample-summary"><strong><Tex plain>{formulaTex(state.sample.formula)}</Tex></strong> <span>{state.sample.absorber} {state.sample.edge} edge · {state.sample.density} <Unit>g/cm³</Unit></span> <Link href="/crystal/">Change sample</Link></p>;
 }
 /** Shown until the X-ray tables load, so the prerendered page already says what it does. */
 export function DataLoading({ error, children }: { error: string; children: React.ReactNode }) {
@@ -73,11 +74,11 @@ export function SamplePicker({guide=true}:{guide?:boolean}) {
       <label className="field-label">Absorber<select aria-label="Absorber" value={state.sample.absorber} onChange={e => pickElement(e.target.value)}>{symbols.map(s => <option key={s} value={s}>{s} · {elementInfo(s).name}</option>)}</select></label>
       <label className="field-label">Absorption edge<select aria-label="Absorption edge" value={state.sample.edge} onChange={e => apply({ ...state.sample, edge: e.target.value })}>{edges.filter(e => e.element === state.sample.absorber).map(e => <option key={e.edge} value={e.edge}>{e.edge} · {e.energy_eV.toLocaleString('en-US')} eV{e.energy_eV <= 100 || e.energy_eV >= 100000 ? ' · outside range' : ''}</option>)}</select></label>
     </div>}
-    {guide&&<TryThis steps={['sample']} done={chosen} research={<>Density scales μ. Formula sets mass fractions; it does not set chemical shifts or local structure.</>}>{chosen ? <>The lab now uses {state.sample.formula}, with the {state.sample.absorber} {state.sample.edge} edge selected.</> : 'Choose a sample, then pick an element and its absorption edge.'}</TryThis>}
+    {guide&&<TryThis steps={['sample']} done={chosen} research={<>Density scales <Tex plain>{'\\mu'}</Tex>. Formula sets mass fractions; it does not set chemical shifts or local structure.</>}>{chosen ? <>The lab now uses {state.sample.formula}, with the {state.sample.absorber} {state.sample.edge} edge selected.</> : 'Choose a sample, then pick an element and its absorption edge.'}</TryThis>}
     <Disclosure title="All edges and density source">
       {symbols.map(s => <div key={s}><h3>{s}</h3><p>{edges.filter(e => e.element === s).map(e => e.edge + ' ' + e.energy_eV.toLocaleString('en-US') + ' eV').join('; ')}</p></div>)}
-      <p>{preset?.densitySource ?? (state.sample.preset === BATTERY_PRESET ? '4.3 g/cm³ is an assumed density for the battery example. Enter the density of your sample for planning.' : 'Density entered by you. Use the bulk density of your sample.')}</p>
-      <p>Tables cover H to Cf (Z = 1–98) from 100 eV to 100 keV.</p>
+      <p>{preset?.densitySource ?? (state.sample.preset === BATTERY_PRESET ? <>4.3 <Unit>g/cm³</Unit> is an assumed density for the battery example. Enter the density of your sample for planning.</> : 'Density entered by you. Use the bulk density of your sample.')}</p>
+      <p>Tables cover H to Cf (<Tex>{'Z = 1\\text{ to }98'}</Tex>) from 100 eV to 100 keV.</p>
     </Disclosure>
   </div>;
 }

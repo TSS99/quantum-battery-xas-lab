@@ -17,7 +17,7 @@ npm run dev
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The complete browser application, including the quantum solver and spectrum fitting, runs without Python, accounts or API keys. Dependency installation requires a network connection; scientific calculations run on the user's device.
 
-The project uses Next.js App Router with static export, React, TypeScript, Motion, Three.js/react-three-fiber, SVG charts and Web Workers. The lockfile records the JavaScript dependency versions used for installation. The application supports keyboard controls, responsive layouts, reduced motion and a non-WebGL atomic fallback.
+The project uses Next.js App Router with static export, React, TypeScript, Motion, Three.js/react-three-fiber, KaTeX, SVG charts and Web Workers. Equations, symbols, units and formulas are typeset with KaTeX during the static build, and every digit uses KaTeX's Computer Modern font. The beamline and experiment drawings are SVG scenes built from one shared kit (`src/components/scene-kit.tsx`); the beamline's crystal angle, counts and fluorescence follow the live settings. The lockfile records the JavaScript dependency versions used for installation. The application supports keyboard controls, responsive layouts, reduced motion and a non-WebGL atomic fallback.
 
 ## The eight modules
 

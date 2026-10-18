@@ -12,6 +12,9 @@ const modules = [
   ['Methods & validation', 'validation'],
 ] as const;
 
+// KaTeX writes a true minus sign and a zero-width space after sub- and superscripts.
+const MINUS = String.fromCharCode(0x2212), ZWSP = String.fromCharCode(0x200b);
+
 function metric(page: Page, label: string) {
   return page.locator('.metric').filter({ hasText: label });
 }
@@ -166,7 +169,7 @@ test('plot inspection includes units and SVG export remains standalone', async (
   await plot.focus();
   await plot.press('ArrowRight');
   await expect(page.locator('.plot-readout').first()).toContainText('eV');
-  await expect(page.locator('.plot-legend').first()).toContainText('cm⁻¹ eV⁻¹');
+  await expect(page.locator('.plot-legend').first()).toContainText(new RegExp(`cm${MINUS}${ZWSP}?1\\s*eV${MINUS}${ZWSP}?1`));
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download spectra-derivative as SVG' }).click();
   const file = await downloading;
@@ -251,5 +254,37 @@ test('presets navigate immediately and undo restores the previous sample', async
   await page.getByRole('link', { name: /Across the absorption edge/ }).click();
   await expect(page).toHaveURL(/\/beamline\/$/);
   await page.getByRole('button', { name: 'Undo preset' }).click();
-  await expect(page.locator('.sample-summary')).toContainText('H2O');
+  await expect(page.locator('.sample-summary')).toContainText(new RegExp(`H${ZWSP}?2${ZWSP}?O`));
+});
+
+test('beamline drawing follows the monochromator and the absorption edge', async ({ page }) => {
+  await page.goto('./beamline/');
+  const legend = page.locator('.beam-legend');
+  await expect(legend).toContainText('Bragg angle');
+  await expect(page.getByRole('img', { name: /reach detector 2/ })).toBeVisible();
+  const energy = page.getByRole('slider', { name: 'Photon energy', exact: true });
+  await energy.focus();
+  await energy.press('Home');
+  await expect(legend).toContainText('Below the Mn K edge');
+  const lowAngle = await legend.locator('li').nth(1).innerText();
+  await energy.press('End');
+  await expect(legend).toContainText('Above the Mn K edge');
+  await expect(legend.locator('li').nth(1)).not.toHaveText(lowAngle);
+});
+
+test('equations are typeset with KaTeX on every page that shows them', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  for (const route of ['', 'crystal', 'beamline', 'spectra', 'electronic', 'quantum', 'validation']) {
+    await page.goto(route ? `./${route}/` : './');
+    await page.getByRole('button', { name: 'Research', exact: true }).click();
+    if (route === 'quantum') await expect(page.getByRole('button', { name: 'Keep run as reference' })).toBeEnabled({ timeout: 30_000 });
+    if (route === 'validation') { await page.getByRole('button', { name: 'Run sanity checks' }).click(); await expect(page.locator('.check-results > div')).toHaveCount(9, { timeout: 30_000 }); }
+    if (route === 'beamline') await expect(page.locator('.beam-legend')).toBeVisible();
+    await page.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
+    expect(await page.locator('.katex').count(), route).toBeGreaterThan(0);
+    await expect(page.locator('.katex-error')).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
 });
