@@ -288,3 +288,31 @@ test('equations are typeset with KaTeX on every page that shows them', async ({ 
   }
   expect(errors).toEqual([]);
 });
+
+test('installs as an app and keeps working offline', async ({ page, context }) => {
+  await page.goto('./');
+  const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+  expect(href).toBeTruthy();
+  const manifest = await (await page.request.get(new URL(href!, page.url()).toString())).json();
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.start_url).toMatch(/\/$/);
+  for (const icon of manifest.icons) expect((await page.request.get(new URL(icon.src, page.url()).toString())).status(), icon.src).toBe(200);
+  // The installed app sends this message; here the test sends it to cache everything.
+  const cached = await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.ready;
+    return new Promise<{ total: number; failed: number }>(resolve => {
+      navigator.serviceWorker.addEventListener('message', event => { if (event.data?.type === 'precached') resolve(event.data); });
+      registration.active!.postMessage({ type: 'precache-all' });
+    });
+  });
+  expect(cached.total).toBeGreaterThan(50);
+  expect(cached.failed).toBe(0);
+  await context.setOffline(true);
+  await page.goto('./spectra/');
+  await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveText('Spectra studio');
+  await page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link', { name: 'Quantum dynamics' }).click();
+  await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveText('Quantum dynamics');
+  await page.goto('./beamline/');
+  await expect(page.locator('.beam-legend')).toContainText('Bragg angle');
+  await context.setOffline(false);
+});
