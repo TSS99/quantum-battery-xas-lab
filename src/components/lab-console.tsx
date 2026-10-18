@@ -54,6 +54,9 @@ export default function LabConsole({ open, onClose }: { open: boolean; onClose: 
       set({ sample: result.effect.sample, energy: result.effect.energy });
       complete(['sample']);
     } else if (result.effect?.type === 'navigate') {
+      // The shell's main landmark persists across routes. Navigation should put
+      // keyboard users in the destination, rather than back at the launcher.
+      restoreFocus.current = document.getElementById('main');
       router.push(result.effect.href);
       onClose();
     }

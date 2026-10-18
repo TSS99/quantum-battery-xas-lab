@@ -37,7 +37,7 @@ function PythonOutput({ line }: { line: Extract<ConsoleLine, { kind: 'code' }> }
       <button type="button" onClick={() => download(line.filename, line.text, 'text/x-python;charset=utf-8')} aria-label={`Download ${line.filename}`}>Download .py</button>
     </div>
     <pre tabIndex={0} aria-label={`Python source: ${line.filename}`}><code>{line.text}</code></pre>
-    {status && <p role="status">{status}</p>}
+    <p role="status">{status}</p>
   </div>;
 }
 

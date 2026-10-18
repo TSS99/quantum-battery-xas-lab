@@ -205,6 +205,13 @@ describe('transmission sample planning', () => {
     expect(water.reason).toMatch(/electron yield/);
     expect(recommendThickness('H2O', 'O', 'K', 0.997).notes.join(' ')).toMatch(/Soft X-ray edge/);
   });
+
+  it('does not claim a sub-micrometre layer for a low-density soft-edge sample', () => {
+    const plan = recommendThickness('CO', 'C', 'K', 0.001145);
+    expect(plan.thickness_um).toBeGreaterThan(400);
+    expect(recommendMode('CO', 'C', 'K').reason).not.toContain('sub-micrometre');
+    expect(plan.notes.join(' ')).toContain('supplied density');
+  });
 });
 
 describe('compound presets', () => {

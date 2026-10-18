@@ -99,7 +99,8 @@ main:focus {outline:none}
 .console-form {display:flex;align-items:center;gap:10px;margin:6px 0}
 .console-form input {min-width:0;flex:1;min-height:44px;padding:8px;border:1px solid var(--control-edge);border-radius:6px;background:#050b10;color:var(--text);font:16px var(--font-mono);caret-color:var(--accent)}
 .console-prompt {color:var(--accent);display:flex;gap:3px;align-items:center}
-.console-caret {width:5px;height:15px;background:currentColor;animation:console-blink 1.2s step-end infinite}
+.console-caret {width:5px;height:15px;background:currentColor}
+.lab-console[open] .console-caret {animation:console-blink 1.2s step-end 3}
 #console-suggestions:empty {display:none}
 @keyframes console-rise {from {transform:translateY(100%)} to {transform:translateY(0)}}
 @keyframes console-blink {50% {opacity:0}}

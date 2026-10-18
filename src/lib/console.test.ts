@@ -167,6 +167,16 @@ describe('completion and readable numbers', () => {
     expect(formatNumber(0.001)).toBe('0.001');
     expect(formatNumber(Infinity)).toBe('Infinity');
   });
+
+  it('preserves case-sensitive compounds when completing a formula', () => {
+    for (const command of ['mu', 'plan', 'sample']) {
+      for (const formula of ['CO', 'NO', 'CN', 'Fe2O3']) {
+        const input = `${command} ${formula}`;
+        expect(completeInput(input)).toEqual({ input, options: [] });
+      }
+    }
+    expect(completeInput('mu co')).toEqual({ input: 'mu Co ', options: [] });
+  });
 });
 
 describe('Python export', () => {

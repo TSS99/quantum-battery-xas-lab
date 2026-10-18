@@ -337,7 +337,11 @@ export function completeInput(input: string): Completion {
   const index = words.length - 1, partial = words[index], command = words[0].toLowerCase();
   let candidates: readonly string[] = [];
   if (index === 0 || (command === 'help' && index === 1)) candidates = COMMANDS.map(c => c.name);
-  else if (['edges', 'mu', 'plan', 'sample'].includes(command) && index === 1) candidates = ELEMENT_SYMBOLS;
+  else if (['edges', 'mu', 'plan', 'sample'].includes(command) && index === 1) {
+    // A valid compound such as CO or NO must not become the element Co or No.
+    if (command !== 'edges' && (symbolsIn(partial)?.length ?? 0) > 1) return { input, options: [] };
+    candidates = ELEMENT_SYMBOLS;
+  }
   else if ((command === 'plan' || command === 'sample') && index === 3) candidates = symbolsIn(words[1]) ?? ELEMENT_SYMBOLS;
   else if (command === 'open' && index === 1) candidates = MODULES.map(m => m.name);
   const lower = partial.toLowerCase(), matches = candidates.filter(c => c.toLowerCase().startsWith(lower));

@@ -9,11 +9,19 @@ test('console restores focus, completes commands and recalls history without tra
   const input = page.getByRole('textbox', { name: 'Console command' });
   await expect(panel).toBeVisible();
   await expect(input).toBeFocused();
+  await expect(page.locator('.console-caret')).toHaveCSS('animation-iteration-count', '3');
   await input.fill('he');
   await input.press('Tab');
   await expect(input).toHaveValue('help ');
   await input.press('Tab');
   await expect(page.getByRole('button', { name: 'Run', exact: true })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(input).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('log', { name: 'Console output' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('button', { name: 'Close console' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Close console' })).toHaveCSS('outline-style', 'solid');
   await input.press('Enter');
   await expect(page.getByRole('log', { name: 'Console output' })).toContainText('Commands');
   await input.fill('edges f');
@@ -25,6 +33,10 @@ test('console restores focus, completes commands and recalls history without tra
   await expect(page.getByText('X-ray tables ready.', { exact: true })).toBeVisible();
   await input.press('Enter');
   await expect(page.getByRole('log')).toContainText('Iron');
+  await input.fill('mu CO');
+  await input.press('Tab');
+  await expect(input).toHaveValue('mu CO');
+  await expect(page.getByRole('button', { name: 'Run', exact: true })).toBeFocused();
   await input.fill('unfinished draft');
   await input.press('ArrowUp');
   await expect(input).toHaveValue('edges Fe');
@@ -68,8 +80,12 @@ test('console shares validated samples, opens modules and downloads current Pyth
   await input.press('Enter');
   await expect(page).toHaveURL(/\/beamline\/$/);
   await expect(page.getByRole('dialog', { name: 'Console', exact: true })).not.toBeVisible();
+  await expect(page.getByRole('main')).toBeFocused();
   await expect(page.locator('.sample-summary')).toContainText('Co');
-  await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue('7709');
+  const energy = page.getByRole('slider', { name: 'Photon energy', exact: true });
+  await expect(energy).toHaveAttribute('value', '7709');
+  // Native range inputs snap to the 0.1 eV grid anchored at this sample's scan minimum.
+  expect(Math.abs(Number(await energy.inputValue()) - 7709)).toBeLessThanOrEqual(0.05);
   // A slider is not an editable text field, so the shortcut still works there.
   await page.getByRole('slider', { name: 'Photon energy', exact: true }).focus();
   await page.keyboard.press('`');
@@ -98,4 +114,39 @@ test('console fits a narrow viewport and stops animation with reduced motion', a
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Console', exact: true })).toBeFocused();
+});
+
+test('console renders attenuation and planning results and copies the generated Python', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Console', exact: true }).click();
+  await expect(page.getByText('X-ray tables ready.', { exact: true })).toBeVisible();
+  const input = page.getByRole('textbox', { name: 'Console command' });
+  for (const command of ['sample Fe2O3 5.26 Fe K', 'mu Fe2O3 5.26 7.112keV', 'plan']) {
+    await input.fill(command);
+    await input.press('Enter');
+  }
+  const log = page.getByRole('log', { name: 'Console output' });
+  await expect(log).toHaveAttribute('aria-live', 'polite');
+  // Values independently checked with scripts/check-console-python.cjs.
+  await expect(log.locator('.console-row').filter({ hasText: 'μ total' })).toContainText('221.9');
+  await expect(log.locator('.console-row').filter({ hasText: /^thickness/ })).toContainText('7.667');
+  await expect(log.locator('.console-row').filter({ hasText: /^mass per area/ })).toContainText('4.033');
+  await expect(log.locator('.console-row').filter({ hasText: /^suggested mode/ })).toContainText('transmission');
+  await expect(log.locator('.console-error, .katex-error')).toHaveCount(0);
+  await input.fill('python');
+  await input.press('Enter');
+  const source = await page.getByLabel('Python source: xas_fe2o3_fe_k.py').innerText();
+  const copy = page.getByRole('button', { name: 'Copy xas_fe2o3_fe_k.py' });
+  await expect(page.locator('.console-code').getByRole('status')).toBeEmpty();
+  await copy.click();
+  await expect(page.getByRole('status').filter({ hasText: 'Python script copied.' })).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied.replace(/\r\n/g, '\n')).toBe(source);
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.clipboard, 'writeText', { value: async () => { throw new Error('Clipboard denied'); } });
+  });
+  await copy.click();
+  await expect(page.getByRole('status').filter({ hasText: 'Copy is unavailable.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download xas_fe2o3_fe_k.py' })).toBeEnabled();
 });
