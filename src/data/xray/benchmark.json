@@ -1,0 +1,2632 @@
+{
+ "format": "quantum-battery-xas-lab/xraydb-benchmark v1",
+ "generator": "scripts/make-benchmark.py",
+ "xraydbVersion": "4.5.8",
+ "xraydbDatabase": "9.2",
+ "calls": {
+  "composition": "xraydb.chemparse(xraydbFormula)",
+  "density": "xraydb.atomic_density(symbol) for the pure elements; the preset density otherwise",
+  "total_cm_inv": "xraydb.material_mu(xraydbFormula, energy_eV, density=density, kind='total')",
+  "photo_cm_inv": "xraydb.material_mu(xraydbFormula, energy_eV, density=density, kind='photo')",
+  "edgeEnergy_eV": "xraydb.xray_edge(absorber, edge).energy",
+  "edges": "xraydb.xray_edges(element)[label].energy",
+  "tableEdge_eV": "discontinuity of xraydb's Elam photoabsorption table nearest the listed edge: xraydb.get_xraydb().get_cache('photoabsorption', column='element', value=absorber)",
+  "muBelow_cm_inv": "xraydb.material_mu(xraydbFormula, tableEdge_eV * (1 - 1e-9), density=density, kind='total')",
+  "muAbove_cm_inv": "xraydb.material_mu(xraydbFormula, tableEdge_eV * (1 + 1e-9), density=density, kind='total')",
+  "deltaMu_cm_inv": "muAbove_cm_inv - muBelow_cm_inv",
+  "thickness_um": "1e4 / deltaMu_cm_inv, or 3e4 / muAbove_cm_inv when that keeps mu_total * d at or below 3 (limitedBy)"
+ },
+ "notes": [
+  "Each material_mu value is checked against the mass-fraction sum of xraydb.mu_elam for the same formula.",
+  "xraydb.material_mu matches its materials list by name or by formula ignoring case, so 'CO' would become cobalt; such formulas are passed with explicit counts ('C1O1').",
+  "Energies within 1 eV of a listed edge or table discontinuity of any element in the formula are skipped (skipped_eV)."
+ ],
+ "energies": {
+  "grid_eV": [
+   100,
+   200,
+   500,
+   1000,
+   2000,
+   5000,
+   10000,
+   20000,
+   50000,
+   100000
+  ],
+  "edgeOffsets_eV": [
+   -50,
+   -10,
+   10,
+   50
+  ],
+  "excludedWithin_eV": 1.0
+ },
+ "edges": {
+  "H": {
+   "K": 13.6
+  },
+  "O": {
+   "K": 543.1,
+   "L1": 41.6,
+   "L2": 18.2,
+   "L3": 18.2
+  },
+  "N": {
+   "K": 409.9,
+   "L1": 37.3,
+   "L2": 17.5,
+   "L3": 17.5
+  },
+  "C": {
+   "K": 284.2,
+   "L1": 18.0,
+   "L2": 7.2,
+   "L3": 7.2
+  },
+  "Si": {
+   "K": 1839.0,
+   "L1": 149.7,
+   "L2": 99.8,
+   "L3": 99.2,
+   "M1": 8.0,
+   "M2": 2.0,
+   "M3": 2.0
+  },
+  "Ti": {
+   "K": 4966.0,
+   "L1": 560.9,
+   "L2": 460.2,
+   "L3": 453.8,
+   "M1": 58.7,
+   "M2": 32.6,
+   "M3": 32.6,
+   "M4": 2.0,
+   "M5": 2.0
+  },
+  "Zn": {
+   "K": 9659.0,
+   "L1": 1196.2,
+   "L2": 1044.9,
+   "L3": 1021.8,
+   "M1": 139.8,
+   "M2": 91.4,
+   "M3": 88.6,
+   "M4": 10.2,
+   "M5": 10.1,
+   "N2": 1.0,
+   "N3": 1.0
+  },
+  "Ni": {
+   "K": 8333.0,
+   "L1": 1008.6,
+   "L2": 870.0,
+   "L3": 852.7,
+   "M1": 110.8,
+   "M2": 68.0,
+   "M3": 66.2,
+   "M4": 4.0,
+   "M5": 4.0
+  },
+  "Fe": {
+   "K": 7112.0,
+   "L1": 844.6,
+   "L2": 719.9,
+   "L3": 706.8,
+   "M1": 91.3,
+   "M2": 52.7,
+   "M3": 52.7,
+   "M4": 2.0,
+   "M5": 2.0
+  },
+  "Cu": {
+   "K": 8979.0,
+   "L1": 1096.7,
+   "L2": 952.3,
+   "L3": 932.7,
+   "M1": 122.5,
+   "M2": 77.3,
+   "M3": 75.1,
+   "M4": 5.0,
+   "M5": 5.0
+  },
+  "S": {
+   "K": 2472.0,
+   "L1": 230.9,
+   "L2": 163.6,
+   "L3": 162.5,
+   "M1": 14.0,
+   "M2": 8.0,
+   "M3": 7.0
+  },
+  "Li": {
+   "K": 54.7,
+   "L1": 5.3
+  },
+  "P": {
+   "K": 2145.5,
+   "L1": 189.0,
+   "L2": 136.0,
+   "L3": 135.0,
+   "M1": 12.0,
+   "M2": 7.0,
+   "M3": 6.0
+  },
+  "Co": {
+   "K": 7709.0,
+   "L1": 925.1,
+   "L2": 793.2,
+   "L3": 778.1,
+   "M1": 101.0,
+   "M2": 58.9,
+   "M3": 59.9,
+   "M4": 3.0,
+   "M5": 3.0
+  },
+  "Mn": {
+   "K": 6539.0,
+   "L1": 769.1,
+   "L2": 649.9,
+   "L3": 638.7,
+   "M1": 82.3,
+   "M2": 47.2,
+   "M3": 47.2,
+   "M4": 2.0,
+   "M5": 2.0
+  },
+  "Pt": {
+   "K": 78395.0,
+   "L1": 13880.0,
+   "L2": 13273.0,
+   "L3": 11564.0,
+   "M1": 3296.0,
+   "M2": 3027.0,
+   "M3": 2645.0,
+   "M4": 2202.0,
+   "M5": 2122.0,
+   "N1": 725.4,
+   "N2": 609.1,
+   "N3": 519.4,
+   "N4": 331.6,
+   "N5": 314.6,
+   "N6": 74.5,
+   "N7": 71.2,
+   "O1": 101.7,
+   "O2": 65.3,
+   "O3": 51.7
+  },
+  "Al": {
+   "K": 1559.0,
+   "L1": 117.8,
+   "L2": 72.9,
+   "L3": 72.5,
+   "M1": 4.0,
+   "M2": 2.0,
+   "M3": 2.0
+  },
+  "Ag": {
+   "K": 25514.0,
+   "L1": 3806.0,
+   "L2": 3524.0,
+   "L3": 3351.0,
+   "M1": 719.0,
+   "M2": 603.8,
+   "M3": 573.0,
+   "M4": 374.0,
+   "M5": 368.3,
+   "N1": 97.0,
+   "N2": 63.7,
+   "N3": 58.3,
+   "N4": 4.0,
+   "N5": 4.0
+  },
+  "U": {
+   "K": 115606.0,
+   "L1": 21757.0,
+   "L2": 20948.0,
+   "L3": 17166.0,
+   "M1": 5548.0,
+   "M2": 5182.0,
+   "M3": 4303.0,
+   "M4": 3728.0,
+   "M5": 3552.0,
+   "N1": 1439.0,
+   "N2": 1271.0,
+   "N3": 1043.0,
+   "N4": 778.3,
+   "N5": 736.2,
+   "N6": 388.2,
+   "N7": 377.4,
+   "O1": 321.0,
+   "O2": 257.0,
+   "O3": 192.0,
+   "O4": 102.8,
+   "O5": 94.2,
+   "P1": 43.9,
+   "P2": 26.8,
+   "P3": 16.8
+  }
+ },
+ "cases": [
+  {
+   "id": "water",
+   "label": "Water",
+   "source": "preset",
+   "formula": "H2O",
+   "xraydbFormula": "H2O",
+   "composition": {
+    "H": 2.0,
+    "O": 1
+   },
+   "density": 0.997,
+   "absorber": "O",
+   "edge": "K",
+   "edgeEnergy_eV": 543.1,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 56172.79783534153,
+     "photo_cm_inv": 56171.33492265693
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 11858.24506973756,
+     "photo_cm_inv": 11856.785287980681
+    },
+    {
+     "energy_eV": 493.1,
+     "where": "edge-50",
+     "total_cm_inv": 1321.0597511931062,
+     "photo_cm_inv": 1319.6175182498532
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 1276.5937129597935,
+     "photo_cm_inv": 1275.1519454285515
+    },
+    {
+     "energy_eV": 533.1,
+     "where": "edge-10",
+     "total_cm_inv": 1113.4362118111517,
+     "photo_cm_inv": 1111.997798568518
+    },
+    {
+     "energy_eV": 553.1,
+     "where": "edge+10",
+     "total_cm_inv": 15939.312435121241,
+     "photo_cm_inv": 15937.875926164326
+    },
+    {
+     "energy_eV": 593.1,
+     "where": "edge+50",
+     "total_cm_inv": 14388.59397275085,
+     "photo_cm_inv": 14387.161100446872
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 4064.8730376092403,
+     "photo_cm_inv": 4063.491736177417
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 615.493544957824,
+     "photo_cm_inv": 614.3057430161499
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 42.464474476624744,
+     "photo_cm_inv": 41.79629767960498
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 5.313915362677477,
+     "photo_cm_inv": 4.929510209455779
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 0.8074016711084183,
+     "photo_cm_inv": 0.5422801495728808
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 0.22625492981357392,
+     "photo_cm_inv": 0.02716880643896141
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.17021141446183718,
+     "photo_cm_inv": 0.0027540988681119608
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 543.0981181396022,
+    "muBelow_cm_inv": 1070.1775942289048,
+    "muAbove_cm_inv": 16508.881786954043,
+    "deltaMu_cm_inv": 15438.70419272514,
+    "thickness_um": 0.6477227541358097,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "n2-gas",
+   "label": "Nitrogen gas",
+   "source": "preset",
+   "formula": "N2",
+   "xraydbFormula": "N2",
+   "composition": {
+    "N": 2.0
+   },
+   "density": 0.001145,
+   "absorber": "N",
+   "edge": "K",
+   "edgeEnergy_eV": 409.9,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 49.45095415830264,
+     "photo_cm_inv": 49.44935109014464
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 10.083134055281217,
+     "photo_cm_inv": 10.081534510150902
+    },
+    {
+     "energy_eV": 359.9,
+     "where": "edge-50",
+     "total_cm_inv": 2.4520601283347316,
+     "photo_cm_inv": 2.450471619450612
+    },
+    {
+     "energy_eV": 399.9,
+     "where": "edge-10",
+     "total_cm_inv": 1.8989866772159782,
+     "photo_cm_inv": 1.8974012556740918
+    },
+    {
+     "energy_eV": 419.9,
+     "where": "edge+10",
+     "total_cm_inv": 30.27879258588582,
+     "photo_cm_inv": 30.277209596435828
+    },
+    {
+     "energy_eV": 459.9,
+     "where": "edge+50",
+     "total_cm_inv": 25.176835593269725,
+     "photo_cm_inv": 25.1752570164558
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 21.17259548820168,
+     "photo_cm_inv": 21.171020698062755
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 3.791661499896095,
+     "photo_cm_inv": 3.790170552403656
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 0.546200236227702,
+     "photo_cm_inv": 0.5449627949375488
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 0.03600195982529832,
+     "photo_cm_inv": 0.03534598630504342
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 0.00444168071041086,
+     "photo_cm_inv": 0.00405695810084026
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 0.0007074727481389446,
+     "photo_cm_inv": 0.0004359745561100632
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 0.00022666161037934536,
+     "photo_cm_inv": 2.13668773457978e-05
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.0001751243316095557,
+     "photo_cm_inv": 2.1398068017912633e-06
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 409.8986770456662,
+    "muBelow_cm_inv": 1.8067083212107242,
+    "muAbove_cm_inv": 31.78514994423508,
+    "deltaMu_cm_inv": 29.978441623024356,
+    "thickness_um": 333.57304311374526,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "co-gas",
+   "label": "Carbon monoxide gas",
+   "source": "preset",
+   "formula": "CO",
+   "xraydbFormula": "C1O1",
+   "composition": {
+    "C": 1.0,
+    "O": 1.0
+   },
+   "density": 0.001145,
+   "absorber": "C",
+   "edge": "K",
+   "edgeEnergy_eV": 284.2,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 53.65214518033069,
+     "photo_cm_inv": 53.650509376423706
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 11.40073581809082,
+     "photo_cm_inv": 11.399104304281801
+    },
+    {
+     "energy_eV": 234.2,
+     "where": "edge-50",
+     "total_cm_inv": 7.845132190277138,
+     "photo_cm_inv": 7.843503271500829
+    },
+    {
+     "energy_eV": 274.2,
+     "where": "edge-10",
+     "total_cm_inv": 5.385969773940386,
+     "photo_cm_inv": 5.384343242833694
+    },
+    {
+     "energy_eV": 294.2,
+     "where": "edge+10",
+     "total_cm_inv": 25.140609323695475,
+     "photo_cm_inv": 25.138983787423548
+    },
+    {
+     "energy_eV": 334.2,
+     "where": "edge+50",
+     "total_cm_inv": 19.04040959906085,
+     "photo_cm_inv": 19.03878750607933
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 7.573155433229802,
+     "photo_cm_inv": 7.571549312739294
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 4.087249115491747,
+     "photo_cm_inv": 4.085725612937447
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 0.6030790999249462,
+     "photo_cm_inv": 0.6018069861965533
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 0.04071605098953497,
+     "photo_cm_inv": 0.040029311116381576
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 0.0050583322892292885,
+     "photo_cm_inv": 0.004659977986818945
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 0.0007829235868333461,
+     "photo_cm_inv": 0.0005073844066669107
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 0.00023132722790125755,
+     "photo_cm_inv": 2.5184945832560657e-05
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.00017577681854637003,
+     "photo_cm_inv": 2.540491935928284e-06
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 284.20050710902774,
+    "muBelow_cm_inv": 4.942689324988297,
+    "muAbove_cm_inv": 27.31079833692514,
+    "deltaMu_cm_inv": 22.36810901193684,
+    "thickness_um": 447.0650601114048,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "sio2-quartz",
+   "label": "Quartz (SiO₂)",
+   "source": "preset",
+   "formula": "SiO2",
+   "xraydbFormula": "SiO2",
+   "composition": {
+    "Si": 1,
+    "O": 2.0
+   },
+   "density": 2.65,
+   "absorber": "Si",
+   "edge": "K",
+   "edgeEnergy_eV": 1839.0,
+   "points": [
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 96463.99179853505,
+     "photo_cm_inv": 96458.28740819407
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 12553.458974090492,
+     "photo_cm_inv": 12547.856330770634
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 8422.357615428315,
+     "photo_cm_inv": 8417.078812690968
+    },
+    {
+     "energy_eV": 1789.0,
+     "where": "edge-50",
+     "total_cm_inv": 1754.624779910318,
+     "photo_cm_inv": 1750.0339535445034
+    },
+    {
+     "energy_eV": 1829.0,
+     "where": "edge-10",
+     "total_cm_inv": 1650.1717912790903,
+     "photo_cm_inv": 1645.6170524978872
+    },
+    {
+     "energy_eV": 1849.0,
+     "where": "edge+10",
+     "total_cm_inv": 5144.7831841703955,
+     "photo_cm_inv": 5140.246448127164
+    },
+    {
+     "energy_eV": 1889.0,
+     "where": "edge+50",
+     "total_cm_inv": 4942.3474579986605,
+     "photo_cm_inv": 4937.846622112004
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 4420.339160582375,
+     "photo_cm_inv": 4415.936977888499
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 371.1848327902504,
+     "photo_cm_inv": 368.6044343769788
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 50.367878149231935,
+     "photo_cm_inv": 48.919108499951356
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 6.750055245398572,
+     "photo_cm_inv": 5.9294419540895245
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 0.8441517864092899,
+     "photo_cm_inv": 0.32911333336100623
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.44629339497434467,
+     "photo_cm_inv": 0.035329876058011134
+    }
+   ],
+   "skipped_eV": [
+    100.0
+   ],
+   "edgeStep": {
+    "tableEdge_eV": 1839.0051039597367,
+    "muBelow_cm_inv": 1625.348181657861,
+    "muAbove_cm_inv": 5197.202133884517,
+    "deltaMu_cm_inv": 3571.853952226656,
+    "thickness_um": 2.7996665411714567,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "tio2-anatase",
+   "label": "Anatase (TiO₂)",
+   "source": "preset",
+   "formula": "TiO2",
+   "xraydbFormula": "TiO2",
+   "composition": {
+    "Ti": 1,
+    "O": 2.0
+   },
+   "density": 3.89,
+   "absorber": "Ti",
+   "edge": "K",
+   "edgeEnergy_eV": 4966.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 161609.68352707766,
+     "photo_cm_inv": 161597.7462709065
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 50051.60616437097,
+     "photo_cm_inv": 50039.705411885385
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 55538.30386519085,
+     "photo_cm_inv": 55526.63283468759
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 20835.97025485051,
+     "photo_cm_inv": 20824.982692233123
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 3382.0906943116865,
+     "photo_cm_inv": 3372.8057913304074
+    },
+    {
+     "energy_eV": 4916.0,
+     "where": "edge-50",
+     "total_cm_inv": 279.4142752013412,
+     "photo_cm_inv": 273.87284293838826
+    },
+    {
+     "energy_eV": 4956.0,
+     "where": "edge-10",
+     "total_cm_inv": 273.1235862475739,
+     "photo_cm_inv": 267.61830636462224
+    },
+    {
+     "energy_eV": 4976.0,
+     "where": "edge+10",
+     "total_cm_inv": 1676.5902604776998,
+     "photo_cm_inv": 1671.1029207452984
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 1668.9737287532214,
+     "photo_cm_inv": 1663.5077983055733
+    },
+    {
+     "energy_eV": 5016.0,
+     "where": "edge+50",
+     "total_cm_inv": 1663.4380515253092,
+     "photo_cm_inv": 1657.986322195885
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 267.31511659547994,
+     "photo_cm_inv": 264.3536641606478
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 38.30810764412935,
+     "photo_cm_inv": 36.701043353042074
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 3.1615760752818036,
+     "photo_cm_inv": 2.3376034334468856
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.8761059316204594,
+     "photo_cm_inv": 0.27155788513105406
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 4966.000168505759,
+    "muBelow_cm_inv": 271.58102096882413,
+    "muAbove_cm_inv": 1679.6480315190538,
+    "deltaMu_cm_inv": 1408.0670105502297,
+    "thickness_um": 7.101934726879444,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "zno",
+   "label": "Zinc oxide",
+   "source": "preset",
+   "formula": "ZnO",
+   "xraydbFormula": "ZnO",
+   "composition": {
+    "Zn": 1,
+    "O": 1
+   },
+   "density": 5.67,
+   "absorber": "Zn",
+   "edge": "K",
+   "edgeEnergy_eV": 9659.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 369161.8888868252,
+     "photo_cm_inv": 369134.9853656064
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 171503.59426726075,
+     "photo_cm_inv": 171476.73543106616
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 33296.875252363854,
+     "photo_cm_inv": 33270.31321855036
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 12193.52635290525,
+     "photo_cm_inv": 12167.922032222057
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 11591.99789910842,
+     "photo_cm_inv": 11569.174012115629
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 1018.2895032244993,
+     "photo_cm_inv": 1003.3912648989547
+    },
+    {
+     "energy_eV": 9609.0,
+     "where": "edge-50",
+     "total_cm_inv": 169.46924061600885,
+     "photo_cm_inv": 161.32568963900198
+    },
+    {
+     "energy_eV": 9649.0,
+     "where": "edge-10",
+     "total_cm_inv": 167.55099470719006,
+     "photo_cm_inv": 159.4437063037141
+    },
+    {
+     "energy_eV": 9669.0,
+     "where": "edge+10",
+     "total_cm_inv": 1159.6776815116602,
+     "photo_cm_inv": 1151.5884179623808
+    },
+    {
+     "energy_eV": 9709.0,
+     "where": "edge+50",
+     "total_cm_inv": 1148.1091497863843,
+     "photo_cm_inv": 1140.0557245609527
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 1068.4277716610752,
+     "photo_cm_inv": 1060.6267925414643
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 170.41445683842352,
+     "photo_cm_inv": 166.7137444278921
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 13.41645802341495,
+     "photo_cm_inv": 11.905061521429113
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 2.438707034124637,
+     "photo_cm_inv": 1.4773654135871415
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 9659.044410452268,
+    "muBelow_cm_inv": 167.0740210184425,
+    "muAbove_cm_inv": 1162.582369454143,
+    "deltaMu_cm_inv": 995.5083484357004,
+    "thickness_um": 10.045119175257119,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "nio",
+   "label": "Nickel(II) oxide",
+   "source": "preset",
+   "formula": "NiO",
+   "xraydbFormula": "NiO",
+   "composition": {
+    "Ni": 1,
+    "O": 1
+   },
+   "density": 6.81,
+   "absorber": "Ni",
+   "edge": "K",
+   "edgeEnergy_eV": 8333.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 387347.2118496954,
+     "photo_cm_inv": 387316.2434071864
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 163885.05312286978,
+     "photo_cm_inv": 163854.13766766828
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 30721.35323709567,
+     "photo_cm_inv": 30690.830683146356
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 59435.79763275284,
+     "photo_cm_inv": 59406.51584771463
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 11975.525417232231,
+     "photo_cm_inv": 11949.738693928322
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 1029.1076758837976,
+     "photo_cm_inv": 1012.7330168752117
+    },
+    {
+     "energy_eV": 8283.0,
+     "where": "edge-50",
+     "total_cm_inv": 256.15924448287484,
+     "photo_cm_inv": 245.7813539265501
+    },
+    {
+     "energy_eV": 8323.0,
+     "where": "edge-10",
+     "total_cm_inv": 252.7745117141465,
+     "photo_cm_inv": 242.44752422737724
+    },
+    {
+     "energy_eV": 8343.0,
+     "where": "edge+10",
+     "total_cm_inv": 1772.1238415382409,
+     "photo_cm_inv": 1761.822146149684
+    },
+    {
+     "energy_eV": 8383.0,
+     "where": "edge+50",
+     "total_cm_inv": 1751.2910210793493,
+     "photo_cm_inv": 1741.0395932474362
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 1126.9249839249503,
+     "photo_cm_inv": 1118.3921693388704
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 173.58521255551466,
+     "photo_cm_inv": 169.4105244362275
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 13.553260507429318,
+     "photo_cm_inv": 11.779652924456752
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 2.6018873543580745,
+     "photo_cm_inv": 1.4386593385658946
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 8333.009879758923,
+    "muBelow_cm_inv": 251.9371351630665,
+    "muAbove_cm_inv": 1777.381190279,
+    "deltaMu_cm_inv": 1525.4440551159337,
+    "thickness_um": 6.555468203807711,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "fe2o3-hematite",
+   "label": "Hematite (Fe₂O₃)",
+   "source": "preset",
+   "formula": "Fe2O3",
+   "xraydbFormula": "Fe2O3",
+   "composition": {
+    "Fe": 2.0,
+    "O": 3.0
+   },
+   "density": 5.26,
+   "absorber": "Fe",
+   "edge": "K",
+   "edgeEnergy_eV": 7112.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 284749.7994113455,
+     "photo_cm_inv": 284729.4329596533
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 100944.52899580012,
+     "photo_cm_inv": 100924.20652015937
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 17860.688942974728,
+     "photo_cm_inv": 17840.65636409152
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 40681.253882985795,
+     "photo_cm_inv": 40662.14446164921
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 7083.8772452254125,
+     "photo_cm_inv": 7067.288683158555
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 590.2450091760629,
+     "photo_cm_inv": 580.0345273315521
+    },
+    {
+     "energy_eV": 7062.0,
+     "where": "edge-50",
+     "total_cm_inv": 226.31388004037944,
+     "photo_cm_inv": 218.7759523156544
+    },
+    {
+     "energy_eV": 7102.0,
+     "where": "edge-10",
+     "total_cm_inv": 222.79917155160229,
+     "photo_cm_inv": 215.3018326030616
+    },
+    {
+     "energy_eV": 7122.0,
+     "where": "edge+10",
+     "total_cm_inv": 1520.930234096382,
+     "photo_cm_inv": 1513.4530509417862
+    },
+    {
+     "energy_eV": 7162.0,
+     "where": "edge+50",
+     "total_cm_inv": 1500.3417094210217,
+     "photo_cm_inv": 1492.9045628345673
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 637.3849783234728,
+     "photo_cm_inv": 632.0411656236851
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 95.856035095318,
+     "photo_cm_inv": 93.1266703836612
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 7.538397739126519,
+     "photo_cm_inv": 6.293251763086596
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 1.612848209710742,
+     "photo_cm_inv": 0.7570324479096517
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 7112.00869660344,
+    "muBelow_cm_inv": 221.9314662348662,
+    "muAbove_cm_inv": 1526.1349272745963,
+    "deltaMu_cm_inv": 1304.20346103973,
+    "thickness_um": 7.667515306260462,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "cuso4-5h2o",
+   "label": "Copper sulfate pentahydrate",
+   "source": "preset",
+   "formula": "CuSO4·5H2O",
+   "xraydbFormula": "CuSO4(H2O)5",
+   "composition": {
+    "Cu": 1,
+    "S": 1,
+    "O": 9.0,
+    "H": 10.0
+   },
+   "density": 2.286,
+   "absorber": "Cu",
+   "edge": "K",
+   "edgeEnergy_eV": 8979.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 118276.37312349638,
+     "photo_cm_inv": 118270.20297342232
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 52760.65076276436,
+     "photo_cm_inv": 52754.49217827955
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 8785.795509634481,
+     "photo_cm_inv": 8779.71129675615
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 12915.791465639873,
+     "photo_cm_inv": 12909.952075156754
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 2282.608235052511,
+     "photo_cm_inv": 2277.5058256792036
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 276.0704325885436,
+     "photo_cm_inv": 272.96522883402156
+    },
+    {
+     "energy_eV": 8929.0,
+     "where": "edge-50",
+     "total_cm_inv": 54.016744585042666,
+     "photo_cm_inv": 52.151509018486614
+    },
+    {
+     "energy_eV": 8969.0,
+     "where": "edge-10",
+     "total_cm_inv": 53.33734452361379,
+     "photo_cm_inv": 51.479964241957944
+    },
+    {
+     "energy_eV": 8989.0,
+     "where": "edge+10",
+     "total_cm_inv": 192.31969693271012,
+     "photo_cm_inv": 190.46621967290147
+    },
+    {
+     "energy_eV": 9029.0,
+     "where": "edge+50",
+     "total_cm_inv": 190.26754148219146,
+     "photo_cm_inv": 188.42182144926227
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 148.2656854221111,
+     "photo_cm_inv": 146.58996427212105
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 22.80994394934243,
+     "photo_cm_inv": 21.90289388506147
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 2.0041305786542414,
+     "photo_cm_inv": 1.5068889233012988
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.5577532219348056,
+     "photo_cm_inv": 0.18343463002759916
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 8978.965911104362,
+    "muBelow_cm_inv": 53.16987803240198,
+    "muAbove_cm_inv": 192.83939861769525,
+    "deltaMu_cm_inv": 139.66952058529327,
+    "thickness_um": 71.59758233646409,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "lifepo4",
+   "label": "Lithium iron phosphate",
+   "source": "preset",
+   "formula": "LiFePO4",
+   "xraydbFormula": "LiFePO4",
+   "composition": {
+    "Li": 1,
+    "Fe": 1,
+    "P": 1,
+    "O": 4.0
+   },
+   "density": 3.6,
+   "absorber": "Fe",
+   "edge": "K",
+   "edgeEnergy_eV": 7112.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 183873.09486707998,
+     "photo_cm_inv": 183862.43963118305
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 100305.9717556217,
+     "photo_cm_inv": 100295.34212781276
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 14969.155510245173,
+     "photo_cm_inv": 14958.687341231107
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 19670.254312944355,
+     "photo_cm_inv": 19660.30160929123
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 3305.793951253654,
+     "photo_cm_inv": 3297.2628200737286
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 450.6918218178058,
+     "photo_cm_inv": 445.54752551578923
+    },
+    {
+     "energy_eV": 7062.0,
+     "where": "edge-50",
+     "total_cm_inv": 171.11401854342415,
+     "photo_cm_inv": 167.27318516564023
+    },
+    {
+     "energy_eV": 7102.0,
+     "where": "edge-10",
+     "total_cm_inv": 168.41099198699774,
+     "photo_cm_inv": 164.58981619086484
+    },
+    {
+     "energy_eV": 7122.0,
+     "where": "edge+10",
+     "total_cm_inv": 617.3484030292469,
+     "photo_cm_inv": 613.5369893635134
+    },
+    {
+     "energy_eV": 7162.0,
+     "where": "edge+50",
+     "total_cm_inv": 608.778027598985,
+     "photo_cm_inv": 604.9860060455957
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 254.80402515618172,
+     "photo_cm_inv": 252.0335026424707
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 37.80807255824291,
+     "photo_cm_inv": 36.332478125597866
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 3.1771052821355537,
+     "photo_cm_inv": 2.4096785904575966
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.8525304564496876,
+     "photo_cm_inv": 0.2871089538971995
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 7112.00869660344,
+    "muBelow_cm_inv": 167.74367607745685,
+    "muAbove_cm_inv": 619.515444933143,
+    "deltaMu_cm_inv": 451.7717688556862,
+    "thickness_um": 22.135070602860967,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "licoo2",
+   "label": "Lithium cobalt oxide",
+   "source": "preset",
+   "formula": "LiCoO2",
+   "xraydbFormula": "LiCoO2",
+   "composition": {
+    "Li": 1,
+    "Co": 1,
+    "O": 2.0
+   },
+   "density": 5.05,
+   "absorber": "Co",
+   "edge": "K",
+   "edgeEnergy_eV": 7709.0,
+   "points": [
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 98876.1659283117,
+     "photo_cm_inv": 98858.30398652045
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 16311.02279606467,
+     "photo_cm_inv": 16293.406802045318
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 37447.463739272716,
+     "photo_cm_inv": 37430.621788744385
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 6566.993840152883,
+     "photo_cm_inv": 6552.300063205928
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 548.9852548718649,
+     "photo_cm_inv": 539.8524138709548
+    },
+    {
+     "energy_eV": 7659.0,
+     "where": "edge-50",
+     "total_cm_inv": 167.9233541743527,
+     "photo_cm_inv": 161.65991339321855
+    },
+    {
+     "energy_eV": 7699.0,
+     "where": "edge-10",
+     "total_cm_inv": 165.5184144462901,
+     "photo_cm_inv": 159.28666742797233
+    },
+    {
+     "energy_eV": 7719.0,
+     "where": "edge+10",
+     "total_cm_inv": 1099.283089479064,
+     "photo_cm_inv": 1093.0670860956827
+    },
+    {
+     "energy_eV": 7759.0,
+     "where": "edge+50",
+     "total_cm_inv": 1085.4853721803381,
+     "photo_cm_inv": 1079.3006512677307
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 569.9414612668681,
+     "photo_cm_inv": 565.1405508934187
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 86.724609462862,
+     "photo_cm_inv": 84.26159703328213
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 6.9261981800806245,
+     "photo_cm_inv": 5.771834526126982
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 1.5032376333938293,
+     "photo_cm_inv": 0.6989649244265314
+    }
+   ],
+   "skipped_eV": [
+    100.0
+   ],
+   "edgeStep": {
+    "tableEdge_eV": 7708.9710415099335,
+    "muBelow_cm_inv": 164.9263013372165,
+    "muAbove_cm_inv": 1102.780984893609,
+    "deltaMu_cm_inv": 937.8546835563925,
+    "thickness_um": 10.662632682154438,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "limn2o4",
+   "label": "Lithium manganese oxide spinel",
+   "source": "preset",
+   "formula": "LiMn2O4",
+   "xraydbFormula": "LiMn2O4",
+   "composition": {
+    "Li": 1,
+    "Mn": 2.0,
+    "O": 4.0
+   },
+   "density": 4.28,
+   "absorber": "Mn",
+   "edge": "K",
+   "edgeEnergy_eV": 6539.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 226501.27063954252,
+     "photo_cm_inv": 226486.91197945518
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 70989.03102970129,
+     "photo_cm_inv": 70974.70583350041
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 11687.998009250761,
+     "photo_cm_inv": 11673.89466714858
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 28040.145276624204,
+     "photo_cm_inv": 28026.733677955308
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 4753.096334785789,
+     "photo_cm_inv": 4741.543263589552
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 388.0565034991518,
+     "photo_cm_inv": 381.0545580939945
+    },
+    {
+     "energy_eV": 6489.0,
+     "where": "edge-50",
+     "total_cm_inv": 187.40685931385795,
+     "photo_cm_inv": 181.81324451710654
+    },
+    {
+     "energy_eV": 6529.0,
+     "where": "edge-10",
+     "total_cm_inv": 184.21927743884467,
+     "photo_cm_inv": 178.6571011156537
+    },
+    {
+     "energy_eV": 6549.0,
+     "where": "edge+10",
+     "total_cm_inv": 1203.5268803514825,
+     "photo_cm_inv": 1197.9803111210058
+    },
+    {
+     "energy_eV": 6589.0,
+     "where": "edge+50",
+     "total_cm_inv": 1185.5576455100736,
+     "photo_cm_inv": 1180.042067955603
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 402.7400311973021,
+     "photo_cm_inv": 399.0407667228301
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 59.927504511696085,
+     "photo_cm_inv": 57.97852438447727
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 4.805583762739669,
+     "photo_cm_inv": 3.8614640290951567
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 1.131707687579697,
+     "photo_cm_inv": 0.45998788286207887
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 6539.003089277541,
+    "muBelow_cm_inv": 183.43375052293345,
+    "muAbove_cm_inv": 1208.0775059749626,
+    "deltaMu_cm_inv": 1024.6437554520292,
+    "thickness_um": 9.759489526765744,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "lnmo",
+   "label": "High-voltage spinel LNMO",
+   "source": "preset",
+   "formula": "LiNi0.5Mn1.5O4",
+   "xraydbFormula": "LiNi0.5Mn1.5O4",
+   "composition": {
+    "Li": 1,
+    "Ni": 0.5,
+    "Mn": 1.5,
+    "O": 4.0
+   },
+   "density": 4.45,
+   "absorber": "Ni",
+   "edge": "K",
+   "edgeEnergy_eV": 8333.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 244474.86520258652,
+     "photo_cm_inv": 244459.3126742728
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 80328.26362288612,
+     "photo_cm_inv": 80312.74483787341
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 13490.387869074493,
+     "photo_cm_inv": 13475.09758976329
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 30484.41601789358,
+     "photo_cm_inv": 30469.840904789453
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 5404.590410074794,
+     "photo_cm_inv": 5391.963055401375
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 446.3646673160958,
+     "photo_cm_inv": 438.62510528042054
+    },
+    {
+     "energy_eV": 8283.0,
+     "where": "edge-50",
+     "total_cm_inv": 550.2906532456263,
+     "photo_cm_inv": 545.3818786631192
+    },
+    {
+     "energy_eV": 8323.0,
+     "where": "edge-10",
+     "total_cm_inv": 543.3762521820016,
+     "photo_cm_inv": 538.4905935487353
+    },
+    {
+     "energy_eV": 8343.0,
+     "where": "edge+10",
+     "total_cm_inv": 743.1395853628229,
+     "photo_cm_inv": 738.2654076115471
+    },
+    {
+     "energy_eV": 8383.0,
+     "where": "edge+50",
+     "total_cm_inv": 734.0454045802733,
+     "photo_cm_inv": 729.1940356495124
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 462.5349204477713,
+     "photo_cm_inv": 458.4562979868769
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 69.61471490580307,
+     "photo_cm_inv": 67.49631603804266
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 5.567133439961756,
+     "photo_cm_inv": 4.559724563478182
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 1.2566621565854423,
+     "photo_cm_inv": 0.5477933590068543
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 8333.009879758923,
+    "muBelow_cm_inv": 541.6631067852142,
+    "muAbove_cm_inv": 745.4337114474205,
+    "deltaMu_cm_inv": 203.77060466220632,
+    "thickness_um": 40.24502720939267,
+    "limitedBy": "total-absorption"
+   }
+  },
+  {
+   "id": "cu-foil",
+   "label": "Copper foil",
+   "source": "preset",
+   "formula": "Cu",
+   "xraydbFormula": "Cu",
+   "composition": {
+    "Cu": 1
+   },
+   "density": 8.96,
+   "absorber": "Cu",
+   "edge": "K",
+   "edgeEnergy_eV": 8979.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 485953.2672405281,
+     "photo_cm_inv": 485905.7912499558
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 234046.8807259231,
+     "photo_cm_inv": 233999.470590438
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 48852.673874212094,
+     "photo_cm_inv": 48805.75198774281
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 94721.44907205498,
+     "photo_cm_inv": 94676.11222339114
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 19298.726030300015,
+     "photo_cm_inv": 19258.037767828595
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 1701.8104201589524,
+     "photo_cm_inv": 1675.3065135121187
+    },
+    {
+     "energy_eV": 8929.0,
+     "where": "edge-50",
+     "total_cm_inv": 348.33324132401464,
+     "photo_cm_inv": 332.8661881432482
+    },
+    {
+     "energy_eV": 8969.0,
+     "where": "edge-10",
+     "total_cm_inv": 344.0970367364775,
+     "photo_cm_inv": 328.7036976863583
+    },
+    {
+     "energy_eV": 8989.0,
+     "where": "edge+10",
+     "total_cm_inv": 2487.487990936784,
+     "photo_cm_inv": 2472.131286036073
+    },
+    {
+     "energy_eV": 9029.0,
+     "where": "edge+50",
+     "total_cm_inv": 2461.9521213666953,
+     "photo_cm_inv": 2446.6682422184554
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 1935.237416632347,
+     "photo_cm_inv": 1921.5536378368747
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 302.8452019884795,
+     "photo_cm_inv": 296.4317583278247
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 23.41254847514076,
+     "photo_cm_inv": 20.923729509922225
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 4.1079229365029555,
+     "photo_cm_inv": 2.578589533151957
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 8978.965911104362,
+    "muBelow_cm_inv": 343.0526762917769,
+    "muAbove_cm_inv": 2493.952909846169,
+    "deltaMu_cm_inv": 2150.900233554392,
+    "thickness_um": 4.649216102168935,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "pt-foil",
+   "label": "Platinum foil",
+   "source": "preset",
+   "formula": "Pt",
+   "xraydbFormula": "Pt",
+   "composition": {
+    "Pt": 1
+   },
+   "density": 21.45,
+   "absorber": "Pt",
+   "edge": "L3",
+   "edgeEnergy_eV": 11564.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 100166.28901456554,
+     "photo_cm_inv": 99897.96156369547
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 233001.45845096782,
+     "photo_cm_inv": 232733.4608134022
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 207082.1839282093,
+     "photo_cm_inv": 206816.35712254324
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 95080.82582075574,
+     "photo_cm_inv": 94822.04689680663
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 23174.73872357085,
+     "photo_cm_inv": 22937.290618792023
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 13730.76998387092,
+     "photo_cm_inv": 13561.045714518
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 2428.8872837534477,
+     "photo_cm_inv": 2326.182233782468
+    },
+    {
+     "energy_eV": 11514.0,
+     "where": "edge-50",
+     "total_cm_inv": 1701.1215750009205,
+     "photo_cm_inv": 1611.2351194786484
+    },
+    {
+     "energy_eV": 11554.0,
+     "where": "edge-10",
+     "total_cm_inv": 1686.3247848535527,
+     "photo_cm_inv": 1596.7453624615155
+    },
+    {
+     "energy_eV": 11574.0,
+     "where": "edge+10",
+     "total_cm_inv": 4165.444676317325,
+     "photo_cm_inv": 4076.0182034348027
+    },
+    {
+     "energy_eV": 11614.0,
+     "where": "edge+50",
+     "total_cm_inv": 4127.35891376047,
+     "photo_cm_inv": 4038.2372111378727
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 1624.4765931265372,
+     "photo_cm_inv": 1575.9617099827285
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 149.1715119954859,
+     "photo_cm_inv": 134.0300416570269
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 107.10148739642958,
+     "photo_cm_inv": 100.7091581214365
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 11563.975679358142,
+    "muBelow_cm_inv": 1682.6629331373158,
+    "muAbove_cm_inv": 4175.065365621829,
+    "deltaMu_cm_inv": 2492.402432484513,
+    "thickness_um": 4.0121931633775745,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "element-h",
+   "label": "Hydrogen",
+   "source": "extra",
+   "formula": "H",
+   "xraydbFormula": "H",
+   "composition": {
+    "H": 1
+   },
+   "density": 8.99e-05,
+   "absorber": "H",
+   "edge": "K",
+   "edgeEnergy_eV": 13.6,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 1.0215098987913018,
+     "photo_cm_inv": 1.021474127293492
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 0.11647398614908407,
+     "photo_cm_inv": 0.11643824465594098
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 0.0060164378554983826,
+     "photo_cm_inv": 0.005980708575349031
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 0.0006486007993850816,
+     "photo_cm_inv": 0.000612894614841155
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 9.523018287339935e-05,
+     "photo_cm_inv": 5.967651860194725e-05
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 3.770073019582966e-05,
+     "photo_cm_inv": 2.6357479766916075e-06
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 3.464975953287042e-05,
+     "photo_cm_inv": 2.448319214035182e-07
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 3.321752527495352e-05,
+     "photo_cm_inv": 2.2463722283940657e-08
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 3.016386773551054e-05,
+     "photo_cm_inv": 9.513512106734007e-10
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 2.646844262665332e-05,
+     "photo_cm_inv": 8.829838007462215e-11
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": null
+  },
+  {
+   "id": "element-c",
+   "label": "Carbon",
+   "source": "extra",
+   "formula": "C",
+   "xraydbFormula": "C",
+   "composition": {
+    "C": 1
+   },
+   "density": 2.267,
+   "absorber": "C",
+   "edge": "K",
+   "edgeEnergy_eV": 284.2,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 60475.99908003529,
+     "photo_cm_inv": 60473.2839260338
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 12691.486029568227,
+     "photo_cm_inv": 12688.780133207418
+    },
+    {
+     "energy_eV": 234.2,
+     "where": "edge-50",
+     "total_cm_inv": 8875.093463004085,
+     "photo_cm_inv": 8872.393520032918
+    },
+    {
+     "energy_eV": 274.2,
+     "where": "edge-10",
+     "total_cm_inv": 6136.2885490249955,
+     "photo_cm_inv": 6133.5940722384785
+    },
+    {
+     "energy_eV": 294.2,
+     "where": "edge+10",
+     "total_cm_inv": 100258.78849405683,
+     "photo_cm_inv": 100256.09629004984
+    },
+    {
+     "energy_eV": 334.2,
+     "where": "edge+50",
+     "total_cm_inv": 76306.0941359099,
+     "photo_cm_inv": 76303.40902372071
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 30638.67678131892,
+     "photo_cm_inv": 30636.026747798343
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 5011.71605359259,
+     "photo_cm_inv": 5009.2413705498975
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 685.8858054857986,
+     "photo_cm_inv": 683.9125784556577
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 43.3345710965166,
+     "photo_cm_inv": 42.29409290852729
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 5.379598393885565,
+     "photo_cm_inv": 4.705684168336394
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 1.0019523435855016,
+     "photo_cm_inv": 0.4934199803065928
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 0.4241187214031476,
+     "photo_cm_inv": 0.023632552241452602
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.3431218668075822,
+     "photo_cm_inv": 0.002337864762481741
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 284.20050710902774,
+    "muBelow_cm_inv": 5632.201570591157,
+    "muAbove_cm_inv": 108910.54095361616,
+    "deltaMu_cm_inv": 103278.339383025,
+    "thickness_um": 0.09682572415221867,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "element-al",
+   "label": "Aluminium",
+   "source": "extra",
+   "formula": "Al",
+   "xraydbFormula": "Al",
+   "composition": {
+    "Al": 1
+   },
+   "density": 2.7,
+   "absorber": "Al",
+   "edge": "K",
+   "edgeEnergy_eV": 1559.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 326495.8092679446,
+     "photo_cm_inv": 326489.0345629089
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 142614.98645880245,
+     "photo_cm_inv": 142608.23438185436
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 18212.59094862557,
+     "photo_cm_inv": 18205.997982245193
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 3200.080154741126,
+     "photo_cm_inv": 3193.9490742801613
+    },
+    {
+     "energy_eV": 1509.0,
+     "where": "edge-50",
+     "total_cm_inv": 1068.487551865324,
+     "photo_cm_inv": 1062.9223276053226
+    },
+    {
+     "energy_eV": 1549.0,
+     "where": "edge-10",
+     "total_cm_inv": 994.8617378826534,
+     "photo_cm_inv": 989.3395385717023
+    },
+    {
+     "energy_eV": 1569.0,
+     "where": "edge+10",
+     "total_cm_inv": 10536.511794691063,
+     "photo_cm_inv": 10531.011118060254
+    },
+    {
+     "energy_eV": 1609.0,
+     "where": "edge+50",
+     "total_cm_inv": 9974.792893019492,
+     "photo_cm_inv": 9969.335214646408
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 6109.642422125021,
+     "photo_cm_inv": 6104.58808446164
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 522.1738180204655,
+     "photo_cm_inv": 518.978643222406
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 70.77441541868859,
+     "photo_cm_inv": 69.00028693380706
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 9.293050318944196,
+     "photo_cm_inv": 8.370548050723949
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 0.9940051947526849,
+     "photo_cm_inv": 0.46381076378561065
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.4601264628907648,
+     "photo_cm_inv": 0.049682603581586854
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 1559.0002041389396,
+    "muBelow_cm_inv": 977.546401852656,
+    "muAbove_cm_inv": 10684.055407245954,
+    "deltaMu_cm_inv": 9706.509005393298,
+    "thickness_um": 1.0302365139149026,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "element-ag",
+   "label": "Silver",
+   "source": "extra",
+   "formula": "Ag",
+   "xraydbFormula": "Ag",
+   "composition": {
+    "Ag": 1
+   },
+   "density": 10.49,
+   "absorber": "Ag",
+   "edge": "K",
+   "edgeEnergy_eV": 25514.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 52974.13018716608,
+     "photo_cm_inv": 52888.03701853998
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 60233.27408794659,
+     "photo_cm_inv": 60147.29596172582
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 191415.73025764019,
+     "photo_cm_inv": 191330.6772646841
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 73815.30087546048,
+     "photo_cm_inv": 73733.08253050417
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 14691.279385781841,
+     "photo_cm_inv": 14617.523025340155
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 7749.540397951924,
+     "photo_cm_inv": 7701.143669246831
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 1250.959625718922,
+     "photo_cm_inv": 1223.402755288049
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 192.5675562454785,
+     "photo_cm_inv": 179.3840906494763
+    },
+    {
+     "energy_eV": 25464.0,
+     "where": "edge-50",
+     "total_cm_inv": 100.45811823098455,
+     "photo_cm_inv": 90.69486136543856
+    },
+    {
+     "energy_eV": 25504.0,
+     "where": "edge-10",
+     "total_cm_inv": 100.03792397696954,
+     "photo_cm_inv": 90.29377447477921
+    },
+    {
+     "energy_eV": 25524.0,
+     "where": "edge+10",
+     "total_cm_inv": 580.5446210130569,
+     "photo_cm_inv": 570.8099992853197
+    },
+    {
+     "energy_eV": 25564.0,
+     "where": "edge+50",
+     "total_cm_inv": 578.2481575129967,
+     "photo_cm_inv": 568.5325397136003
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 99.08882319573554,
+     "photo_cm_inv": 94.70460061605476
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 15.414290728566664,
+     "photo_cm_inv": 13.228715294849415
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 25514.443944955918,
+    "muBelow_cm_inv": 99.92861903784602,
+    "muAbove_cm_inv": 581.0951358942133,
+    "deltaMu_cm_inv": 481.16651685636725,
+    "thickness_um": 20.78282600654254,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "element-u",
+   "label": "Uranium",
+   "source": "extra",
+   "formula": "U",
+   "xraydbFormula": "U",
+   "composition": {
+    "U": 1
+   },
+   "density": 19.1,
+   "absorber": "U",
+   "edge": "L3",
+   "edgeEnergy_eV": 17166.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 224214.09902926048,
+     "photo_cm_inv": 223940.98663797925
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 43642.77313213664,
+     "photo_cm_inv": 43370.19146406406
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 181510.8432334015,
+     "photo_cm_inv": 181241.68225720208
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 126563.60273569172,
+     "photo_cm_inv": 126304.3840066262
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 35618.59829918164,
+     "photo_cm_inv": 35383.571720499844
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 16979.16565523425,
+     "photo_cm_inv": 16809.847372324195
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 3420.48660088683,
+     "photo_cm_inv": 3314.650220787217
+    },
+    {
+     "energy_eV": 17116.0,
+     "where": "edge-50",
+     "total_cm_inv": 896.863130713981,
+     "photo_cm_inv": 833.9890706142132
+    },
+    {
+     "energy_eV": 17156.0,
+     "where": "edge-10",
+     "total_cm_inv": 891.6701324566777,
+     "photo_cm_inv": 828.9578731613312
+    },
+    {
+     "energy_eV": 17176.0,
+     "where": "edge+10",
+     "total_cm_inv": 2039.5984647743253,
+     "photo_cm_inv": 1976.9668730384396
+    },
+    {
+     "energy_eV": 17216.0,
+     "where": "edge+50",
+     "total_cm_inv": 2026.9198351207326,
+     "photo_cm_inv": 1964.4491147911529
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 1357.2325212551548,
+     "photo_cm_inv": 1304.6042516524165
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 214.12608943043557,
+     "photo_cm_inv": 197.73065018360663
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 37.32665594917519,
+     "photo_cm_inv": 30.699502018070902
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 17166.069311672956,
+    "muBelow_cm_inv": 890.3696134952763,
+    "muAbove_cm_inv": 2042.7631217326827,
+    "deltaMu_cm_inv": 1152.3935082374064,
+    "thickness_um": 8.67759140303998,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "hydrate-feso4",
+   "label": "Iron(II) sulfate heptahydrate",
+   "source": "extra",
+   "formula": "FeSO4.7H2O",
+   "xraydbFormula": "FeSO4(H2O)7",
+   "composition": {
+    "Fe": 1,
+    "S": 1,
+    "O": 11.0,
+    "H": 14.0
+   },
+   "density": 1.89,
+   "absorber": "Fe",
+   "edge": "K",
+   "edgeEnergy_eV": 7112.0,
+   "points": [
+    {
+     "energy_eV": 100.0,
+     "where": "grid",
+     "total_cm_inv": 97461.28014642494,
+     "photo_cm_inv": 97456.7879842339
+    },
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 39063.358609432944,
+     "photo_cm_inv": 39058.87659704602
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 6091.131584862628,
+     "photo_cm_inv": 6086.712279372096
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 9471.177582045668,
+     "photo_cm_inv": 9466.962624778193
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 1533.2414695997709,
+     "photo_cm_inv": 1529.621666188625
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 186.4625356575579,
+     "photo_cm_inv": 184.33201608989597
+    },
+    {
+     "energy_eV": 7062.0,
+     "where": "edge-50",
+     "total_cm_inv": 70.2034906293767,
+     "photo_cm_inv": 68.6133731547371
+    },
+    {
+     "energy_eV": 7102.0,
+     "where": "edge-10",
+     "total_cm_inv": 69.08498127059208,
+     "photo_cm_inv": 67.50278428083698
+    },
+    {
+     "energy_eV": 7122.0,
+     "where": "edge+10",
+     "total_cm_inv": 202.67602159892493,
+     "photo_cm_inv": 201.0977555975169
+    },
+    {
+     "energy_eV": 7162.0,
+     "where": "edge+50",
+     "total_cm_inv": 199.81965294596858,
+     "photo_cm_inv": 198.249191002931
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 82.89162076934925,
+     "photo_cm_inv": 81.72419488045762
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 12.28413768072614,
+     "photo_cm_inv": 11.614327126016754
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 1.1579851390526066,
+     "photo_cm_inv": 0.7611529044226581
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.39902412838375906,
+     "photo_cm_inv": 0.09016758516117132
+    }
+   ],
+   "skipped_eV": [],
+   "edgeStep": {
+    "tableEdge_eV": 7112.00869660344,
+    "muBelow_cm_inv": 68.8088692439397,
+    "muAbove_cm_inv": 203.398368991835,
+    "deltaMu_cm_inv": 134.58949974789533,
+    "thickness_um": 74.30000125367415,
+    "limitedBy": "edge-step"
+   }
+  },
+  {
+   "id": "dilute-fe-sio2",
+   "label": "Fe in quartz, dilute",
+   "source": "extra",
+   "formula": "Fe0.002(SiO2)0.998",
+   "xraydbFormula": "Fe0.002(SiO2)0.998",
+   "composition": {
+    "Fe": 0.002,
+    "Si": 0.998,
+    "O": 1.996
+   },
+   "density": 2.65,
+   "absorber": "Fe",
+   "edge": "K",
+   "edgeEnergy_eV": 7112.0,
+   "points": [
+    {
+     "energy_eV": 200.0,
+     "where": "grid",
+     "total_cm_inv": 96391.8206302832,
+     "photo_cm_inv": 96386.10301452076
+    },
+    {
+     "energy_eV": 500.0,
+     "where": "grid",
+     "total_cm_inv": 12551.003726371106,
+     "photo_cm_inv": 12545.388013648546
+    },
+    {
+     "energy_eV": 1000.0,
+     "where": "grid",
+     "total_cm_inv": 8451.460633457782,
+     "photo_cm_inv": 8446.169250996772
+    },
+    {
+     "energy_eV": 2000.0,
+     "where": "grid",
+     "total_cm_inv": 4420.136049368704,
+     "photo_cm_inv": 4415.722570801523
+    },
+    {
+     "energy_eV": 5000.0,
+     "where": "grid",
+     "total_cm_inv": 371.1837474786126,
+     "photo_cm_inv": 368.59596650273284
+    },
+    {
+     "energy_eV": 7062.0,
+     "where": "edge-50",
+     "total_cm_inv": 138.52937887773288,
+     "photo_cm_inv": 136.5583009170723
+    },
+    {
+     "energy_eV": 7102.0,
+     "where": "edge-10",
+     "total_cm_inv": 136.2902647092214,
+     "photo_cm_inv": 134.32852630922545
+    },
+    {
+     "energy_eV": 7122.0,
+     "where": "edge+10",
+     "total_cm_inv": 136.9294519191529,
+     "photo_cm_inv": 134.97235349206784
+    },
+    {
+     "energy_eV": 7162.0,
+     "where": "edge+50",
+     "total_cm_inv": 134.73851178753398,
+     "photo_cm_inv": 132.7906342528863
+    },
+    {
+     "energy_eV": 10000.0,
+     "where": "grid",
+     "total_cm_inv": 51.115205108965476,
+     "photo_cm_inv": 49.662789754018945
+    },
+    {
+     "energy_eV": 20000.0,
+     "where": "grid",
+     "total_cm_inv": 6.864042149262768,
+     "photo_cm_inv": 6.041834874481694
+    },
+    {
+     "energy_eV": 50000.0,
+     "where": "grid",
+     "total_cm_inv": 0.8522261161875013,
+     "photo_cm_inv": 0.3368642917409191
+    },
+    {
+     "energy_eV": 100000.0,
+     "where": "grid",
+     "total_cm_inv": 0.4472950785470201,
+     "photo_cm_inv": 0.03627140953017651
+    }
+   ],
+   "skipped_eV": [
+    100.0
+   ],
+   "edgeStep": {
+    "tableEdge_eV": 7112.00869660344,
+    "muBelow_cm_inv": 135.7375225204341,
+    "muAbove_cm_inv": 137.4840865329793,
+    "deltaMu_cm_inv": 1.7465640125451785,
+    "thickness_um": 218.20707222580035,
+    "limitedBy": "total-absorption"
+   }
+  }
+ ]
+}
