@@ -80,8 +80,11 @@ export function defaultEdge(el: ElementData): ElementEdge {
  * A lab page with the element as a pure sample, read by LabProvider through elementFromURL.
  * The lab reads the address only when it loads, so link to it with a plain <a>, not next/link.
  */
-export const elementLabPath = (route: 'crystal' | 'beamline', symbol: string, edge: string) =>
-  `/${route}/?${new URLSearchParams({ element: symbol, edge })}`;
+export function elementLabPath(route: 'crystal' | 'beamline', symbol: string, edge: string): string {
+  const el = ELEMENTS.find(item => item.symbol === symbol);
+  if (!el?.edges.some(item => item.edge === edge)) throw new Error('Choose a tabulated element and edge.');
+  return `/${route}/?${new URLSearchParams({ element: symbol, edge })}`;
+}
 
 export interface CompoundLink {
   preset: CompoundPreset;
@@ -95,11 +98,10 @@ export interface CompoundLink {
  * Example compounds that contain the element, those usually measured at its edges first. Each
  * opens the Sample page through a scenario link, the same format as the Experiments share link.
  */
-export function compoundsWith(el: ElementData, limit = 6): CompoundLink[] {
+export function compoundsWith(el: ElementData): CompoundLink[] {
   return COMPOUND_PRESETS
     .filter(preset => el.symbol in parseFormula(preset.formula))
     .sort((a, b) => Number(b.absorber === el.symbol) - Number(a.absorber === el.symbol))
-    .slice(0, limit)
     .map(preset => {
       const edge = (preset.absorber === el.symbol && el.edges.find(e => e.edge === preset.edge)) || defaultEdge(el);
       // Like SamplePicker's apply(): the energy sits on the edge, clamped to the tabulated range.

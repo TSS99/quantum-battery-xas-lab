@@ -1,5 +1,5 @@
 /** Portable, versioned experiment state. Units are eV, micrometres and counts. */
-import { DEFAULT_SAMPLE, EDGE_LABEL, validateSample, batteryFormula, isBattery, type Sample } from './sample';
+import { DEFAULT_SAMPLE, EDGE_LABEL, validateSample, resolveSample, batteryFormula, type Sample } from './sample';
 import { ELEMENT_SYMBOLS } from './xraydata';
 export interface LabState {
   sample: Sample;
@@ -84,18 +84,22 @@ export interface ElementLink { element: string; edge: string }
 /**
  * `?element=Fe&edge=K`, the links on the element pages. Returns null without either parameter
  * and throws on an unknown symbol or edge label. Whether the element has that edge is checked
- * later against the loaded tables, like any sample (resolveSample).
+ * by selectElement against the loaded tables before applying the link.
  */
 export function elementFromURL(input: string | URL): ElementLink | null {
   const url = typeof input === 'string' ? new URL(input, 'http://localhost:3000') : input;
   const element = url.searchParams.get('element'), edge = url.searchParams.get('edge');
   if (element === null && edge === null) return null;
+  if (url.searchParams.getAll('element').length > 1 || url.searchParams.getAll('edge').length > 1) throw new Error('This link must name exactly one element and one edge.');
   if (element === null || !ELEMENT_SYMBOLS.includes(element)) throw new Error('This link names no element from H to Cf. Symbols are case-sensitive, such as Fe.');
   if (edge === null || !EDGE_LABEL.test(edge)) throw new Error('This link names no edge such as K, L3 or M5.');
   return { element, edge };
 }
 
-/** The element as a pure sample with the linked edge. The X-ray tables have no density, so the current one is kept. */
+/** After loadXrayData: validate the edge and select a pure sample, retaining the current density. */
 export function selectElement(state: LabState, { element, edge }: ElementLink): LabState {
-  return { ...state, sample: validateSample({ formula: element, density: state.sample.density, absorber: element, edge, preset: null }) };
+  if (!ELEMENT_SYMBOLS.includes(element)) throw new Error('Choose an element from H to Cf.');
+  const sample = validateSample({ formula: element, density: state.sample.density, absorber: element, edge, preset: null });
+  const window = resolveSample(sample);
+  return { ...state, sample, energy: Math.max(window.start, Math.min(window.end, window.edge.energy_eV)) };
 }

@@ -273,6 +273,35 @@ progress::-moz-progress-bar {background:var(--accent)}
 .source-list {margin:0}
 .source-list li {padding-bottom:8px}
 
+/* Static element references. Wide tables scroll inside their labelled regions. */
+.element-page>section {min-width:0;display:flex;flex-direction:column;gap:16px}
+.element-page h1 {overflow-wrap:anywhere}
+.element-page .toolbar>.button {max-width:100%}
+.periodic-table-wrap,.edge-table-wrap {max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-padding:8px}
+.periodic-table {display:grid;grid-template-columns:repeat(18,minmax(44px,1fr));grid-template-rows:repeat(7,auto) 16px auto auto;gap:6px;min-width:906px;margin:0;padding:6px;list-style:none}
+.periodic-table li {grid-row:var(--row);grid-column:var(--col);min-width:0;margin:0}
+.periodic-table a {display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:64px;padding:4px;border:1px solid var(--control-edge);border-radius:6px;background:var(--surface-1);color:var(--text);text-decoration:none}
+.periodic-table a:hover {background:var(--surface-2);border-color:var(--accent)}
+.periodic-table small {align-self:flex-start;color:var(--muted);font-size:12px;line-height:1.2}
+.periodic-table strong {font-size:20px;line-height:1.5}
+.periodic-table strong .katex {font-size:1em}
+.element-facts {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:0;padding:20px;border-block:1px solid var(--hairline)}
+.element-facts dt {font-size:14px;color:var(--muted)}
+.element-facts dd {margin:4px 0 0;font-size:20px}
+.edge-table {min-width:560px}
+.edge-table caption {text-align:left;color:var(--muted);font-size:14px;padding:0 8px 12px}
+.edge-table .num {text-align:right;white-space:nowrap;overflow-wrap:normal}
+.edge-table td small {display:block;color:var(--muted);font-size:12px;white-space:nowrap}
+.edge-table a {display:inline-block;padding-block:4px}
+.edge-table a:focus-visible {outline-offset:0}
+.compound-links {list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.compound-links li {margin:0;padding-bottom:12px;border-bottom:1px solid var(--hairline)}
+.compound-links a {display:inline-block;padding-block:4px}
+.compound-links li>span {display:block;color:var(--text-2)}
+.element-pager {display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 24px;border-top:1px solid var(--hairline);padding-top:16px}
+.element-pager a {display:inline-flex;align-items:center;min-height:44px}
+.footer-links {display:flex;flex-wrap:wrap;gap:16px}
+
 /* The 3D view remains an optional battery example. Labels stay in WebGL. */
 .atom-stage {position:relative;isolation:isolate;min-height:420px;border-radius:12px;background:radial-gradient(120% 80% at 50% 0%,#1a2430,#11171e);display:flex;flex-direction:column;gap:12px;padding:12px}
 .scene-canvas {height:300px;min-height:260px;position:relative}
