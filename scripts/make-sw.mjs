@@ -22,10 +22,12 @@ const all = await list(root);
 const buildId = (await readdir(path.join(root, '_next/static'))).find(name => !['chunks', 'css', 'media'].includes(name));
 if (!buildId) throw new Error('No build id folder in out/_next/static; run next build first.');
 
-// Pages are cached at install (small). Everything the app needs offline is cached only when the installed app asks.
-const pages = all.filter(file => file.endsWith('index.html') || file.endsWith(path.sep + '404.html'))
+// The 98 element reference pages stay online-first (cached when visited); the offline bundle is the lab itself.
+const skip = [path.sep + 'og' + path.sep, path.sep + 'elements' + path.sep];
+// Lab pages are cached at install (small). Everything the app needs offline is cached only when the installed app asks.
+const pages = all.filter(file => (file.endsWith('index.html') || file.endsWith(path.sep + '404.html')) && !skip.some(part => file.includes(part)))
   .map(file => url(file).replace(/index\.html$/, ''));
-const assets = all.filter(file => !file.endsWith('.html') && !file.endsWith('sw.js') && !file.includes(path.sep + 'og' + path.sep)).map(url);
+const assets = all.filter(file => !file.endsWith('.html') && !file.endsWith('sw.js') && !skip.some(part => file.includes(part))).map(url);
 const bytes = (await Promise.all(all.filter(file => assets.includes(url(file))).map(file => stat(file)))).reduce((sum, info) => sum + info.size, 0);
 
 const template = await readFile('scripts/sw.template.js', 'utf8');
