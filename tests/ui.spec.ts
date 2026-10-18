@@ -316,3 +316,74 @@ test('installs as an app and keeps working offline', async ({ page, context }) =
   await expect(page.locator('.beam-legend')).toContainText('Bragg angle');
   await context.setOffline(false);
 });
+
+test('mobile element references keep all elements keyboard accessible with reduced motion', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./elements/');
+  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+  await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link')).toHaveCount(8);
+  await expect(page.locator('.periodic-table a')).toHaveCount(98);
+  const hydrogen = page.getByRole('link', { name: 'Hydrogen (H), atomic number 1', exact: true });
+  await hydrogen.focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Helium (He), atomic number 2', exact: true })).toBeFocused();
+  expect(await page.locator(':focus').evaluate(el => getComputedStyle(el).outlineStyle)).not.toBe('none');
+  for (const route of ['elements', 'elements/fe', 'elements/cu', 'elements/h', 'elements/cf']) {
+    await page.goto(`./${route}/`);
+    await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+    await expect(page.locator('.katex-error')).toHaveCount(0);
+  }
+});
+
+test('element references and search metadata are usable without JavaScript', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto('./elements/');
+    await page.getByRole('link', { name: 'Iron (Fe), atomic number 26', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Iron (Fe) X-ray absorption edges');
+    await expect(page).toHaveTitle('Iron (Fe) X-ray absorption edges | XAS Lab');
+    const canonical = 'https://tss99.github.io/quantum-battery-xas-lab/elements/fe/';
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonical);
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+    const row = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'K', exact: true }) });
+    await expect(row.getByRole('cell').first()).toHaveText('7,112');
+    await expect(row.getByRole('link', { name: 'Scan the Fe K edge on the beamline', exact: true })).toHaveAttribute('href', /\/beamline\/\?element=Fe&edge=K$/);
+    const graph = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!)['@graph'];
+    expect(graph.find((item: { '@type': string }) => item['@type'] === 'BreadcrumbList').itemListElement.map((item: { name: string }) => item.name)).toEqual(['Overview', 'Elements', 'Iron']);
+  } finally {
+    await context.close();
+  }
+});
+
+test('element and compound links select the requested sample and edge after navigation', async ({ page }) => {
+  await page.goto('./elements/fe/');
+  await page.getByRole('link', { name: 'Open Fe K on the Sample page', exact: true }).click();
+  await expect(page.getByLabel('Chemical formula')).toHaveValue('Fe');
+  await expect(page.getByLabel('Absorber', { exact: true })).toHaveValue('Fe');
+  await expect(page.getByLabel('Absorption edge')).toHaveValue('K');
+  await page.goto('./elements/cu/');
+  await page.getByRole('link', { name: 'Scan the Cu L3 edge on the beamline', exact: true }).click();
+  await expect(page.locator('.sample-summary')).toContainText(new RegExp(`Cu\\s+L${ZWSP}?3`));
+  await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue('932.7');
+  await page.goto('./elements/fe/');
+  await page.getByRole('link', { name: 'Hematite', exact: true }).click();
+  await expect(page.getByLabel('Sample preset')).toHaveValue('fe2o3-hematite');
+  await expect(page.getByLabel('Chemical formula')).toHaveValue('Fe2O3');
+  await expect(page.getByLabel('Density (g/cm³)')).toHaveValue('5.26');
+});
+
+test('element links handle unavailable storage and reject nonexistent shells', async ({ page }) => {
+  await page.addInitScript(() => { Storage.prototype.getItem = () => { throw new Error('Storage unavailable'); }; });
+  await page.goto('./crystal/?element=Fe&edge=K');
+  await expect(page.getByLabel('Chemical formula')).toHaveValue('Fe');
+  await page.goto('./crystal/?element=H&edge=L3');
+  await expect(page.getByLabel('Absorber', { exact: true })).toHaveValue('Mn');
+  await expect(page.getByRole('status').filter({ hasText: 'H has no L3 edge' })).toBeVisible();
+  await page.goto('./elements/h/');
+  await page.getByRole('link', { name: 'Inspect the absorption background', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'This edge is outside' })).toBeVisible();
+});

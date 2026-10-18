@@ -140,11 +140,15 @@ Executed results for this delivery will be recorded here after the final verific
 
 ## Install as an app and offline use
 
-Browsers that support web apps (Chrome, Edge, and Safari through Add to Dock or Add to Home Screen) can install XAS Lab from the "Install app" link in the footer. `src/app/manifest.ts` describes the app and `scripts/make-sw.mjs` writes `out/sw.js` after every build, stamped with the build id. Pages and route data are fetched network first, so an online visitor always sees the current site; hashed build assets are cached. Only the installed app downloads every asset (about 4.4 MB) for offline use, which suits beamline computers without internet. Install icons are drawn by `scripts/make-share-assets.mjs`.
+Browsers that support web apps (Chrome, Edge, and Safari through Add to Dock or Add to Home Screen) can install XAS Lab from the "Install app" link in the footer. `src/app/manifest.ts` describes the app and `scripts/make-sw.mjs` writes `out/sw.js` after every build, stamped with the build id. Pages and route data are fetched network first, so an online visitor always sees the current site; hashed build assets are cached. The installed app downloads the remaining assets for offline use, which suits beamline computers without internet. The build reports the asset count and download size; this includes the element reference pages' route data. Install icons are drawn by `scripts/make-share-assets.mjs`.
 
 ## Search and sharing assets
 
 Titles, descriptions, canonical URLs, Open Graph and Twitter tags and JSON-LD come from `src/data/site-pages.json` through `src/lib/site.ts`. The build also writes `sitemap.xml`, `robots.txt` and a `404.html`. After changing a page title or description, regenerate the share images and icons with `PLAYWRIGHT_CHANNEL=chrome node scripts/make-share-assets.mjs`. To rebuild the X-ray tables, run `scripts/build-xray-data.py` with the `xraydb` package installed (see `src/data/xray/README.md`).
+
+The `/elements/` index links to 98 static reference pages using lower-case symbols, such as `/elements/fe/` and `/elements/cu/`. `src/lib/elements.ts` reads the XrayDB table at build time; each page lists every tabulated edge, marks the lab's scan range, and links to matching sample presets. These pages have their own titles, descriptions, canonical URLs and breadcrumbs, and share `public/og/elements.png`. Regenerate only this image with `node scripts/make-share-assets.mjs --elements-only`.
+
+Links such as `/crystal/?element=Fe&edge=K` and `/beamline/?element=Cu&edge=L3` reload the lab, validate the symbol and shell against the tables, and set the photon energy to the selected edge within the available range. They retain the current density because the element table contains no density; enter the sample's density before using the thickness planner. Preset links instead load the preset's sourced density through a validated scenario URL. The element references sit outside the eight sidebar modules.
 
 ## Static build and GitHub Pages handoff
 

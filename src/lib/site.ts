@@ -6,6 +6,8 @@ export type SitePage = (typeof site.pages)[number];
 export const SITE_NAME = site.siteName;
 export const SITE_URL = site.siteUrl;
 export const PAGES: SitePage[] = site.pages;
+/** The element pages (/elements/ and /elements/<symbol>/) sit outside the eight modules and share one card. */
+export const ELEMENTS_PAGE = site.elements;
 
 /** Absolute URL with a trailing slash, matching trailingSlash: true. */
 export const pageUrl = (slug: string) => `${SITE_URL}/${slug ? slug + '/' : ''}`;
@@ -17,17 +19,31 @@ export function sitePage(slug: string): SitePage {
   return page;
 }
 
-export function pageMetadata(slug: string): Metadata {
-  const page = sitePage(slug), url = pageUrl(slug);
-  const image = { url: ogImageUrl(slug), width: 1200, height: 630, alt: page.ogAlt };
+interface RouteMeta { path: string; title: string; description: string; ogSlug: string; ogAlt: string; absoluteTitle?: boolean }
+
+function routeMetadata({ path, title, description, ogSlug, ogAlt, absoluteTitle = false }: RouteMeta): Metadata {
+  const url = pageUrl(path);
+  const image = { url: ogImageUrl(ogSlug), width: 1200, height: 630, alt: ogAlt };
   return {
-    title: slug ? page.title : { absolute: page.title },
-    description: page.description,
+    title: absoluteTitle ? { absolute: title } : title,
+    description,
     alternates: { canonical: url },
-    openGraph: { type: 'website', siteName: SITE_NAME, locale: 'en_US', url, title: page.title, description: page.description, images: [image] },
-    twitter: { card: 'summary_large_image', title: page.title, description: page.description, images: [image] },
+    openGraph: { type: 'website', siteName: SITE_NAME, locale: 'en_US', url, title, description, images: [image] },
+    twitter: { card: 'summary_large_image', title, description, images: [image] },
   };
 }
+
+export function pageMetadata(slug: string): Metadata {
+  const page = sitePage(slug);
+  return routeMetadata({ path: slug, title: page.title, description: page.description, ogSlug: slug, ogAlt: page.ogAlt, absoluteTitle: !slug });
+}
+
+/** Metadata for an element page, path such as "elements/fe", with the shared elements card. */
+export function elementsMetadata(path: string, title: string, description: string): Metadata {
+  return routeMetadata({ path, title, description, ogSlug: ELEMENTS_PAGE.slug, ogAlt: ELEMENTS_PAGE.ogAlt });
+}
+
+const webSite = { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: SITE_NAME, url: pageUrl(''), inLanguage: 'en' };
 
 const webApplication = {
   '@type': 'WebApplication',
@@ -44,18 +60,22 @@ const webApplication = {
   inLanguage: 'en',
 };
 
+/** Breadcrumbs from Overview through [name, path] steps. */
+const breadcrumbs = (trail: [string, string][]) => ({
+  '@type': 'BreadcrumbList',
+  itemListElement: [['Overview', ''], ...trail].map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, item: pageUrl(path) })),
+});
+
 /** JSON-LD for one route: WebSite and WebApplication everywhere, BreadcrumbList on module pages. */
 export function pageJsonLd(slug: string) {
-  const graph: object[] = [
-    { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: SITE_NAME, url: pageUrl(''), inLanguage: 'en' },
-    webApplication,
-  ];
-  if (slug) graph.push({
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Overview', item: pageUrl('') },
-      { '@type': 'ListItem', position: 2, name: sitePage(slug).name, item: pageUrl(slug) },
-    ],
-  });
+  const graph: object[] = [webSite, webApplication];
+  if (slug) graph.push(breadcrumbs([[sitePage(slug).name, slug]]));
   return { '@context': 'https://schema.org', '@graph': graph };
+}
+
+/** JSON-LD for the element pages: Overview > Elements, then the element when there is one. */
+export function elementsJsonLd(element?: { name: string; path: string }) {
+  const trail: [string, string][] = [[ELEMENTS_PAGE.name, ELEMENTS_PAGE.slug]];
+  if (element) trail.push([element.name, element.path]);
+  return { '@context': 'https://schema.org', '@graph': [webSite, webApplication, breadcrumbs(trail)] };
 }
