@@ -1,0 +1,122 @@
+/* Beamline twin (/twin/). Every rule is scoped to twin classes, so other pages keep their look. */
+
+.preview-badge {display:inline-block;margin-left:10px;padding:0 8px;border:1px solid rgb(159 163 252/.45);border-radius:var(--r-pill);color:var(--accent-light);font-size:12px;line-height:20px;vertical-align:1px}
+
+/* ---------- Desktop: rails either side of the scene and results ---------- */
+/* The rails span the scene and dock rows; the last row is 1fr so a tall rail stretches it instead of opening a gap under the scene. */
+.twin-page {width:100%;max-width:1440px;margin:0 auto;padding:24px 32px 96px;display:grid;grid-template-columns:272px minmax(0,1fr) 304px;grid-template-rows:auto auto auto 1fr;grid-template-areas:"head head head" "modes modes modes" "left scene right" "left dock right";gap:16px 24px;align-items:start}
+.twin-page.left-hidden {grid-template-columns:minmax(0,1fr) 304px;grid-template-areas:"head head" "modes modes" "scene right" "dock right"}
+.twin-page.right-hidden {grid-template-columns:272px minmax(0,1fr);grid-template-areas:"head head" "modes modes" "left scene" "left dock"}
+.twin-page.left-hidden.right-hidden {grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "modes" "scene" "dock"}
+.twin-head {grid-area:head}
+.twin-modes {grid-area:modes}
+.twin-scene {grid-area:scene}
+.twin-dock {grid-area:dock}
+.twin-left {grid-area:left}
+.twin-right {grid-area:right}
+.twin-page.left-hidden .twin-left,.twin-page.right-hidden .twin-right {display:none}
+/* Enlarged results take the hidden scene's row too. */
+.twin-page.is-enlarged .twin-dock {grid-row-start:scene}
+
+.twin-head {display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px 32px}
+.twin-head h1 {font-size:34px;font-weight:500;letter-spacing:-.02em}
+.twin-head > div:first-child {flex:1 1 560px;min-width:0}
+.twin-head p {margin:8px 0 0;max-width:92ch;font-size:15px}
+.twin-head-actions {display:flex;flex-wrap:wrap;gap:8px}
+.twin-page .button.secondary[aria-pressed] {color:var(--muted)}
+.twin-page .button.secondary[aria-pressed="true"] {background:rgb(159 163 252/.12);border-color:rgb(159 163 252/.5);color:var(--text)}
+
+/* ---------- Mode bar ---------- */
+.twin-modes {display:flex;flex-wrap:wrap;gap:10px 0;padding:4px 0 2px}
+.twin-mode-group {display:flex;flex-direction:column;gap:6px;min-width:0;padding:0 16px;border-left:1px solid var(--hairline)}
+.twin-mode-group:first-child {padding-left:0;border-left:0}
+.twin-mode-group-name {font-size:12px;color:var(--muted);letter-spacing:.02em}
+.twin-mode-buttons {display:flex;flex-wrap:wrap;gap:6px}
+.twin-mode {display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px 6px 6px;border:1px solid var(--hairline);border-radius:var(--r-control);background:transparent;color:var(--text-2);font-size:14px;font-weight:400;white-space:nowrap;transition:background-color .3s var(--ease),border-color .3s var(--ease),color .3s var(--ease)}
+.twin-mode:hover {border-color:var(--control-edge);color:var(--text)}
+.twin-mode kbd {display:inline-grid;place-items:center;width:28px;height:28px;border-radius:4px;background:rgb(255 255 255/.06);color:var(--muted);font:400 14px/1 var(--font-sans)}
+.twin-mode[aria-pressed="true"] {background:rgb(255 255 255/.9);border-color:transparent;color:#000;font-weight:500}
+.twin-mode[aria-pressed="true"] kbd {background:var(--bg);color:var(--accent)}
+
+/* ---------- Scene and results ---------- */
+.twin-scene,.twin-dock {min-width:0;display:flex;flex-direction:column;gap:14px;padding:16px 20px 20px;background:var(--surface-1);border:1px solid var(--hairline);border-radius:var(--r-surface)}
+.twin-scene[hidden] {display:none}
+.twin-section-head {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.twin-section-head h2 {font-size:18px;font-weight:500;letter-spacing:-.01em}
+.twin-scene .beam-legend {margin-top:12px}
+.twin-scene.no-labels .bl-badge,.twin-scene.no-labels .beam-legend li::before {display:none}
+.twin-scene.no-labels .beam-legend li {padding-left:0}
+.twin-scene-wait {display:grid;place-items:center;aspect-ratio:940/312;padding:16px;border:1px solid var(--hairline);border-radius:var(--r-surface);color:var(--muted);font-size:14px;text-align:center}
+.twin-note {max-width:none;margin:0;font-size:13px;color:var(--muted)}
+.twin-dock-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.twin-tabs {display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--hairline)}
+.twin-tabs [role="tab"] {min-height:44px;padding:8px 12px;border:0;background:none;color:var(--muted);font-size:14px;font-weight:400;white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;transition:color .3s var(--ease),box-shadow .3s var(--ease)}
+.twin-tabs [role="tab"]:hover {color:var(--text)}
+.twin-tabs [role="tab"][aria-selected="true"] {color:var(--text);box-shadow:inset 0 -2px 0 var(--accent)}
+.twin-tabpanel {display:flex;flex-direction:column;justify-content:center;gap:8px;min-height:200px;padding:24px;border:1px dashed var(--control-edge);border-radius:10px}
+.twin-page.is-enlarged .twin-tabpanel {min-height:min(560px,60vh)}
+.twin-tabpanel p {margin:0;font-size:15px}
+.twin-tabpanel .twin-empty {font-size:14px;color:var(--muted)}
+
+/* ---------- Rails ---------- */
+.twin-rail {min-width:0;display:flex;flex-direction:column;gap:16px;position:sticky;top:84px;max-height:calc(100vh - 100px);overflow-y:auto;overscroll-behavior:contain;padding:4px 10px 16px;margin:0 -10px;scrollbar-width:thin}
+.twin-rail h2 {font-size:16px;font-weight:500;letter-spacing:0}
+.twin-left p {font-size:15px;line-height:1.65}
+.twin-left .twin-looking-mode {margin-bottom:6px;color:var(--text)}
+.twin-looking-mode span {color:var(--muted)}
+.twin-changed {padding:12px 14px;border-left:2px solid var(--accent);border-radius:0 8px 8px 0;background:rgb(159 163 252/.06)}
+.twin-changed p {margin:6px 0 0;font-size:14px;color:var(--text)}
+.twin-fold {border-top:1px solid var(--hairline)}
+.twin-left .twin-fold {border-top:0}
+.twin-fold-head {margin:0;font-size:15px;font-weight:400;letter-spacing:0}
+.twin-fold-head button {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:8px 0;border:0;background:none;color:var(--text);font:inherit;text-align:left}
+.twin-left .twin-fold-head button {font-size:16px;font-weight:500}
+.twin-fold-head svg {flex:none;color:var(--muted);transition:transform .3s var(--ease)}
+.twin-fold-head button[aria-expanded="true"] svg {transform:rotate(180deg)}
+.twin-fold-body {display:flex;flex-direction:column;gap:12px;padding:4px 0 16px}
+.twin-fold[data-fold="closed"] > .twin-fold-body {display:none}
+.twin-switch {display:grid;grid-template-columns:1fr 1fr;padding:3px;border:1px solid var(--hairline);border-radius:8px}
+.twin-switch button {min-height:40px;border:0;border-radius:var(--r-control);background:none;color:var(--muted);font-size:14px}
+.twin-switch button[aria-pressed="true"] {background:rgb(255 255 255/.9);color:#000;font-weight:500}
+.twin-field {display:grid;gap:6px;font-size:14px;color:var(--text-2)}
+.twin-rows {display:grid;gap:8px;margin:0}
+.twin-rows > div {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:12px;font-size:14px}
+.twin-rows dt {color:var(--muted)}
+.twin-rows dd {margin:0;color:var(--text);overflow-wrap:anywhere}
+.twin-soon {margin:0;font-size:13px;color:var(--muted)}
+
+/* ---------- Shortcuts dialog ---------- */
+.twin-dialog {width:min(560px,calc(100vw - 32px));max-height:min(720px,calc(100dvh - 48px));padding:0;overflow:auto;border:1px solid var(--control-edge);border-radius:var(--r-surface);background:var(--surface-1);color:var(--text);box-shadow:0 24px 80px rgb(0 0 0/.6)}
+.twin-dialog::backdrop {background:rgb(0 0 0/.55)}
+.twin-dialog-body {display:flex;flex-direction:column;gap:12px;padding:20px 24px 24px}
+.twin-dialog-body h2 {font-size:20px;font-weight:500}
+.twin-keys th:first-child {width:96px}
+.twin-keys td,.twin-keys th {padding:8px}
+.twin-keys kbd {display:inline-block;min-width:28px;padding:1px 8px;border:1px solid var(--control-edge);border-radius:4px;background:var(--bg);color:var(--text);font:400 14px/1.5 var(--font-sans);text-align:center}
+
+/* ---------- Phones and narrow windows: one scrolling column ---------- */
+@media (max-width:1149.98px) {
+  .twin-page {display:flex;flex-direction:column;align-items:stretch;gap:16px;padding:16px 24px 64px}
+  .twin-page.left-hidden .twin-left,.twin-page.right-hidden .twin-right {display:flex}
+  .twin-rail-toggle {display:none}
+  .twin-rail {position:static;max-height:none;overflow:visible;padding:0;margin:0}
+  .twin-fold[data-fold="auto"] > .twin-fold-body {display:none}
+  /* scroll-padding matches the side padding, so snapping never pushes the first group name out of view. */
+  .twin-modes {position:sticky;top:70px;z-index:10;flex-wrap:nowrap;gap:0;margin:0 -24px;padding:8px 24px;scroll-padding-inline:24px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;background:rgb(18 18 18/.96);border-bottom:1px solid var(--hairline)}
+  .twin-modes::-webkit-scrollbar {display:none}
+  .twin-mode-group {flex:none;flex-direction:row;align-items:center;gap:8px;padding:0 12px}
+  .twin-mode-buttons {flex-wrap:nowrap}
+  .twin-mode-group-name,.twin-mode {scroll-snap-align:start}
+  .twin-tabs {flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .twin-tabs::-webkit-scrollbar {display:none}
+  .twin-left,.twin-right {padding:4px 16px;background:var(--surface-1);border:1px solid var(--hairline);border-radius:var(--r-surface)}
+  .twin-left {padding-bottom:16px}
+  .twin-right {gap:12px;padding-top:16px}
+}
+@media (max-width:900px) {
+  .twin-page {padding:12px 16px 56px}
+  .twin-modes {top:73px;margin:0 -16px;padding:8px 16px;scroll-padding-inline:16px}
+  .twin-head h1 {font-size:28px}
+  .twin-scene,.twin-dock {padding:14px 14px 16px}
+  .twin-tabpanel {padding:16px}
+}
