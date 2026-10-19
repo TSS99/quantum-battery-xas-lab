@@ -21,6 +21,8 @@ const routes = [
   ['/experiments/', 'Experiments', 'Ready-made examples and saved work'],
   ['/validation/', 'Methods & validation', 'Equations, checks and agreement with xraydb'],
 ] as const;
+// Pages in preview: named in the breadcrumb with a Preview badge, but kept out of the module navigation.
+const previews = [['/twin/', 'Beamline twin', 'Operate a simulated XAS beamline']] as const;
 
 export function Shell({ children, elementNames }: { children: React.ReactNode; elementNames: Record<string, string> }) {
   const pathname = usePathname(), { state, set, notice, canUndo, undoPreset } = useLab();
@@ -63,7 +65,9 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
   useEffect(() => { document.body.style.overflow = mobileMenu ? 'hidden' : ''; }, [mobileMenu]);
 
   // Unknown paths (the 404 page) match no route, so nothing is marked as the current page.
-  const current = routes.find(([href]) => pathname.replace(/\/$/, '') === href.replace(/\/$/, '')) ?? ['', 'Page not found', ''] as const;
+  const matches = ([href]: readonly string[]) => pathname.replace(/\/$/, '') === href.replace(/\/$/, '');
+  const preview = previews.find(matches);
+  const current = routes.find(matches) ?? preview ?? ['', 'Page not found', ''] as const;
   // Element pages sit outside the eight modules: Overview / Elements / Iron.
   const elementPath = /^\/elements(?:\/([a-z]{1,2}))?\/?$/.exec(pathname), elementSlug = elementPath?.[1];
   const elementName = elementSlug && Object.hasOwn(elementNames, elementSlug) ? elementNames[elementSlug] : undefined;
@@ -98,7 +102,7 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
       <main id="main" tabIndex={-1}>
         {home && <LandingHero />}
         <div className="page-bar">
-          <nav aria-label="Breadcrumb"><ol className="breadcrumb"><li><Link href="/" aria-current={home ? 'page' : undefined}>Overview</Link></li>{inElements ? <><li><Link href="/elements/" aria-current={elementName ? undefined : 'page'}>Elements</Link></li>{elementName && <li><Link href={`/elements/${elementSlug}/`} aria-current="page">{elementName}</Link></li>}</> : current[0] === '' ? <li><span aria-current="page">{current[1]}</span></li> : !home && <li><Link href={current[0]} aria-current="page">{current[1]}</Link></li>}</ol></nav>
+          <nav aria-label="Breadcrumb"><ol className="breadcrumb"><li><Link href="/" aria-current={home ? 'page' : undefined}>Overview</Link></li>{inElements ? <><li><Link href="/elements/" aria-current={elementName ? undefined : 'page'}>Elements</Link></li>{elementName && <li><Link href={`/elements/${elementSlug}/`} aria-current="page">{elementName}</Link></li>}</> : current[0] === '' ? <li><span aria-current="page">{current[1]}</span></li> : !home && <li><Link href={current[0]} aria-current="page">{current[1]}</Link>{preview && <span className="preview-badge">Preview</span>}</li>}</ol></nav>
           <div className="topbar-actions"><button className="console-toggle" type="button" aria-haspopup="dialog" aria-expanded={consoleOpen} aria-controls={consoleLoaded ? 'lab-console' : undefined} aria-keyshortcuts="`" title="Open console (`)" onClick={consoleOpen ? closeConsole : openConsole}><span aria-hidden="true">&gt;_</span> Console</button><div className="mode-switch" role="group" aria-label="Explanation level"><button aria-pressed={!state.expert} className={!state.expert ? 'selected' : ''} onClick={() => set({ expert: false })}>Explore</button><button aria-pressed={state.expert} className={state.expert ? 'selected' : ''} onClick={() => set({ expert: true })}>Research</button></div></div>
         </div>
         <nav aria-label="Laboratory modules" className="module-bar"><ul>{routes.map(([href, name]) => <li key={href}><Link href={href} aria-current={current[0] === href ? 'page' : undefined} className={current[0] === href ? 'active' : undefined}>{name}</Link></li>)}</ul></nav>
