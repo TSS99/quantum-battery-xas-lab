@@ -173,3 +173,38 @@ a {color:var(--accent)}
 @media(prefers-reduced-motion:reduce) {
   .module-card:hover {transform:none}
 }
+
+/* ---------- Module showcase and validation cards ---------- */
+.showcase {padding-top:96px}
+.showcase > h2 {text-align:center;font-size:52px;line-height:1.2;font-weight:500;letter-spacing:-.02em;color:var(--text)}
+.showcase-row {align-items:center;min-height:520px;padding:32px 0}
+.showcase-row .module-row-copy {position:static}
+.iso-stage {position:relative;display:grid;place-items:center;height:520px;perspective:1800px;overflow:visible}
+.iso-stack {position:relative;width:min(560px,88%);aspect-ratio:8/5;transform-style:preserve-3d}
+.iso-layer {position:absolute;inset:0;transform-style:preserve-3d}
+.iso-layer img {display:block;width:100%;height:100%;object-fit:cover;border-radius:10px;border:1px solid rgb(255 255 255/.28);box-shadow:inset 0 1px 0 rgb(255 255 255/.35),0 50px 70px -10px rgb(0 0 0/.65),0 8px 20px rgb(0 0 0/.4)}
+.validation-section .validation-cards {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:40px;text-align:left}
+.vcard {display:flex;flex-direction:column;gap:14px;padding:24px;background:#191919;border:1px solid var(--hairline);border-radius:12px}
+.vcard h3 {font-size:24px;line-height:1.3;letter-spacing:-.015em;color:var(--text)}
+.vcard > p {font-size:14px;line-height:1.6;margin:0}
+.vcard-metric {margin-top:6px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:rgb(255 255 255/.5)}
+.vcard-rows {list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.vcard-rows li {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:baseline;margin:0}
+.vname {font-size:14px;color:var(--text);font-weight:300}
+.vvalue {font-size:14px;color:var(--text);text-align:right;white-space:nowrap}
+.vbar {grid-column:1/-1;height:6px;border-radius:3px;background:rgb(255 255 255/.06);overflow:hidden}
+.vbar > span {display:block;height:100%;border-radius:3px;background:rgb(184 184 184/.4)}
+.vbar > .lead {background:linear-gradient(90deg,#3444da,#9fa3fc)}
+.vcard .vcard-note {margin:0;font-size:13px;color:rgb(255 255 255/.5)}
+.vcard .button {margin-top:auto;justify-content:center;width:100%}
+@media(max-width:1150px) {
+  .validation-section .validation-cards {grid-template-columns:minmax(0,1fr)}
+  .iso-stage {height:380px}
+}
+@media(max-width:900px) {
+  .showcase > h2 {font-size:34px}
+  .showcase-row {min-height:0}
+}
+@media(max-width:480px) {
+  .iso-stage {height:300px;overflow:hidden}
+}

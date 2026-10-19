@@ -8,6 +8,8 @@ import { Disclosure, Metric, Panel, Range, TryThis } from './ui';
 import { ActiveSpacePlan } from './active-space';
 import { WorkflowRail } from './workflow';
 import { CtaBand, RevealText, StatementBand } from './landing';
+import { ModuleShowcase, ValidationCards } from './showcase';
+import type { ValidationCard } from '@/lib/validation-cards';
 import { Plot } from './plot';
 import { OrbitalScene } from './orbital-scene';
 import { nominalMnOxidation, scan, edgeEnergy } from '@/lib/xas';
@@ -30,10 +32,10 @@ const moduleInfo: Record<string, [string, string, ReactNode]> = {
   experiments: ['Experiments', 'Open an example or save your current work.', 'Save sample settings and curves. Quantum runs have a separate export.'],
   validation: ['Methods & validation', 'Check the calculations and see where each model applies.', 'Residuals test whether the code is self-consistent. Agreement with a real material needs measured data.'],
 };
-export function Laboratory({ module }: { module: string }) {
+export function Laboratory({ module, validation = [] }: { module: string; validation?: ValidationCard[] }) {
   const { state } = useLab();
   return <div className="page-content">{module !== 'home' && <div className="page-heading"><h1>{moduleInfo[module]?.[0]}</h1><p>{moduleInfo[module]?.[state.expert ? 2 : 1]}</p></div>}
-    {module === 'home' ? <Overview /> : module === 'crystal' ? <Crystal /> : module === 'beamline' ? <Beamline /> : module === 'spectra' ? <SpectraPanel /> : module === 'electronic' ? <Electronic /> : module === 'quantum' ? <QuantumPanel /> : module === 'experiments' ? <ExperimentPanel /> : <ValidationPanel />}
+    {module === 'home' ? <Overview validation={validation} /> : module === 'crystal' ? <Crystal /> : module === 'beamline' ? <Beamline /> : module === 'spectra' ? <SpectraPanel /> : module === 'electronic' ? <Electronic /> : module === 'quantum' ? <QuantumPanel /> : module === 'experiments' ? <ExperimentPanel /> : <ValidationPanel />}
   </div>;
 }
 export function ChemistryControls({ compact = false, guide = true }: { compact?: boolean; guide?: boolean }) {
@@ -46,7 +48,7 @@ export function ChemistryControls({ compact = false, guide = true }: { compact?:
     {guide && <TryThis steps={['sample']} done={state.x === 1} research={<><Tex>{'v_{\\mathrm{Mn}} = 4 - x'}</Tex> assumes <Tex plain>{'\\mathrm{Li^{+}}'}</Tex>, <Tex plain>{'\\mathrm{O^{2-}}'}</Tex> and <Tex plain>{'\\mathrm{Mn^{3+}}/\\mathrm{Mn^{4+}}'}</Tex> compensation. It is a formal oxidation state.</>}>{state.x === 1 ? <>At <Tex plain>{'x'}</Tex> = 1.00, Mn is +3.00 in this model. Each lithium brings one electron.</> : <>Move lithium content to 1.00. Each lithium brings one electron, so Mn moves from +4 toward +3.</>}</TryThis>}
   </div>;
 }
-function Overview() {
+function Overview({ validation }: { validation: ValidationCard[] }) {
   const { state, set } = useLab();
   const curve = useMemo(() => scan(state), [state.x, state.edge, state.shift, state.width, state.whiteLine, state.preEdge, state.oscillation]);
   return <>
@@ -57,11 +59,13 @@ function Overview() {
         {isBattery(state.sample) ? <><h2>Add lithium and watch the edge shift</h2><ChemistryControls compact guide={false} /><Plot ghostKey={String(state.x)+':'+state.shift} edge={edgeEnergy(state)} height={220} series={[{ name: 'Mn teaching model', x: curve.energy_eV, y: curve.mu_cm_inv, color: '#b49cff' }]} cursor={edgeEnergy(state)} /><TryThis done={state.x === 1} research={<><Tex>{`E_0 = \\text{edge} - \\text{shift}\\cdot x = ${edgeEnergy(state).toFixed(2)}\\ \\text{eV}`}</Tex>. This is the battery worked example.</>}>{state.x === 1 ? 'The model edge moved to lower energy as Mn gained electrons.' : 'Move the lithium slider and follow the edge marker.'}</TryThis><p className="muted">These spectra are a teaching model, not measured data.</p></> : <><h2>Your current sample</h2><SampleSummary /><TryThis done={false} research={<>The selected {state.sample.absorber} <Tex plain>{formulaTex(state.sample.edge)}</Tex> edge sets the beamline window.</>}>Open the beamline to scan this sample.</TryThis><Link className="button secondary" href="/beamline/">Open beamline</Link></>}
       </div>
     </section>
+    <ModuleShowcase />
     <section className="landing-section"><RevealText text="Start where you are" /><div className="module-cards">{[
       { href: 'crystal', audience: 'Student', text: 'Learn how an absorption edge works.', expert: false },
       { href: 'quantum', audience: 'Researcher', text: 'Test time evolution against an exact result.', expert: true },
       { href: 'spectra', audience: 'Industry R&D', text: 'Import a spectrum and compare curves.', expert: true },
     ].map(c => <Link key={c.href} href={'/' + c.href + '/'} onClick={() => set({ expert: c.expert })} className="module-card"><h2>{c.audience}</h2><p>{c.text}</p><span className="card-more">Open<span aria-hidden="true"> ›</span></span></Link>)}</div></section>
+    {validation.length > 0 && <ValidationCards cards={validation} />}
     <WorkflowRail/>
     <StatementBand text="Open source, private by design, and checked against the reference tools" />
     <CtaBand />
