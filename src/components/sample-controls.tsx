@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { COMPOUND_PRESETS } from '@/data/compound-presets';
 import { loadXrayData, edgesOf, parseFormula, elementInfo } from '@/lib/xraydata';
-import { BATTERY_PRESET, DEFAULT_SAMPLE, batteryFormula, resolveSample, samplePlan, sampleScan, validateSample, type Sample } from '@/lib/sample';
+import { BATTERY_PRESET, DEFAULT_SAMPLE, batteryFormula, defaultEdge, resolveSample, samplePlan, sampleScan, validateSample, type Sample } from '@/lib/sample';
 import { useLab } from './lab-context';
 import { Num, ScienceText, Tex, Unit, formulaTex } from './tex';
 import { Disclosure, TryThis } from './ui';
@@ -44,8 +44,7 @@ export function SamplePicker({guide=true}:{guide?:boolean}) {
     } catch (e) { setError(e instanceof Error ? e.message : 'Check the sample.'); }
   }
   function pickElement(absorber: string, source = state.sample) {
-    const options = edgesOf(source.formula).filter(e => e.element === absorber);
-    const first = options.find(e => e.edge === 'K' && e.energy_eV > 100 && e.energy_eV < 100000) ?? options.find(e => e.edge === 'L3' && e.energy_eV > 100 && e.energy_eV < 100000) ?? options.find(e => e.energy_eV > 100 && e.energy_eV < 100000) ?? options[options.length - 1];
+    const first = defaultEdge(source.formula, absorber);
     if (first) apply({ ...source, absorber, edge: first.edge });
   }
   return <div className="sample-picker">
