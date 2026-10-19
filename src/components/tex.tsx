@@ -17,7 +17,7 @@ export function unitTex(unit: string) {
       const match = part.match(/^(.+?)(?:\^([+-]?\d+)|([⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+))?$/);
       if (!match) return '';
       const [, base, exponent, superscript] = match;
-      const upright = base.startsWith('μ') ? '\\mu' + (base.length > 1 ? '\\mathrm{' + base.slice(1) + '}' : '') : '\\mathrm{' + base + '}';
+      const upright = base === 'Å' ? '\\mathring{\\mathrm{A}}' : base.startsWith('μ') ? '\\mu' + (base.length > 1 ? '\\mathrm{' + base.slice(1) + '}' : '') : '\\mathrm{' + base + '}';
       const power = exponent ?? (superscript ? [...superscript].map(c => SUPERSCRIPT[c]).join('') : '');
       return upright + (power ? '^{' + power + '}' : '');
     }).join('/');

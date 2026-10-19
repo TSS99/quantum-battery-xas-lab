@@ -26,7 +26,7 @@ The project uses Next.js App Router with static export, React, TypeScript, Motio
 | `/` | Live spectrum demo, three starting paths (student, researcher, industry R&D) and the eight-step research workflow with progress. |
 | `/crystal/` | Sample: any formula and density, presets from water to Pt foil, absorber and edge picker, and the LixMnO2 battery example with its MnO6 model. |
 | `/beamline/` | Scan the photon energy across the chosen edge, plan thickness, compare absorption and transmission, and add seeded count noise in Research mode. |
-| `/spectra/` | Save and overlay curves, import CSV/JSON, normalize, differentiate, estimate edges, score a model against data and export with provenance. |
+| `/spectra/` | Save and overlay curves, import CSV/JSON, normalize, differentiate, estimate edges, run Larch-compatible AUTOBK and xftf EXAFS reduction, score a model against data and export with provenance. |
 | `/electronic/` | Core-to-valence transitions, dipole selection, core holes and an active-space size planner based on recent quantum XAS papers. |
 | `/quantum/` | Kick, evolve and transform: exact and first-order Trotter dynamics in a browser Worker, a loader for your own Pauli-string Hamiltonian, and circuit details. |
 | `/experiments/` | One-click guided experiments with undo, and save or share settings as a link or a file. |
@@ -86,6 +86,7 @@ On import the record is marked imported, with its declared synthetic provenance 
 - The toy quantum Hamiltonian contains displayed Z fields, XX couplings and X terms, with `D=X0`; q0 is the most significant bit. Browser dense diagonalization uses `ml-matrix`. `C(t)=⟨g|D† exp[-i(H-Eg)t]D|g⟩`; eigenstate peaks lie at `En-Eg` and carry `|⟨n|D|g⟩|²`. A possible elastic zero-energy component is retained and labeled.
 - Quantum energies use a toy eV scale and time uses eV⁻¹ with ℏ=1. Multiply time by approximately 0.658212 to express fs. This energy scale has no mapping to the Mn K edge.
 - The positive-sign FFT uses trapezoidal endpoint weights, exponential damping and an optional cosine taper. Broadening is a Lorentzian half width at half maximum. Physical resolution is approximately `2π/T`; zero padding only refines the plotted grid. Signed finite-window artifacts and clipped display diagnostics remain inspectable.
+- EXAFS reduction uses a uniform `k` grid from 0 Å⁻¹ with `kstep = 0.05 Å⁻¹` and `nfft = 2048`. AUTOBK follows xraylarch 2026.3.1 spline knots, low-R minimization and endpoint clamps. xftf follows that release's `kstep / sqrt(pi)` NumPy FFT normalization. The fixture records the exact Larch calls. An uncorrected Fourier-transform `R` coordinate is not a bond length because photoelectron phase shifts move peaks.
 - First-order product-formula evolution is compared on `D|g⟩`. Fidelity need not improve monotonically at every time. Resource counts describe the displayed serial, unoptimized circuit and exclude ground-state preparation, physical excitation, measurement, routing and hardware.
 
 Dense matrix storage scales as O(4ⁿ); a dense eigensolve is roughly O(8ⁿ). The interface caps the system at six qubits. Browser performance depends on the device and numerical settings; no frame-rate or quantum-performance benchmark is claimed.

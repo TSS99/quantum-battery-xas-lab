@@ -12,6 +12,7 @@ import { MAX_SPECTRUM_BYTES, estimateEdge, parseSpectrum, snapshotSpectrum, spec
 import { isBattery } from '@/lib/sample';
 import { DataLoading, SampleSummary, useSampleSpectrum } from './sample-controls';
 import { type XASParams } from '@/lib/xas';
+import { ExafsPanel } from './exafs-panel';
 
 const colors = ['#c4ccd6', '#ffc46b', '#74dcaa', '#ff8a8f', '#9cc5e8', '#d5c6ad'];
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'The operation could not be completed.';
@@ -155,6 +156,7 @@ function SpectraWorkspace({liveCurve}:{liveCurve:Spectrum}) {
         <p className="muted">{view === 'raw' ? <>Shading shows supplied <Tex plain>{'\\pm 1\\sigma'}</Tex> pointwise uncertainty where available; it does not include unspecified systematic errors.</> : view === 'normalized' ? <>Simple first/last <Num>10%</Num> endpoint-window normalization. No polynomial background fit or uncertainty propagation.</> : 'Three-point unequal-grid derivative; endpoints use two points. No smoothing or uncertainty propagation.'} {applyOffset ? <>Displayed <Tex plain>{'E'}</Tex> = raw <Tex plain>{'E'}</Tex> + declared offset. Raw exports are unchanged.</> : 'Calibration offsets are metadata only; raw energy axes are displayed.'}</p>
       </Panel>
       </div><div className="curve-chips" aria-label="Saved curve selection">{allSpectra.map(item=><button key={item.id} className="button secondary small" aria-pressed={selected.id===item.id} onClick={()=>setSelectedId(item.id)}>{item.name}</button>)}</div>
+      <ExafsPanel spectrum={selected} />
       <details className="research-drawer" open={state.expert}><summary>Data tools</summary><div className="drawer-body">
       <Panel title="Selected curve" className="control-panel" eyebrow="Sample and run">
 
@@ -188,7 +190,7 @@ function SpectraWorkspace({liveCurve}:{liveCurve:Spectrum}) {
       </Panel>}
     </div>
     {fit && <Panel title="Fit audit" eyebrow={<>{spectrumLabel(fit.spectrum)} / Raw energy axis</>}><div className="two-col"><Plot series={[{ name: `${spectrumProvenance(fit.spectrum)} · ${fit.spectrum.name}`, label: <>{spectrumProvenance(fit.spectrum)} · {spectrumLabel(fit.spectrum)}</>, color: '#c4ccd6', x: fit.spectrum.energy_eV, y: fit.spectrum.mu_cm_inv, sigma: fit.spectrum.sigma_mu_cm_inv }, { name: 'Battery model fit', color: '#f4c777', x: fit.spectrum.energy_eV, y: fit.result.fitted, dashed: true }]} yLabel="μ (cm⁻¹)" exportName="fit-audit" /><Plot series={[{ name: 'Residual: data − model', label: <>Residual: data <Tex plain>{'-'}</Tex> model</>, color: '#70dfac', x: fit.spectrum.energy_eV, y: fit.result.residuals }]} yLabel="Residual (cm⁻¹)" yTex={'\\text{Residual }(\\mathrm{cm}^{-1})'} exportName="fit-residual" /></div></Panel>}
-    <Disclosure title="Using these records in research and industry"><p>When two spectra differ, the cause can be the material, the measurement or the processing. Repeat scans, source records, calibration status, untouched raw data and residual plots help you tell which. Use them for exploratory comparison. They are not a basis for manufacturing release decisions.</p><p>Background subtraction adds uncertainty beyond counting statistics, which is one reason to keep processing records and to be cautious with shape fits. The lab does not implement the full methods in <a href="https://arxiv.org/abs/physics/0003086" target="_blank" rel="noreferrer">Klementev, XAFS spectroscopy (2000)</a>. The near-edge oscillation here is a synthetic feature. It is not fitted from EXAFS scattering paths.</p></Disclosure>
+    <Disclosure title="Using these records in research and industry"><p>When two spectra differ, the cause can be the material, the measurement or the processing. Repeat scans, source records, calibration status, untouched raw data and residual plots help you tell which. Use them for exploratory comparison. They are not a basis for manufacturing release decisions.</p><p>Background subtraction adds uncertainty beyond counting statistics, which is one reason to keep processing records and to be cautious with shape fits. The lab implements Larch-compatible AUTOBK background removal and xftf, but not every correction and fitting method discussed in <a href="https://arxiv.org/abs/physics/0003086" target="_blank" rel="noreferrer">Klementev, XAFS spectroscopy (2000)</a>. The built-in near-edge oscillation is a synthetic feature. It is not fitted from EXAFS scattering paths.</p></Disclosure>
     </div></details>
   </div>;
 }

@@ -22,11 +22,12 @@ describe('number, unit and formula helpers', () => {
     expect(unitTex('g/cm³')).toBe('\\mathrm{g}/\\mathrm{cm}^{3}');
     expect(unitTex('μm')).toBe('\\mu\\mathrm{m}');
     expect(unitTex('µm')).toBe(unitTex('μm'));
+    expect(unitTex('Å⁻¹')).toBe('\\mathring{\\mathrm{A}}^{-1}');
     expect(unitTex('cm^-1')).toBe(unitTex('cm⁻¹'));
     expect(unitTex('eV^-1')).toBe(unitTex('eV⁻¹'));
     expect(unitTex('%')).toBe('\\%');
     expect(unitTex('eV HWHM')).toBe('\\mathrm{eV}\\ \\mathrm{HWHM}');
-    for (const u of ['°C', 'Å', 'µm', 'cm^-1', 'eV^-1', 'cm⁻¹', 'eV⁻¹', 'photons', 'x', 'cm²', 'g/cm³', 'μm', '%', 'eV HWHM', 'cm⁻¹ eV⁻¹']) expect(() => parses(unitTex(u))).not.toThrow();
+    for (const u of ['°C', 'Å', 'Å⁻¹', 'µm', 'cm^-1', 'eV^-1', 'cm⁻¹', 'eV⁻¹', 'photons', 'x', 'cm²', 'g/cm³', 'μm', '%', 'eV HWHM', 'cm⁻¹ eV⁻¹']) expect(() => parses(unitTex(u))).not.toThrow();
   });
   it('subscripts the counts in chemical formulas but not hydrate coefficients', () => {
     expect(formulaTex('Li0.5MnO2')).toBe('\\mathrm{Li_{0.5}MnO_{2}}');
