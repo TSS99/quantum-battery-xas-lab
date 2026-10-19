@@ -167,7 +167,8 @@ export const ModelEquations = memo(function ModelEquations() {
     <h3>{group.title}</h3>
     {group.equations.map(e => <div key={e.title} className="model-equation">
       <p><strong>{e.title}</strong></p>
-      <div className="equation">{e.lines.map(line => <Tex block key={line}>{line}</Tex>)}</div>
+      {/* Long equations scroll sideways on small screens, so the box takes keyboard focus to be scrollable without a mouse. */}
+      <div className="equation" tabIndex={0} role="group" aria-label={`${e.title}: equation`}>{e.lines.map(line => <Tex block key={line}>{line}</Tex>)}</div>
       <p>{e.symbols}</p>
       {e.note && <p className="muted">{e.note}</p>}
       <p className="muted">{e.sources.length > 1 ? 'Sources: ' : 'Source: '}{e.sources.map((s, i) => <span key={s}>{i > 0 && '; '}<code>{s}</code></span>)}</p>
