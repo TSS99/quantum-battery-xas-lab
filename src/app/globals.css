@@ -315,6 +315,11 @@ progress::-moz-progress-bar {background:var(--accent)}
 .reference-list li {margin:0;padding:16px 0;border-bottom:1px solid var(--hairline)}
 .reference-list li>span {display:block;color:var(--muted);font-size:13px;margin:4px 0}
 .reference-list p {font-size:14px}
+.model-equations {display:flex;flex-direction:column;min-width:0}
+.model-equations h3 {font-size:17px;padding:8px 0}
+.model-equation {display:flex;flex-direction:column;gap:6px;padding:16px 0;border-bottom:1px solid var(--hairline);min-width:0}
+.model-equation p {margin:0}
+.model-equation .equation {padding:4px 0;max-width:100%;overflow-x:auto}
 .source-list {margin:0}
 .source-list li {padding-bottom:8px}
 
