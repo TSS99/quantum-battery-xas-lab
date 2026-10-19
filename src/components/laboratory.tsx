@@ -18,6 +18,7 @@ const SpectraPanel = dynamic(() => import('./spectra-panel').then(m => m.Spectra
 const QuantumPanel = dynamic(() => import('./quantum-panel').then(m => m.QuantumPanel));
 const ExperimentPanel = dynamic(() => import('./research-panels').then(m => m.ExperimentPanel));
 const ValidationPanel = dynamic(() => import('./research-panels').then(m => m.ValidationPanel));
+const SamplePrepPanel = dynamic(() => import('./sample-prep-scene').then(m => m.SamplePrepPanel));
 const AtomicScene = dynamic(() => import('./atomic-scene'), { ssr: false, loading: () => <div className="atom-stage loading-stage">Loading the coordination model…</div> });
 
 const moduleInfo: Record<string, [string, string, ReactNode]> = {
@@ -68,6 +69,7 @@ function Crystal() {
   return <><div className={battery ? 'sample-layout' : 'sample-layout general-sample'}>
     <Panel title="Choose your sample"><SamplePicker guide={!battery} /></Panel>
     {battery && <Panel className="scene-panel" title="Battery worked example"><ChemistryControls /><AtomicScene /><p className="muted"><Tex plain>{'\\mathrm{MnO_6}'}</Tex> is one Mn and its six oxygen neighbors, cut from a solid. Real crystals distort; this shape stays fixed.</p></Panel>}
+    <SamplePrepPanel />
   </div><div className="toolbar"><Link className="button" href="/beamline/">Continue to the beamline</Link><Link className="text-link" href="/electronic/">How core excitation works</Link><Link className="text-link" href="/elements/">Edge energies of every element</Link></div>
     <details className="research-drawer" open={state.expert}><summary>Sample assumptions</summary><div className="drawer-body"><p>Formula and density set the tabulated atomic background. Structure, bonding and oxidation can change the real near-edge spectrum.</p>{battery && <p>The <Tex plain>{'\\mathrm{Li}_x\\mathrm{MnO_2}'}</Tex> example assumes Mn carries all the charge. Oxygen redox, defects and phase changes are outside this model.</p>}<p>The anchor papers simulate the oxygen K-edge of an O-centred <Tex plain>{'\\mathrm{Li_4Mn_2O}'}</Tex> cluster from <Tex plain>{'\\mathrm{Li_2MnO_3}'}</Tex>. The <Tex plain>{'\\mathrm{MnO_6}'}</Tex> sketch and Mn teaching curve here are separate examples. <Link href="/validation/">Read the research references</Link>.</p></div></details>
   </>;
