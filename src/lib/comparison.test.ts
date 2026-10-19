@@ -28,4 +28,15 @@ describe('explicit-window spectral scores', () => {
     expect(() => compareSpectra(r, t, 100, [0, 40])).toThrow('overlapping');
     expect(() => compareSpectra(r, t, NaN, [0, 40])).toThrow('Shift');
   });
+  it('endpoint-normalizes both curves when one is in cm^-1 and the other is normalized', () => {
+    const x = Array.from({ length: 20 }, (_, i) => i), step = x.map(v => (v > 9 ? 1 : 0));
+    const absolute = curve(x, step.map(v => 30 + 70 * v)), normalized = { ...curve(x, step), quantity: 'normalized' as const };
+    const mixed = compareSpectra(absolute, normalized, 0, [0, 19]);
+    expect(mixed.endpointNormalized).toBe(true);
+    expect(mixed.valueUnit).toBe('dimensionless');
+    expect(mixed.rmse).toBeCloseTo(0, 12);
+    const same = compareSpectra(absolute, absolute, 0, [0, 19]);
+    expect(same.endpointNormalized).toBe(false);
+    expect(same.valueUnit).toBe('cm^-1');
+  });
 });

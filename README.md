@@ -26,7 +26,7 @@ The project uses Next.js App Router with static export, React, TypeScript, Motio
 | `/` | Live spectrum demo, three starting paths (student, researcher, industry R&D) and the eight-step research workflow with progress. |
 | `/crystal/` | Sample: any formula and density, presets from water to Pt foil, absorber and edge picker, and the LixMnO2 battery example with its MnO6 model. |
 | `/beamline/` | Scan the photon energy across the chosen edge, plan thickness, compare absorption and transmission, and add seeded count noise in Research mode. |
-| `/spectra/` | Save and overlay curves, import CSV/JSON, normalize, differentiate, estimate edges, score a model against data and export with provenance. |
+| `/spectra/` | Save and overlay curves, import CSV/JSON, normalize, differentiate, estimate edges, score a model against data and export with provenance. Measured data turns raw beamline files (XDI or column text) into calibrated, merged and normalized spectra. |
 | `/electronic/` | Core-to-valence transitions, dipole selection, core holes and an active-space size planner based on recent quantum XAS papers. |
 | `/quantum/` | Kick, evolve and transform: exact and first-order Trotter dynamics in a browser Worker, a loader for your own Pauli-string Hamiltonian, and circuit details. |
 | `/experiments/` | One-click guided experiments with undo, and save or share settings as a link or a file. |
@@ -75,7 +75,20 @@ JSON accepts unit-bearing arrays and optional metadata; the app's exported versi
 }
 ```
 
-On import the record is marked imported, with its declared synthetic provenance retained. `mu_cm_inv` means an **absolute linear absorption coefficient** in cm⁻¹. Dimensionless `ln(I0/It)`, normalized absorption and arbitrary fluorescence intensity must not be relabeled as `mu_cm_inv`. Convert a valid transmission optical depth using independently known thickness before importing. This simple format is not a full XDI adapter.
+On import the record is marked imported, with its declared synthetic provenance retained. `mu_cm_inv` means an **absolute linear absorption coefficient** in cm⁻¹. Dimensionless `ln(I0/It)`, normalized absorption and arbitrary fluorescence intensity must not be relabeled as `mu_cm_inv`. Convert a valid transmission optical depth using independently known thickness before importing. Normalized curves saved from Measured data are dimensionless and use their own names: `energy_eV,mu_norm` or `energy_eV,mu_flat` in CSV, `"units": {"energy": "eV", "mu": "normalized"}` (or `"flattened"`) with a `mu_norm` (or `mu_flat`) array in JSON, without `sigma_mu_cm_inv`. Raw beamline files go through Measured data, below.
+
+## Measured data (beamline files to normalized spectra)
+
+The Measured data panel in the Spectra studio does the Athena-style reduction in the browser. Files never leave the device.
+
+1. **Import** XDI 1.0 or generic column text (comment lines starting with `#`, `;`, `%`, `*`, `!` or `$`, then columns), several files at once, up to 5 MB and 20,000 rows each. Columns are proposed from their names (energy, I0, It, Iref, fluorescence channels; a channel whose median is below 1 % of the strongest one is treated as dead) and can be changed. Files with the same column labels share one mapping.
+2. **mu(E)**: transmission `ln(I0/It)`, fluorescence `(sum of channels)/I0`, reference foil `ln(It/Iref)`. Rows with undefined values (zero or negative counts) or repeated energies are removed and counted; rows are sorted by energy.
+3. **Calibration**: the foil E0 of each scan is Larch `find_e0` (derivative maximum, a grid point); the shift to the tabulated XrayDB edge is added to that scan's sample energies and shown per scan.
+4. **Merge**: Larch `merge_groups` (first scan's grid, cubic by default), with the scan-to-scan standard deviation shown in edge-step units. It is not stored as an uncertainty.
+5. **Normalization**: Larch `pre_edge` with editable `e0`, `pre1`, `pre2`, `norm1`, `norm2`, `nnorm`, `nvict` and `step`; the fit ranges, pre-edge line and post-edge curve are drawn on mu(E), with normalized and flattened views.
+6. **Save** the normalized or flattened curve to the saved curves (dimensionless, with the processing record in its notes), or download the processing record (JSON) and an xraylarch script that repeats the same steps.
+
+The algorithms in `src/lib/xas-reduction.ts` are ports of xraylarch 2026.3.1; `src/lib/beamline-files.ts` reads the files and `src/lib/measured-data.ts` connects the steps. Heavy work runs in `src/workers/reduction.worker.ts`. `scripts/make-xas-reduction-fixtures.py` writes synthetic example files (`src/data/xas-reduction/examples.json`; model curves plus Poisson noise, not measurements) and the values xraylarch computes from them (`larch-reference.json`, with versions and exact calls). Regenerate both with a Python that has xraylarch and xraydb: `python -I scripts/make-xas-reduction-fixtures.py`. The unit tests agree with Larch to the 12-digit rounding of the fixtures: E0 and the fit ranges exactly, normalized values within about 1e-11. AUTOBK, Fourier transforms, LCF and PCA are not implemented here.
 
 ## Model equations and numerical conventions
 
@@ -177,13 +190,13 @@ This delivery does not initialize Git, create a repository, push changes or alte
 src/app/             Static routes and application styling
 src/components/      Laboratory screens, state, plots and atomic scene
 src/lib/             Validated science engines, imports and numerical tests
-src/workers/         Quantum simulation and illustrative fitting
+src/workers/         Quantum simulation, illustrative fitting and measured-data processing
 science/             Optional independent SciPy model, tests and API
 docs/                Research guide and scientific review
 tests/               Browser interaction tests
 .github/workflows/   Static Pages build and deployment
 ```
 
-See [design_spec.md](design_spec.md) for architecture and [MASTER_PROMPT.md](MASTER_PROMPT.md) for the reusable implementation brief. Priority extensions are real XDI/Larch/FEFF adapters, calibration corrections as explicit processing steps, propagated systematic uncertainty, synchronized electrochemical data, licensed reference datasets, user-supplied Hamiltonians and independent convergence studies. Authentication, team audit trails, laboratory integrations and production qualification require additional work.
+See [design_spec.md](design_spec.md) for architecture and [MASTER_PROMPT.md](MASTER_PROMPT.md) for the reusable implementation brief. Priority extensions are Athena/Larch project and FEFF adapters, calibration corrections as explicit processing steps, propagated systematic uncertainty, synchronized electrochemical data, licensed reference datasets, user-supplied Hamiltonians and independent convergence studies. Authentication, team audit trails, laboratory integrations and production qualification require additional work.
 
 Research motivations include [Fomichev et al. (2024)](https://arxiv.org/abs/2405.11015), [Fomichev et al. (2025)](https://arxiv.org/abs/2506.15784), [Helmich-Paris (2020)](https://arxiv.org/abs/2004.05845), [Mazin and Sokolov (2023)](https://arxiv.org/abs/2305.03836), [Huang and Evangelista (2022)](https://arxiv.org/abs/2212.04369) and [Klementev (2000)](https://arxiv.org/abs/physics/0003086). The research guide explains what each source supports and which methods are not implemented here.
