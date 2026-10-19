@@ -5,5 +5,6 @@ import { defineConfig } from 'vitest/config';
 // The alias mirrors tsconfig "paths" so component tests can import modules that use "@/".
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  test: { include: ['src/**/*.test.ts'] },
+  // Rendering all 98 element pages takes about 4 s locally; CI runners are slower than the default 5 s limit allows.
+  test: { include: ['src/**/*.test.ts'], testTimeout: 30_000 },
 });
