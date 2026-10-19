@@ -1,6 +1,6 @@
 import { parseFormula, edgesOf, mu, recommendThickness, recommendMode, type XrayEdge } from './xraydata';
 import { modelSpectrum } from './xas-general';
-import { mu as batteryMu } from './xas';
+import { mu as batteryMu, SYNTHETIC_DISCLOSURE } from './xas';
 import type { LabState } from './scenario';
 import type { Spectrum } from './spectra';
 
@@ -57,7 +57,7 @@ export function sampleScan(state: LabState, model = false): Spectrum {
   if (!model || !window.inRange) return base;
   if (isBattery(sample) && sample.absorber === 'Mn' && sample.edge === 'K') {
     const curve = { energy_eV, mu_cm_inv: energy_eV.map(e => batteryMu(e, state)) };
-    return { ...base, ...curve, name: 'Battery teaching model', provenance: 'synthetic', parameters: { x: state.x, edge: state.edge, shift: state.shift, width: state.width, whiteLine: state.whiteLine, preEdge: state.preEdge, oscillation: state.oscillation }, source: 'Adjustable battery teaching model' };
+    return { ...base, ...curve, name: 'Battery teaching model', provenance: 'synthetic', parameters: { x: state.x, edge: state.edge, shift: state.shift, width: state.width, whiteLine: state.whiteLine, preEdge: state.preEdge, oscillation: state.oscillation }, source: 'Adjustable battery teaching model', notes: SYNTHETIC_DISCLOSURE + ' This curve is independent of the tabulated background and sample density.' };
   }
   const curve = modelSpectrum({ ...sample, start_eV: window.start, end_eV: window.end, step_eV: (window.end - window.start) / 500, edgeShift_eV: state.shift - 3 });
   return { ...base, energy_eV: curve.energy_eV, mu_cm_inv: curve.mu_cm_inv, provenance: 'synthetic', name: base.name + ' · near-edge model', source: curve.provenance, notes: curve.disclosure };

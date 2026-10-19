@@ -205,6 +205,16 @@ describe('transmission sample planning', () => {
     expect(water.reason).toMatch(/electron yield/);
     expect(recommendThickness('H2O', 'O', 'K', 0.997).notes.join(' ')).toMatch(/Soft X-ray edge/);
   });
+
+  it('does not claim a sub-micrometre transmission path for a soft-edge gas sample', () => {
+    const plan = recommendThickness('N2', 'N', 'K', 0.001145);
+    expect(plan.thickness_um).toBeGreaterThan(300);
+    expect(plan.thickness_um).toBeLessThan(350);
+    expect(plan.achievedEdgeStep).toBeCloseTo(1, 10);
+    expect(plan.notes.join(' ')).toContain('at the supplied density');
+    expect(recommendMode('N2', 'N', 'K').reason).not.toContain('sub-micrometre');
+    expect(recommendMode('N2', 'N', 'K').reason).toContain('sample density, path length');
+  });
 });
 
 describe('compound presets', () => {

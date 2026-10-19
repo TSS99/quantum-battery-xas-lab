@@ -4,7 +4,7 @@ XAS Lab is a browser laboratory for X-ray absorption spectroscopy (XAS) of any m
 
 **Live:** [tss99.github.io/quantum-battery-xas-lab](https://tss99.github.io/quantum-battery-xas-lab/), deployed by the GitHub Actions workflow on every push to `main`.
 
-**Scientific boundary:** absorption backgrounds and edge jumps come from tabulated isolated-atom cross sections (XrayDB, Elam, Ravel and Sieber 2002, CC0), covering hydrogen to californium from 100 eV to 100 keV. They contain no chemical shifts, XANES or EXAFS fine structure. Near-edge shapes on top of them are adjustable models, not predictions. Quantum results are exact only for the displayed 1 to 6 qubit Hamiltonian. Imported spectra remain user supplied and unverified. The app does not predict material-specific spectra, establish battery performance, run quantum hardware or demonstrate quantum advantage.
+**Scientific boundary:** absorption backgrounds and edge jumps come from tabulated isolated-atom cross sections (XrayDB, Elam, Ravel and Sieber 2002, CC0), covering hydrogen to californium from 100 eV to 100 keV. They contain no chemical shifts, XANES or EXAFS fine structure. Optional near-edge curves are adjustable models, not predictions. The battery teaching curve is independent of the tabulated background. Quantum results are exact only for the displayed 1 to 6 qubit Hamiltonian. Imported spectra remain user supplied and unverified. The app does not predict material-specific spectra, establish battery performance, run quantum hardware or demonstrate quantum advantage.
 
 ## Quick start
 
@@ -17,7 +17,7 @@ npm run dev
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The complete browser application, including the quantum solver and spectrum fitting, runs without Python, accounts or API keys. Dependency installation requires a network connection; scientific calculations run on the user's device.
 
-The project uses Next.js App Router with static export, React, TypeScript, Motion, Three.js/react-three-fiber, KaTeX, SVG charts and Web Workers. Equations, symbols, units and formulas are typeset with KaTeX during the static build, and every digit uses KaTeX's Computer Modern font. The beamline and experiment drawings are SVG scenes built from one shared kit (`src/components/scene-kit.tsx`); the beamline's crystal angle, counts and fluorescence follow the live settings. The lockfile records the JavaScript dependency versions used for installation. The application supports keyboard controls, responsive layouts, reduced motion and a non-WebGL atomic fallback.
+The project uses Next.js App Router with static export, React, TypeScript, Motion, Three.js/react-three-fiber, KaTeX, SVG charts and Web Workers. Equations, symbols, units and formulas are typeset with KaTeX during the static build, and every digit uses KaTeX's Computer Modern font. The beamline and experiment drawings are SVG scenes built from one shared kit (`src/components/scene-kit.tsx`); the beamline's numeric Bragg angle and expected counts follow the live settings. The drawn angle is constrained for legibility, and fluorescence is schematic. The lockfile records the JavaScript dependency versions used for installation. The application supports keyboard controls, responsive layouts, reduced motion and a non-WebGL atomic fallback.
 
 ## The eight modules
 
@@ -80,7 +80,7 @@ On import the record is marked imported, with its declared synthetic provenance 
 ## Model equations and numerical conventions
 
 - Idealized Li_xMnO2 assumes Li⁺, O²⁻ and Mn-only charge compensation: `v_Mn = 4-x`. The nominal Mn³⁺ fraction is x only under a Mn³⁺/Mn⁴⁺ mixture. MnO6 represents a local coordination motif with shared oxygen; changing x does not determine a unique local geometry.
-- The positive synthetic absorption curve combines a logistic edge and illustrative pre-edge, white-line and damped oscillation terms. The editable loading-to-edge shift is not an experimentally calibrated prediction. The 6530–6580 eV range is an illustration near the Mn K edge.
+- The battery synthetic absorption curve combines a logistic edge and illustrative pre-edge, white-line and damped oscillation terms, independently of the tabulated background and density. The general near-edge model instead broadens the tabulated step with an arctan and adds illustrative features. The editable loading-to-edge shift is not an experimentally calibrated prediction. The 6530–6580 eV range is an illustration near the Mn K edge.
 - `d_cm = d_um × 10^-4`, `T = exp(-mu*d_cm)`, `It_expected = I0*T`, and `mu*d_cm = ln(I0/It)`. Photon animation is qualitative. Independently sampled Poisson monitors can yield apparent `It > I0`; zero-count log estimates are undefined and are not silently repaired.
 - Electric-dipole Mn K-edge excitation accesses p character from 1s (`Δl = ±1`). Hybridization and quadrupole contributions can give weak d-like pre-edge intensity. The orbital diagram is not a many-body eigensystem.
 - The toy quantum Hamiltonian contains displayed Z fields, XX couplings and X terms, with `D=X0`; q0 is the most significant bit. Browser dense diagonalization uses `ml-matrix`. `C(t)=⟨g|D† exp[-i(H-Eg)t]D|g⟩`; eigenstate peaks lie at `En-Eg` and carry `|⟨n|D|g⟩|²`. A possible elastic zero-energy component is retained and labeled.
