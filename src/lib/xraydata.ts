@@ -464,8 +464,8 @@ export function edgeStep(formula: string | Composition, absorber: string, edge: 
 // ---------------------------------------------------------------- sample planning
 
 const TARGET_EDGE_STEP = 1;      // Δμ·d for transmission
-const MAX_TOTAL_ABSORPTION = 3;  // μ_total·d just above the edge
-const SOFT_EDGE_eV = 2000;       // soft-edge mode-advice threshold
+export const MAX_TOTAL_ABSORPTION = 3;  // μ_total·d just above the edge
+export const SOFT_EDGE_eV = 2000;       // heuristic soft-edge boundary, not a thickness limit
 const MIN_TRANSMISSION_STEP = 0.3;
 const SELF_ABSORPTION_RATIO = 0.1;
 /** 13 mm pellet die. */
@@ -529,7 +529,7 @@ export function recommendThickness(formula: string | Composition, absorber: stri
 
   if (limitedBy === 'total-absorption') notes.push(`Edge step limited to ${fmt(achievedEdgeStep)} because total absorption reaches ${MAX_TOTAL_ABSORPTION} first: the absorber is dilute in this matrix, so fluorescence is likely better.`);
   if (diluent && totalAbsorptionWithDiluent > MAX_TOTAL_ABSORPTION) notes.push(`The ${fmt(diluent.mass_mg)} mg of ${diluent.material} raises total absorption to ${fmt(totalAbsorptionWithDiluent)}; use less diluent or a larger pellet.`);
-  if (step.edgeEnergy_eV < SOFT_EDGE_eV) notes.push(`Soft X-ray edge: the calculated layer is ${fmt(thickness_um)} µm thick at the supplied density. Check the sample support and beamline's soft X-ray transmission capability.`);
+  if (step.edgeEnergy_eV < SOFT_EDGE_eV) notes.push(`Soft X-ray edge: the calculated path length is ${fmt(thickness_um)} µm at the supplied density. Check sample and window transmission; fluorescence or electron yield may also be suitable.`);
   notes.push('Thickness assumes a uniform, fully dense layer; for powders the mass per area is what matters, and pinholes or large particles distort the edge step.');
 
   return {
@@ -554,7 +554,8 @@ export interface ModeRecommendation {
 /**
  * Transmission when an edge step of at least 0.3 is reachable with μ_total·d ≤ 3 on a hard
  * X-ray edge; otherwise fluorescence. Soft edges (< 2 keV) always get fluorescence (or
- * electron yield). Rules of thumb only; the beamline's detectors decide in the end.
+ * electron yield). This is a heuristic, not a density-independent thickness limit;
+ * sample geometry and the beamline's detectors decide in the end.
  */
 export function recommendMode(formula: string | Composition, absorber: string, edge: string): ModeRecommendation {
   const step = edgeStep(formula, absorber, edge, 1);
@@ -569,7 +570,7 @@ export function recommendMode(formula: string | Composition, absorber: string, e
   let reason: string;
   if (step.edgeEnergy_eV < SOFT_EDGE_eV) {
     mode = 'fluorescence';
-    reason = `Soft X-ray edge (${fmt(step.edgeEnergy_eV)} eV): check sample thickness, windows and the beamline's available detection modes.${lowYield}${selfAbsorption}`;
+    reason = `Soft X-ray edge (${fmt(step.edgeEnergy_eV)} eV): transmission depends on sample density, path length and window transmission.${lowYield}${selfAbsorption}`;
   } else if (achievableEdgeStep >= MIN_TRANSMISSION_STEP) {
     mode = 'transmission';
     reason = `An edge step of ${fmt(achievableEdgeStep)} is reachable while total absorption stays at or below ${MAX_TOTAL_ABSORPTION} (absorber ${percent} % by mass).`;

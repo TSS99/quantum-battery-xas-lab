@@ -304,6 +304,14 @@ progress::-moz-progress-bar {background:var(--accent)}
 .preset-card:hover {background:var(--surface-1);text-decoration:none}
 .exp-art {display:block;width:100%;height:auto;aspect-ratio:350/198;border-radius:10px;border:1px solid var(--hairline);background:radial-gradient(90% 75% at 55% 30%,#1c2733,#0d1217 75%)}
 .scene-defs {position:absolute;width:0;height:0;overflow:hidden}
+.prep-panel {grid-column:1/-1;container-type:inline-size}
+.prep-steps {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 16px;max-width:960px;margin:0;padding:0;list-style:none;counter-reset:prep}
+.prep-steps li {margin:0;font-size:13px;line-height:1.5;color:var(--muted);counter-increment:prep}
+.prep-steps strong {display:flex;align-items:center;gap:8px;margin:10px 0 4px;color:var(--text);font-weight:600;font-size:14px}
+.prep-panel .nowrap,.prep-panel .nowrap .katex {white-space:nowrap}
+.prep-steps strong::before {content:counter(prep);display:grid;place-items:center;flex:none;width:20px;height:20px;border:1.4px solid var(--accent);border-radius:50%;color:var(--accent);font:600 11px var(--font-sans)}
+.prep-art {display:block;width:100%;height:auto;aspect-ratio:4/3;border-radius:10px;border:1px solid var(--hairline);background:radial-gradient(90% 75% at 55% 30%,#1c2733,#0d1217 75%)}
+@container (max-width:640px) {.prep-steps {grid-template-columns:repeat(2,minmax(0,1fr))}}
 .preset-card h2 {font-size:20px;color:var(--accent)}
 .preset-card p {font-size:14px}
 .check-results {display:flex;flex-direction:column;gap:8px;font-size:14px}
@@ -315,6 +323,11 @@ progress::-moz-progress-bar {background:var(--accent)}
 .reference-list li {margin:0;padding:16px 0;border-bottom:1px solid var(--hairline)}
 .reference-list li>span {display:block;color:var(--muted);font-size:13px;margin:4px 0}
 .reference-list p {font-size:14px}
+.model-equations {display:flex;flex-direction:column;min-width:0}
+.model-equations h3 {font-size:17px;padding:8px 0}
+.model-equation {display:flex;flex-direction:column;gap:6px;padding:16px 0;border-bottom:1px solid var(--hairline);min-width:0}
+.model-equation p {margin:0}
+.model-equation .equation {padding:4px 0;max-width:100%;overflow-x:auto}
 .source-list {margin:0}
 .source-list li {padding-bottom:8px}
 
