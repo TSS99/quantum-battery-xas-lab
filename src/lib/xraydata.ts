@@ -464,8 +464,8 @@ export function edgeStep(formula: string | Composition, absorber: string, edge: 
 // ---------------------------------------------------------------- sample planning
 
 const TARGET_EDGE_STEP = 1;      // Δμ·d for transmission
-const MAX_TOTAL_ABSORPTION = 3;  // μ_total·d just above the edge
-const SOFT_EDGE_eV = 2000;       // heuristic soft-edge boundary, not a thickness limit
+export const MAX_TOTAL_ABSORPTION = 3;  // μ_total·d just above the edge
+export const SOFT_EDGE_eV = 2000;       // heuristic soft-edge boundary, not a thickness limit
 const MIN_TRANSMISSION_STEP = 0.3;
 const SELF_ABSORPTION_RATIO = 0.1;
 /** 13 mm pellet die. */
