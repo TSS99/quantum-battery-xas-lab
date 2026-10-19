@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Chevron } from './chevron';
 
 const ease = [0.2, 0.7, 0.2, 1] as const;
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 /** Words rise and fade in one after another; with reduced motion they simply appear. */
 export function RevealText({ text, as = 'h2', className, inView = true, delay = 0, id }: { text: string; as?: 'h1' | 'h2' | 'p'; className?: string; inView?: boolean; delay?: number; id?: string }) {
@@ -45,8 +46,21 @@ function DuskScene() {
 
 export function LandingHero() {
   return <section className="landing-hero" aria-labelledby="landing-title">
-    <motion.div className="hero-bg" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.8, ease }}><DuskScene /></motion.div>
-    <motion.div className="hero-grain" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} aria-hidden="true" />
+    <motion.div className="hero-bg" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.8, ease }}>
+      <DuskScene />
+      <img
+        className="hero-image"
+        src={`${basePath}/images/hero-synchrotron-dusk.webp`}
+        srcSet={`${basePath}/images/hero-synchrotron-dusk-960.webp 960w, ${basePath}/images/hero-synchrotron-dusk.webp 1920w`}
+        sizes="100vw"
+        width="1920"
+        height="1080"
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+      />
+    </motion.div>
+    <motion.div className="hero-grain" initial={{ opacity: 0 }} animate={{ opacity: .24 }} transition={{ duration: 1 }} aria-hidden="true" />
     <div className="hero-content">
       <RevealText as="h1" id="landing-title" text="The X-ray absorption lab that runs in your browser" inView={false} delay={.3} className="hero-title" />
       <motion.p className="hero-sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .8, delay: .9 }}>Plan samples for any material, follow the beam through a real beamline, process and fit spectra, and see the quantum workflow behind XAS.</motion.p>
