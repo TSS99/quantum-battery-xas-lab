@@ -43,6 +43,16 @@ describe('general sample integration', () => {
     expect(imported.provenance).toBe('imported');
     expect(imported.declaredProvenance).toBe('tabulated');
   });
+  it('describes the independent battery model accurately in exported metadata', () => {
+    const model = sampleScan(DEFAULT_STATE, true);
+    const denser = sampleScan({ ...DEFAULT_STATE, sample: { ...DEFAULT_STATE.sample, density: 8.6 } }, true);
+    expect(denser.mu_cm_inv).toEqual(model.mu_cm_inv);
+    const exported = parseSpectrum(spectrumToJSON(model), 'battery.json');
+    expect(exported.declaredProvenance).toBe('synthetic');
+    expect(exported.notes).toContain('independent of the tabulated background and sample density');
+    expect(exported.notes).not.toContain('Total attenuation includes scattering');
+    expect(sampleScan(DEFAULT_STATE).notes).toContain('Total attenuation includes scattering');
+  });
   it('keeps out-of-range edges inspectable without extrapolating absorption', () => {
     const hydrogen = { formula: 'H2', density: .0001, absorber: 'H', edge: 'K', preset: null };
     expect(resolveSample(hydrogen).inRange).toBe(false);
