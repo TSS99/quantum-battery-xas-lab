@@ -207,7 +207,15 @@ export function allowedOrders(crystal: Crystal): readonly number[] {
   return [...crystalTable(crystal)[3]];
 }
 
-/** Bilinear interpolation in grazing angle and ln(photon energy), as generated. */
+/**
+ * Bilinear interpolation in grazing angle and ln(photon energy), as generated.
+ *
+ * Accurate to about 0.3% on the stored angles, which run from 1.0 to 6.0 mrad in 0.25 mrad
+ * steps.  Between two stored angles it is only a rough guide: the total-reflection cutoff
+ * energy scales as 1/angle, so it moves by 4 to 25% from one row to the next, and linear
+ * interpolation across that shift is wrong by tens of percent near the cutoff.  Keep mirror
+ * angles on the 0.25 mrad grid, or compute reflectivity from the optical constants.
+ */
 export function mirrorReflectivity(coating: MirrorCoating, angle_mrad: number,
                                    energy_eV: number): number {
   const table = data().mirrors.get(coating);

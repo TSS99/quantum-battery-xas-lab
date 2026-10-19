@@ -38,6 +38,10 @@ DETUNE_SPAN = 400.0
 DETUNE_POINTS = 400_001
 MIRRORS = {"Si": 2.33, "Rh": 12.41, "Pt": 21.45, "Ni": 8.90}
 MIRROR_ANGLES_MRAD = [1.0 + 0.25 * i for i in range(21)]
+# The edge refinement below is spaced 1e-4 in relative energy.  Four significant digits
+# would collapse those knots into duplicates and silently undo the refinement, so the
+# mirror energy axis keeps eight.  Reflectivity values stay at four.
+MIRROR_ENERGY_DIGITS = 8
 INITIAL_LEVELS = ("K", "L1", "L2", "L3", "M1", "M2", "M3", "M4", "M5")
 GAS_FORMULAS = {
     "N2": "N2",
@@ -209,7 +213,10 @@ def compress_mirror_grid(coating: str, density: float):
         selected.update(int(i) for i in near)
 
     log_e = np.log(energies)
-    tolerance = 0.004  # leaves margin for four-significant-digit storage
+    # The validation below measures the rounded, stored table directly, so this selection
+    # tolerance no longer needs a margin for storage rounding.  0.006 on the candidate grid
+    # keeps the measured error under the 1% requirement away from the coating edges.
+    tolerance = 0.006
     while True:
         knots = np.asarray(sorted(selected), dtype=int)
         worst_error = -1.0
@@ -236,34 +243,46 @@ def compress_mirror_grid(coating: str, density: float):
             raise RuntimeError(f"mirror grid for {coating} did not converge: {worst_error:g}")
 
     indices = np.asarray(sorted(selected), dtype=int)
-    stored_energies = energies[indices]
-    stored = actual[:, indices]
+    # Round here, so the validation below measures the table that actually ships.
+    stored_energies = np.asarray([sig(v, MIRROR_ENERGY_DIGITS) for v in energies[indices]])
+    stored = np.asarray([[sig(v) for v in row] for row in actual[:, indices]])
+    if np.any(np.diff(stored_energies) <= 0):
+        raise RuntimeError(f"mirror energy knots for {coating} are not strictly increasing "
+                           f"after rounding to {MIRROR_ENERGY_DIGITS} significant digits")
 
-    # Independent energies are offset from the compression candidates.  The requested
-    # 0.25 mrad angle rows are validated directly; angle interpolation is a separate
-    # bilinear approximation in the TypeScript loader.
-    validation_e = np.geomspace(2_000.37, 59_987.0, 1600)
+    # Independent energies are offset from the compression candidates, and dense around
+    # every coating edge, where the refined knots are.  The requested 0.25 mrad angle rows
+    # are validated directly; angle interpolation is a separate bilinear approximation in
+    # the TypeScript loader and is not covered by these numbers.
+    validation_e = list(np.geomspace(2_000.37, 59_987.0, 1600))
+    for edge in xraydb.xray_edges(coating).values():
+        energy = float(edge.energy)
+        if 2_000 < energy < 60_000:
+            validation_e.extend(energy * (1 + np.linspace(-0.01, 0.01, 2001) + 5.3e-7))
+    validation_e = np.asarray(sorted(set(validation_e)), dtype=float)
     truth = mirror_values(coating, density, validation_e)
     interpolated_rows = []
     for row in stored:
         interpolated_rows.append(np.interp(np.log(validation_e), np.log(stored_energies), row))
     estimate = np.asarray(interpolated_rows)
     relative = np.abs(estimate - truth) / np.maximum(truth, 0.02)
+    _, worst_column = np.unravel_index(int(np.argmax(relative)), relative.shape)
     max_error = float(np.max(relative))
     p99_error = float(np.percentile(relative, 99))
-    return stored_energies, stored, max_error, p99_error
+    return stored_energies, stored, max_error, p99_error, float(validation_e[worst_column])
 
 
 def build_mirrors():
     tables = []
     accuracy = {}
     for coating, density in MIRRORS.items():
-        energies, values, maximum, p99 = compress_mirror_grid(coating, density)
-        tables.append([coating, density, [sig(v) for v in energies],
-                       [[sig(angle), [sig(v) for v in row]]
+        energies, values, maximum, p99, worst_energy = compress_mirror_grid(coating, density)
+        tables.append([coating, density, [float(v) for v in energies],
+                       [[sig(angle), [float(v) for v in row]]
                         for angle, row in zip(MIRROR_ANGLES_MRAD, values)]])
         accuracy[coating] = {"maxRelativeOrScaledAbsoluteError": sig(maximum, 6),
                              "p99RelativeOrScaledAbsoluteError": sig(p99, 6),
+                             "worstEnergy_eV": sig(worst_energy, 8),
                              "energyKnots": len(energies)}
     return tables, accuracy
 
@@ -350,6 +369,16 @@ def cutoff_energy(coating: str, density: float, angle_mrad: float, target: float
     return float(energies[index] * 1.000137)
 
 
+def mirror_fixture_row(coating: str, density: float, angle_mrad: float, energy_eV: float) -> dict:
+    reflectivity = float(mirror_values(coating, density, np.asarray([energy_eV]), [angle_mrad])[0, 0])
+    around = mirror_values(coating, density, np.asarray([0.98 * energy_eV, 1.02 * energy_eV]), [angle_mrad])[0]
+    positive = np.maximum(around, 1e-300)
+    rapid = float(max(positive) / min(positive)) > 2.0
+    return {"coating": coating, "angle_mrad": angle_mrad,
+            "energy_eV": sig(energy_eV, 12), "reflectivity": sig(reflectivity, 12),
+            "rapidWithin2Percent": bool(rapid)}
+
+
 def mirror_fixtures():
     rows = []
     # Energies are deliberately off the stored grid. Angles are stored 0.25 mrad rows;
@@ -359,13 +388,19 @@ def mirror_fixtures():
     for coating, density in MIRRORS.items():
         for angle, target in zip(angles, targets):
             energy = cutoff_energy(coating, density, angle, target)
-            reflectivity = float(mirror_values(coating, density, np.asarray([energy]), [angle])[0, 0])
-            around = mirror_values(coating, density, np.asarray([0.98 * energy, 1.02 * energy]), [angle])[0]
-            positive = np.maximum(around, 1e-300)
-            rapid = float(max(positive) / min(positive)) > 2.0
-            rows.append({"coating": coating, "angle_mrad": angle,
-                         "energy_eV": sig(energy, 12), "reflectivity": sig(reflectivity, 12),
-                         "rapidWithin2Percent": bool(rapid)})
+            rows.append(mirror_fixture_row(coating, density, angle, energy))
+    # The reflectivity step at a coating absorption edge is where an energy grid is most
+    # easily too coarse, so each edge is pinned just below and just above, at the steepest
+    # stored angle that still reflects (R >= 0.2) there.
+    for coating, density in MIRRORS.items():
+        for edge in sorted(float(item.energy) for item in xraydb.xray_edges(coating).values()):
+            if not 2_000 < edge < 60_000:
+                continue
+            at_edge = mirror_values(coating, density, np.asarray([edge]))[:, 0]
+            usable = [angle for angle, value in zip(MIRROR_ANGLES_MRAD, at_edge) if value >= 0.2]
+            angle = max(usable) if usable else MIRROR_ANGLES_MRAD[0]
+            for offset in (-5.5e-4, 5.5e-4):
+                rows.append(mirror_fixture_row(coating, density, angle, edge * (1 + offset)))
     return rows
 
 
@@ -483,6 +518,7 @@ def main():
             "Detune row: [fundamental_energy_eV, zero_offset_acceptance_relative_to_fundamental, throughput_at_each_detune_fraction].",
             "Double-crystal throughput is the autocorrelation integral of an extended-range single-crystal Darwin-Prins intensity curve. The +/-400-width range retains the 1/x^2 tails that xraydb's returned dtheta/intensity arrays truncate. Each order is normalized to its own zero-offset integral. The acceptance column compares that integral with order 1 at the same fundamental energy.",
             "Mirror interpolation is linear in reflectivity along angle and ln(energy). Accuracy uses relative error for R >= 0.02 and absolute error scaled to R=0.02 below it.",
+            "mirrorAccuracy is measured on the stored 0.25 mrad angle rows only. The total-reflection cutoff energy scales as 1/angle, so it moves by 4 to 25 percent between neighbouring rows: linear interpolation between them is wrong by tens of percent near the cutoff. Use the stored angles, or compute reflectivity from the optical constants.",
             "Emission intensity is relative within the initial vacancy level. Lines below 0.01 of that level's strongest line are omitted.",
             "Gas density uses rho=P*M/(R*T) at P=101325 Pa and T=295 K. Formula is the input for src/lib/xraydata.ts cross sections.",
         ],
@@ -532,7 +568,8 @@ def main():
     print(f"wrote {FIXTURES_OUT.relative_to(ROOT)} ({FIXTURES_OUT.stat().st_size} bytes)")
     for coating, result in mirror_accuracy.items():
         print(f"{coating}: {result['energyKnots']} energy knots, validation max "
-              f"{100*result['maxRelativeOrScaledAbsoluteError']:.3f}%, p99 "
+              f"{100*result['maxRelativeOrScaledAbsoluteError']:.3f}% at "
+              f"{result['worstEnergy_eV']:.1f} eV, p99 "
               f"{100*result['p99RelativeOrScaledAbsoluteError']:.3f}%")
     if compressed > 150 * 1024:
         raise SystemExit(f"optics.json exceeds the 150 KiB gzip budget: {compressed} bytes")
