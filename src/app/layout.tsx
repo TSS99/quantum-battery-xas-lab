@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { Outfit } from 'next/font/google';
 import { LabProvider } from '@/components/lab-context';
 import { Shell } from '@/components/shell';
 import { SITE_NAME, SITE_URL, sitePage } from '@/lib/site';
 import { ELEMENT_NAMES } from '@/lib/elements';
 import 'katex/dist/katex.min.css';
 import './globals.css';
+import './design.css';
 
 // Digits everywhere use KaTeX's Computer Modern, so numbers match the typeset equations.
 const texDigits = localFont({
@@ -19,6 +21,9 @@ const texDigits = localFont({
   adjustFontFallback: false,
 });
 
+// Interface type: Outfit, self-hosted at build time so the installed app works offline.
+const outfit = Outfit({ subsets: ['latin'], weight: ['300', '400', '500'], variable: '--font-outfit', display: 'swap' });
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL + '/'),
   title: { default: sitePage('').title, template: `%s | ${SITE_NAME}` },
@@ -26,7 +31,7 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   authors: [{ name: 'TSS99', url: 'https://github.com/TSS99' }],
 };
-export const viewport: Viewport = { themeColor: '#0f141a', colorScheme: 'dark' };
+export const viewport: Viewport = { themeColor: '#121212', colorScheme: 'dark' };
 export default function RootLayout({children}: {children: React.ReactNode}) {
-  return <html lang="en" className={texDigits.variable}><body><LabProvider><Shell elementNames={ELEMENT_NAMES}>{children}</Shell></LabProvider></body></html>;
+  return <html lang="en" className={`${texDigits.variable} ${outfit.variable}`}><body><LabProvider><Shell elementNames={ELEMENT_NAMES}>{children}</Shell></LabProvider></body></html>;
 }

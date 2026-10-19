@@ -1,17 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
-
 :root {
   color-scheme: dark;
-  --bg:#0f141a; --surface-1:#151c24; --surface-2:#1c2530;
-  --hairline:rgb(255 255 255/.07); --control-edge:#6b7a8c;
-  --text:#eef2f6; --text-2:#c4ccd6; --muted:#98a4b3;
-  --accent:#7fd8cf; --accent-ink:#06201d;
-  --photon:#ffc46b; --mn:#b49cff; --ox:#ff8a8f; --li:#74dcaa; --error:#ff8080;
-  --r-surface:16px; --r-control:10px; --r-pill:999px;
-  --ring:0 0 0 2px var(--bg),0 0 0 4px var(--accent),0 0 0 8px rgb(127 216 207/.15);
-  --font-sans:var(--font-tex-digits),'IBM Plex Sans',system-ui,sans-serif; --font-display:var(--font-tex-digits),'Space Grotesk',system-ui,sans-serif;
+  /* XAS Lab design system (see the xas-lab-design skill): near-black, white text at 90/75/60%, periwinkle accent. */
+  --bg:#121212; --surface-1:#191919; --surface-2:#202020;
+  --hairline:rgb(255 255 255/.1); --control-edge:rgb(255 255 255/.22);
+  --text:rgb(255 255 255/.9); --text-2:rgb(255 255 255/.75); --muted:rgb(255 255 255/.6);
+  --accent:#9fa3fc; --accent-light:#caccfd; --accent-ink:#121212; --accent-deep:#3444da;
+  --photon:#ffc46b; --mn:#b49cff; --ox:#ff8a8f; --li:#74dcaa; --error:#ff8a8a;
+  --r-surface:12px; --r-control:6px; --r-pill:999px;
+  --ring:0 0 0 2px var(--bg),0 0 0 4px var(--accent),0 0 0 8px rgb(159 163 252/.18);
+  --font-sans:var(--font-tex-digits),var(--font-outfit),Arial,sans-serif; --font-display:var(--font-tex-digits),var(--font-outfit),Arial,sans-serif;
   --font-tex:KaTeX_Main,'Latin Modern Roman','Times New Roman',serif;
   --font-mono:ui-monospace,Consolas,monospace;
+  --ease:cubic-bezier(.2,.7,.2,1);
   --panel:var(--surface-1); --line:var(--hairline); --line-2:var(--control-edge);
   --cyan:var(--accent); --violet:var(--mn); --amber:var(--photon); --red:var(--error); --green:var(--li);
 }

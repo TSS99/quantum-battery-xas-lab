@@ -7,6 +7,7 @@ import { Num, Tex, Unit, formulaTex } from './tex';
 import { Disclosure, Metric, Panel, Range, TryThis } from './ui';
 import { ActiveSpacePlan } from './active-space';
 import { WorkflowRail } from './workflow';
+import { CtaBand, RevealText, StatementBand } from './landing';
 import { Plot } from './plot';
 import { OrbitalScene } from './orbital-scene';
 import { nominalMnOxidation, scan, edgeEnergy } from '@/lib/xas';
@@ -49,17 +50,21 @@ function Overview() {
   const { state, set } = useLab();
   const curve = useMemo(() => scan(state), [state.x, state.edge, state.shift, state.width, state.whiteLine, state.preEdge, state.oscillation]);
   return <>
-    <section className="hero">
-      <div className="hero-copy"><h1>Explore X-ray absorption</h1><p>{state.expert ? 'Plan a sample, compare spectra or test time-domain quantum calculations.' : 'Choose a material and see how it absorbs X-rays.'}</p><Link className="button" href="/crystal/">Start with a sample</Link><p className="muted">Formulas can use any element from H to Cf. Calculations stay in your browser.</p></div>
+    <section className="landing-intro"><RevealText text="One lab for the whole XAS workflow" /><p>From choosing a sample to reading the spectrum, with tabulated data, live calculations and plain explanations for students, researchers and industry teams.</p></section>
+    <section className="module-row">
+      <div className="module-row-copy"><Link className="module-row-title" href="/crystal/">Live example<span className="row-chev" aria-hidden="true">›</span></Link><p>{state.expert ? 'Plan a sample, compare spectra or test time-domain quantum calculations.' : 'Choose a material and see how it absorbs X-rays. Formulas can use any element from H to Cf.'}</p></div>
       <div className="hero-demo">
         {isBattery(state.sample) ? <><h2>Add lithium and watch the edge shift</h2><ChemistryControls compact guide={false} /><Plot ghostKey={String(state.x)+':'+state.shift} edge={edgeEnergy(state)} height={220} series={[{ name: 'Mn teaching model', x: curve.energy_eV, y: curve.mu_cm_inv, color: '#b49cff' }]} cursor={edgeEnergy(state)} /><TryThis done={state.x === 1} research={<><Tex>{`E_0 = \\text{edge} - \\text{shift}\\cdot x = ${edgeEnergy(state).toFixed(2)}\\ \\text{eV}`}</Tex>. This is the battery worked example.</>}>{state.x === 1 ? 'The model edge moved to lower energy as Mn gained electrons.' : 'Move the lithium slider and follow the edge marker.'}</TryThis><p className="muted">These spectra are a teaching model, not measured data.</p></> : <><h2>Your current sample</h2><SampleSummary /><TryThis done={false} research={<>The selected {state.sample.absorber} <Tex plain>{formulaTex(state.sample.edge)}</Tex> edge sets the beamline window.</>}>Open the beamline to scan this sample.</TryThis><Link className="button secondary" href="/beamline/">Open beamline</Link></>}
       </div>
     </section>
-    <WorkflowRail/><div className="module-cards">{[
+    <section className="landing-section"><RevealText text="Start where you are" /><div className="module-cards">{[
       { href: 'crystal', audience: 'Student', text: 'Learn how an absorption edge works.', expert: false },
       { href: 'quantum', audience: 'Researcher', text: 'Test time evolution against an exact result.', expert: true },
       { href: 'spectra', audience: 'Industry R&D', text: 'Import a spectrum and compare curves.', expert: true },
-    ].map(c => <Link key={c.href} href={'/' + c.href + '/'} onClick={() => set({ expert: c.expert })} className="module-card"><h2>{c.audience}</h2><p>{c.text}</p></Link>)}</div>
+    ].map(c => <Link key={c.href} href={'/' + c.href + '/'} onClick={() => set({ expert: c.expert })} className="module-card"><h2>{c.audience}</h2><p>{c.text}</p><span className="card-more">Open<span aria-hidden="true"> ›</span></span></Link>)}</div></section>
+    <WorkflowRail/>
+    <StatementBand text="Open source, private by design, and checked against the reference tools" />
+    <CtaBand />
   </>;
 }
 function Crystal() {
