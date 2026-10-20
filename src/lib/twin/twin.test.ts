@@ -6,7 +6,7 @@ import { beamAtSample } from './beam';
 import { PROFILE_PRESETS, SAMPLE_PRESETS, resolveSamplePreset, thicknessFor } from './presets';
 import { muComponents } from './sample';
 import { defaultPlan } from './scan';
-import { DEFAULT_STATE, applyCommand, energyRange, fromSession, status, toSession, validateState } from './twin';
+import { DEFAULT_STATE, applyCommand, energyRange, fromSession, rockingCurve, status, toSession, validateState, xrfSpectrum } from './twin';
 import { handleScanRequest, type ScanMessage } from './worker';
 import { seededRandom } from '../xas';
 import type { ScanPlan } from './types';
@@ -72,6 +72,33 @@ describe('status', () => {
     const s = status(shifted);
     expect(s.energy_eV).toBe(9000);
     expect(s.trueEnergy_eV).toBe(8998);
+  });
+});
+
+describe('XRF spectrum and rocking curve', () => {
+  it('a thick Cu foil saturates a close detector completely', () => {
+    expect(xrfSpectrum(DEFAULT_STATE)!.deadFraction).toBeGreaterThan(0.99);
+  });
+
+  it('with the detector 3 m back the Cu foil spectrum peaks at Cu Ka (8040 eV) inside the window', () => {
+    const far = { ...DEFAULT_STATE, profile: { ...DEFAULT_STATE.profile, sdd: { ...DEFAULT_STATE.profile.sdd, distance_mm: 3000 } } };
+    const mca = xrfSpectrum(far)!;
+    expect(mca.deadFraction).toBeLessThan(0.9);
+    let top = 0;
+    for (let i = 1; i < mca.counts.length; i++) if (mca.counts[i] > mca.counts[top]) top = i;
+    expect(Math.abs(mca.energies_eV[top] - 8040)).toBeLessThan(60);
+    const [lo, hi] = DEFAULT_STATE.profile.sdd.roi_eV;
+    expect(mca.energies_eV[top]).toBeGreaterThan(lo);
+    expect(mca.energies_eV[top]).toBeLessThan(hi);
+    expect(mca.roiCounts).toBeGreaterThan(0);
+  });
+
+  it('the third-harmonic rocking curve is narrower than the fundamental', () => {
+    const curve = rockingCurve(DEFAULT_STATE);
+    const centre = curve.detune.findIndex(d => Math.abs(d) < 1e-9);
+    expect(curve.fundamental[centre]).toBeCloseTo(1, 9);
+    const at = curve.detune.findIndex(d => d >= 0.5);
+    expect(curve.third[at] / curve.third[centre]).toBeLessThan(curve.fundamental[at] / curve.fundamental[centre]);
   });
 });
 

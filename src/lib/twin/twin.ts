@@ -5,15 +5,15 @@
  *
  * Everything here needs `loadXrayData()` and `loadOptics()` first, except the plain state edits.
  */
-import { edgeEnergy, foilTransmission, runScan, simulatePoint } from './acquire';
+import { edgeEnergy, emissionScale, foilTransmission, runScan, simulatePoint } from './acquire';
 import { beamAtSample } from './beam';
 import { chamberReadout, type ChamberReadout } from './chambers';
 import { sampleDoseRate } from './damage';
 import { harmonicRejectionAngle } from './mirrors';
-import { backscatterEnergy_eV, monoTrueEnergy_eV } from './mono';
+import { backscatterEnergy_eV, detuneFactor, monoTrueEnergy_eV } from './mono';
 import { PROFILE_PRESETS, profilePreset, resolveSamplePreset, samplePreset } from './presets';
 import { fluorescence, fluorescenceLine, muComponents, transmission } from './sample';
-import { efficiency, filterTransmission, solidAngle } from './sdd';
+import { efficiency, filterTransmission, mcaSpectrum, solidAngle, type McaSpectrum } from './sdd';
 import { TWIN_MODES, type Acquisition, type ChamberConfig, type Crystal, type TwinMode, type TwinState } from './types';
 
 export { runScan, simulatePoint };
@@ -134,6 +134,39 @@ export function status(state: TwinState): TwinStatus {
 
   out.doseRate_Gy_per_s = sampleDoseRate(sample, sampleFlux, trueEnergy_eV, profile.beam_um).surfaceRate_Gy_per_s;
   return out;
+}
+
+/**
+ * The fluorescence detector's energy spectrum at the current energy over one dwell, from the
+ * sample's emission lines (sdd.ts). Elastic and Compton scatter are left out: separating them
+ * needs coherent and incoherent cross sections the shipped tables do not carry.
+ */
+export function xrfSpectrum(state: TwinState, dwell_s = 1): McaSpectrum | null {
+  const s = status(state);
+  if (s.sampleFlux === null) return null;
+  const { sample, environment, profile } = state;
+  let fl;
+  try {
+    const line = fluorescenceLine(sample.absorber, sample.edge);
+    fl = fluorescence(sample, environment, s.trueEnergy_eV, {
+      solidAngleFraction: solidAngle(profile.sdd).fraction, efficiency: efficiency(line.energy_eV).total, exit_deg: profile.sdd.exitAngle_deg,
+    });
+  } catch { return null; }
+  return mcaSpectrum({ sdd: profile.sdd, sample, energy_eV: s.trueEnergy_eV, fluorescenceScale: emissionScale(sample, profile.sdd, s.sampleFlux, fl), dwell_s });
+}
+
+/**
+ * The rocking curve: throughput of the second crystal against its detune (in fundamental
+ * rocking-curve widths), for the fundamental and the third harmonic, from the tabulated Darwin curves.
+ */
+export function rockingCurve(state: TwinState, points = 121): { detune: number[]; fundamental: number[]; third: number[] } {
+  const { crystal } = state.profile.mono, E = monoTrueEnergy_eV(state.energy_eV, state.profile.mono.offset_eV);
+  const detune = Array.from({ length: points }, (_, i) => -1.5 + 3 * i / (points - 1));
+  return {
+    detune,
+    fundamental: detune.map(d => detuneFactor(crystal, 1, E, Math.abs(d))),
+    third: detune.map(d => detuneFactor(crystal, 3, E, Math.abs(d))),
+  };
 }
 
 // ---------------------------------------------------------------- commands

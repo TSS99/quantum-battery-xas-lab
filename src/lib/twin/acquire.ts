@@ -21,7 +21,7 @@ import { beamAtSample } from './beam';
 import { AMPLIFIER_NOISE_V, ELEMENTARY_CHARGE, READOUT_DEFAULTS, chamberReadout } from './chambers';
 import { sampleDoseRate } from './damage';
 import { dSpacing_A, monoTrueEnergy_eV } from './mono';
-import { fluorescence, fluorescenceLine, transmission, type FluorescenceLine } from './sample';
+import { fluorescence, fluorescenceLine, transmission, type FluorescenceLine, type SampleFluorescence } from './sample';
 import { planPoints } from './scan';
 import { deadTime, deadTimeLoss, efficiency, filterTransmission, productionLines, solidAngle } from './sdd';
 import type { Acquisition, ChamberConfig, EnvironmentConfig, PointResult, Provenance, ReferenceFoil, SampleConfig, ScanPlan, TwinState } from './types';
@@ -118,6 +118,21 @@ const chamberOf = (state: TwinState, id: ChamberConfig['id']) => {
   return config;
 };
 
+/**
+ * The `fluorescenceScale` of sdd.ts `mcaSpectrum`: photons on the sample times the incoming
+ * window transmission, the solid-angle fraction and rho d / sin(phi), reduced by the
+ * self-absorption factor of the detected line, which every other line shares here (a teaching
+ * simplification).
+ */
+export function emissionScale(sample: SampleConfig, sdd: TwinState['profile']['sdd'], onSample: number,
+                              fl: Pick<SampleFluorescence, 'components' | 'muTotalOut_cm_inv' | 'windowTransmissionIn'>): number {
+  const sinIn = Math.sin(sample.incidence_deg * Math.PI / 180), sinOut = Math.sin(sdd.exitAngle_deg * Math.PI / 180);
+  const thickness_cm = sample.thickness_um * 1e-4;
+  const depth = (fl.components.total_cm_inv / sinIn + fl.muTotalOut_cm_inv / sinOut) * thickness_cm;
+  const selfAbsorption = depth > 1e-12 ? -Math.expm1(-depth) / depth : 1;
+  return onSample * fl.windowTransmissionIn * solidAngle(sdd).fraction * sample.density * thickness_cm / sinIn * selfAbsorption;
+}
+
 function detectedLine(sample: SampleConfig): FluorescenceLine | null {
   try { return fluorescenceLine(sample.absorber, sample.edge); } catch { return null; }
 }
@@ -173,12 +188,7 @@ export function simulatePoint(state: TwinState, reading_eV: number, random: Rand
     roiRate += onSample * fl.ratio;
     // Harmonics add to the window (they excite the absorber below its edge) but next to nothing to the input rate.
     if (order.order !== 1) continue;
-    // The other lines share the self-absorption of the detected one (a teaching simplification), at the same geometry.
-    const sinIn = Math.sin(sample.incidence_deg * Math.PI / 180), sinOut = Math.sin(sdd.exitAngle_deg * Math.PI / 180);
-    const thickness_cm = sample.thickness_um * 1e-4;
-    const depth = (fl.components.total_cm_inv / sinIn + fl.muTotalOut_cm_inv / sinOut) * thickness_cm;
-    const selfAbsorption = depth > 1e-12 ? -Math.expm1(-depth) / depth : 1;
-    const scale = onSample * fl.windowTransmissionIn * fraction * sample.density * thickness_cm / sinIn * selfAbsorption;
+    const scale = emissionScale(sample, sdd, onSample, fl);
     for (const emitted of productionLines(sample.formula, energy_eV)) {
       if (emitted.element === line.element && emitted.edge === line.edge && emitted.line.startsWith(line.group)) continue;
       otherRate += scale * emitted.crossSection_cm2_g * filterTransmission(sdd, emitted.energy_eV) * efficiency(emitted.energy_eV).total;

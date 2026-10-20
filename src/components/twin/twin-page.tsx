@@ -58,7 +58,7 @@ function TwinLayout() {
     <header className="twin-head">
       <div>
         <h1>Beamline twin</h1>
-        <p>Run a simulated XAS beamline in the browser: pick a measurement mode, set the energy and see what each detector records. In this preview the layout and controls work; the source, optics and detector models are being connected one at a time.</p>
+        <p>Run a simulated XAS beamline in the browser: pick a measurement mode, set the energy, press Acquire and watch the spectrum build from what each detector records. In this preview the instrument models, scans and downloads work; the full control set, the physics cards and the training scenarios come next.</p>
       </div>
       <div className="twin-head-actions">
         <button type="button" className="button secondary small twin-rail-toggle" aria-pressed={!view.leftHidden} aria-keyshortcuts="[" onClick={() => dispatch({ type: 'rail', side: 'left' })}>Explanation</button>

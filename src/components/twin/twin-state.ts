@@ -25,13 +25,15 @@ export interface TwinView {
   change: string | null;
   /** False until the URL hash has been read after hydration, so the hash is not overwritten with defaults. */
   hashRead: boolean;
+  /** Counts Acquire presses (button or I); the results dock starts a scan each time it rises. */
+  acquireRequest: number;
 }
 
 export interface TwinStore { twin: TwinState; view: TwinView }
 
 export const INITIAL_STORE: TwinStore = {
   twin: DEFAULT_TWIN,
-  view: { labels: true, enlarged: false, leftHidden: false, rightHidden: false, tab: 'mu', change: null, hashRead: false },
+  view: { labels: true, enlarged: false, leftHidden: false, rightHidden: false, tab: 'mu', change: null, hashRead: false, acquireRequest: 0 },
 };
 
 export type TwinAction =
@@ -154,7 +156,7 @@ export function twinReducer(store: TwinStore, action: TwinAction): TwinStore {
       return note(view.rightHidden ? 'Controls shown.' : 'Controls hidden. Press ] to show them again.', { rightHidden: !view.rightHidden });
     }
     case 'tab': return { twin, view: { ...view, tab: action.tab } };
-    case 'acquire': return note('Acquire pressed. Nothing was recorded: the scan engine is not connected yet.');
+    case 'acquire': return note('Acquiring one scan with the current settings.', { acquireRequest: view.acquireRequest + 1 });
     case 'hash': return {
       twin: { ...twin, mode: action.mode ?? twin.mode, seed: action.seed ?? twin.seed },
       view: { ...view, hashRead: true },

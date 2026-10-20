@@ -78,7 +78,9 @@ describe('reducer', () => {
   });
   it('changes tab, and Acquire says honestly that nothing was recorded', () => {
     expect(run({ type: 'tab', tab: 'chik' }).view.tab).toBe('chik');
-    expect(run({ type: 'acquire' }).view.change).toMatch(/Nothing was recorded/);
+    const acquired = run({ type: 'acquire' });
+    expect(acquired.view.change).toMatch(/Acquiring one scan/);
+    expect(acquired.view.acquireRequest).toBe(1);
   });
   it('takes mode and seed from the hash and marks the hash as read', () => {
     const s = run({ type: 'hash', mode: 'damage', seed: 42 });
