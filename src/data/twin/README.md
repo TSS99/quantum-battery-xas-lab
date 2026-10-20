@@ -82,3 +82,91 @@ From the repository root, use the pinned environment supplied for this project:
 ```
 
 The first script prints the uncompressed and gzip sizes plus the measured mirror errors; the other two print the file size and the case count. Neither contains timestamps or randomness. Two consecutive runs with the same XrayDB, SciPy and NumPy versions must produce byte-identical files.
+
+## FEFF scattering paths
+
+`feff/index.json` lists eleven structure models, their absorber edges, XrayDB edge energies in eV and retained path counts. Each `feff/<id>.json` contains the cited crystal, admission checks and paths for every inequivalent absorber orbit. `feff/manifest.json` records file hashes, byte counts, package versions, the FEFF executable hash, calculation settings and the twenty-four explicitly dropped targets. These are calculated EXAFS paths, not measured reference spectra.
+
+The generator uses Larch's `feff6l` and `feffpath` reader. It builds periodic clusters of radius \(7\ \mathring{\mathrm A}\), with the central absorber at the origin, `RMAX 6.0`, `HOLE 1 1.0` for K edges and `HOLE 4 1.0` for L₃ edges. There is no `CRITERIA` or `NLEG` override. Each element has one noncentral potential; oxidation states, magnetic ordering and site-dependent ionic potentials are not assigned. The FEFF input is deterministic and its hash is recorded for each site.
+
+The seven FEFF columns `k`, `real_phc`, `mag_feff`, `pha_feff`, `red_fact`, `lam` and `rep` remain on the native nonuniform grid, currently forty-nine points from \(0\) to \(20\ \mathring{\mathrm A}^{-1}\). Path values are rounded to five significant digits. `reff`, `lam` and geometry coordinates are in \(\mathring{\mathrm A}\), `k` and `rep` in \(\mathring{\mathrm A}^{-1}\), phases in radians, `mag_feff` in \(\mathring{\mathrm A}\), and `red_fact` is dimensionless. Geometry includes the absorber once, followed by the scattering vertices; closing the final leg back to the absorber gives total length \(2r_{\mathrm{eff}}\). `degen` is FEFF's path degeneracy within one absorber environment. The additional site weight is its crystallographic multiplicity divided by the total absorber multiplicity.
+
+### Structure sources and admission checks
+
+Inputs are hand-entered from publications and their deposited supplementary data. No ICSD rows are used. The exact cell parameters, fractional coordinates, origin settings and Wyckoff positions are in `scripts/twin/structures.py` and repeated in each material JSON. Published density and nearest-neighbour values are stored independently of the calculated checks, each with its own citation and locator. Published crystallographic densities are transcription checks, not independent measurements of sample porosity or stoichiometry.
+
+| Model | Space group and cell convention | Primary cell and position source |
+| --- | --- | --- |
+| Cu | \(Fm\overline3m\), 225 | Straumanis and Yu, *Acta Cryst.* A25, 676-682 (1969), [DOI](https://doi.org/10.1107/S0567739469001549) |
+| Fe, bcc | \(Im\overline3m\), 229 | von Batchelder and Raeuchle, *Acta Cryst.* 7, 464 (1954), [DOI](https://doi.org/10.1107/S0365110X54001466) |
+| Ni | \(Fm\overline3m\), 225 | von Batchelder and Raeuchle (1954), [DOI](https://doi.org/10.1107/S0365110X54001466) |
+| Pt, L₃ | \(Fm\overline3m\), 225 | Arblaster, *Platinum Metals Rev.* 41, 12-21 (1997), [DOI](https://doi.org/10.1595/003214097X4111221), selected room-temperature values |
+| LiMn₂O₄ | \(Fd\overline3m\), 227, origin choice 2 | Akimoto et al., *Chem. Mater.* 12, 3246-3248 (2000), [DOI](https://doi.org/10.1021/cm0003673), [supplement](https://acs.figshare.com/articles/journal_contribution/3592047) |
+| LiCoO₂ | \(R\overline3m\), 166, hexagonal axes | Akimoto, Gotoh and Oosawa, *J. Solid State Chem.* 141, 298-302 (1998), [DOI](https://doi.org/10.1006/jssc.1998.7966) |
+| LiFePO₄ | \(Pnma\), 62 | Streltsov et al., *Acta Cryst.* B49, 147-153 (1993), [DOI](https://doi.org/10.1107/S0108768192004701), [deposited CIF](https://www.crystallography.net/cod/2100916.cif) |
+| NiO | \(Fm\overline3m\), 225, cubic average | *Nanomaterials* 13, 2290 (2023), [DOI](https://doi.org/10.3390/nano13162290) |
+| Fe₃O₄ | \(Fd\overline3m\), 227, origin choice 2 | Fleet, *Acta Cryst.* B37, 917-920 (1981), [DOI](https://doi.org/10.1107/S0567740881004597), [deposited CIF](https://www.crystallography.net/cod/9007644.cif) |
+| ZnO | \(P6_3mc\), 186 | Kisi and Elcombe, *Acta Cryst.* C45, 1867-1870 (1989), [DOI](https://doi.org/10.1107/S0108270189004269) |
+| CeO₂, L₃ | \(Fm\overline3m\), 225 | Sabari Arul et al., *RSC Adv.* 5, 70558-70565 (2015), [DOI](https://doi.org/10.1039/C5RA09790H), Table 1 |
+
+Additional check sources are [NIST elemental densities](https://doi.org/10.18434/T4D01F), [Cu distances](https://doi.org/10.1103/PhysRevB.85.125405), [Fe distances](https://doi.org/10.1016/S0039-6028(00)00092-3), [Ni distances](https://doi.org/10.1021/acs.inorgchem.8b01230), [LiCoO₂ density](https://doi.org/10.1016/j.jascer.2017.03.001) and [distances](https://doi.org/10.1016/j.jpowsour.2012.11.127), [LiFePO₄ distances](https://doi.org/10.1103/PhysRevB.77.064414), [NiO distances](https://doi.org/10.1039/D3DT03280A), [ZnO distances](https://doi.org/10.1039/C7RA10748J), and [CeO₂ density](https://doi.org/10.1016/j.jallcom.2004.12.115) and [distances](https://doi.org/10.1021/acsaem.0c01145). The remaining checks use the corresponding structure paper.
+
+Admission requires the exact formula ratio, density within \(2\%\) of the cited value and the nearest absorber-neighbour distance within \(0.02\ \mathring{\mathrm A}\), including the neighbour's element. Space-group identity and absorber partitions must remain stable at symmetry tolerances \(10^{-4}\), \(10^{-3}\) and \(10^{-2}\ \mathring{\mathrm A}\). Wyckoff multiplicities are checked; letters are compared when spglib has retained the input origin. Failure raises an error before any output files are written. An excluded model must be moved explicitly to the dropped ledger, with a reason.
+
+All eleven retained structures pass. Densities below are in \(\mathrm{g\,cm^{-3}}\), and nearest-neighbour distances are in \(\mathring{\mathrm A}\). For magnetite, the distance pairs are tetrahedral Fe then octahedral Fe.
+
+| ID | Literature / calculated density | Density error (%) | Literature / calculated nearest distance | Retained / available paths | Gzip bytes |
+| --- | ---: | ---: | --- | ---: | ---: |
+| `cu` | 8.9314 / 8.935212 | 0.04268 | 2.556 / 2.55613 | 22 / 22 | 10,159 |
+| `fe-bcc` | 7.874 / 7.874220 | 0.00280 | 2.480 / 2.48246 | 41 / 41 | 17,364 |
+| `ni` | 8.902 / 8.909731 | 0.08685 | 2.490 / 2.49170 | 28 / 28 | 12,587 |
+| `pt` | 21.452 / 21.452433 | 0.00202 | 2.7744 / 2.77440 | 17 / 17 | 8,173 |
+| `limn2o4` | 4.28 / 4.280352 | 0.00822 | 1.9592 / 1.95926 | 77 / 77 | 31,278 |
+| `licoo2` | 5.05 / 5.051483 | 0.02936 | 1.920 / 1.92132 | 80 / 105 | 32,304 |
+| `lifepo4` | 3.596 / 3.596515 | 0.01432 | 2.064 / 2.06385 | 80 / 194 | 31,462 |
+| `nio` | 6.808 / 6.807606 | 0.00579 | 2.090 / 2.08850 | 80 / 80 | 32,121 |
+| `fe3o4` | 5.200 / 5.200305 | 0.00587 | 1.888 / 1.88862; 2.058 / 2.05822 | 94 / 157 | 37,943 |
+| `zno` | 5.67 / 5.675816 | 0.10258 | 1.970 / 1.97497 | 68 / 68 | 27,027 |
+| `ceo2` | 7.215 / 7.215970 | 0.01344 | 2.340 / 2.34303 | 32 / 32 | 14,612 |
+
+The first Cu, bcc Fe and Ni paths have \((r_{\mathrm{eff}},N)=(2.5561,12)\), \((2.4825,8)\) and \((2.4917,12)\), respectively. Magnetite has two separate calculations with weights \(1/3\) and \(2/3\). The path cap applies per site; the byte cap applies to the whole material file.
+
+### Retention limits
+
+Only paths with \(r_{\mathrm{eff}}\leq6\ \mathring{\mathrm A}\) are eligible. The strongest eighty per site are selected by the norm of \(k^2\chi(k)\) for fixture case (a) over \(2\leq k\leq16\ \mathring{\mathrm A}^{-1}\). Weak paths can then be removed by their site-weighted norm to meet the file budget of 40,000 gzip bytes. Single-scattering paths within \(0.02\ \mathring{\mathrm A}\) of each site's shortest path are protected. Arrays are never thinned or interpolated for storage.
+
+This pruning is consequential. Relative unweighted \(L^2\) differences against **all FEFF output paths within the same radius and default criteria**, over the same \(k\) interval, reach \(22.92\%\) for LiCoO₂, \(30.61\%\) for LiFePO₄ and \(23.91\%\) for Fe₃O₄ across the three fixture cases. The other eight models retain every eligible output path. Per-case errors are in each JSON's `accuracy` array. This comparison is not a convergence study against larger clusters or stricter FEFF criteria. Downstream consumers must not present the compact library as a converged full-path calculation.
+
+All cells are static, ordered models. NiO omits its small magnetic rhombohedral distortion. LiMn₂O₄ and Fe₃O₄ use their average cubic structures without low-temperature charge ordering. LiCoO₂ has full site occupancy. CeO₂ uses the published refined fluorite cell as an infinite stoichiometric crystal, without nanoparticle surfaces or oxygen vacancies.
+
+### Larch fixtures
+
+`feff-fixtures.json` is test-only and is not imported by runtime code. It contains all ten requested materials, each with \(k=0,0.05,\ldots,16\ \mathring{\mathrm A}^{-1}\) and:
+
+| Case | \(S_0^2\) | \(E_0\) (eV) | \(\Delta R\) | \(\sigma^2\) (\(\mathring{\mathrm A}^2\)) |
+| --- | ---: | ---: | --- | --- |
+| a | 0.9 | 0 | 0 | 0.003 |
+| b | 0.8 | +3 | \(0.01r_{\mathrm{eff}}\) | 0.006 |
+| c | 1.0 | -2 | 0 | `sigma2_eins(300, 250, path)` |
+
+Every curve is a multiplicity-weighted average of `larch.xafs.ff2chi` site results. The fixture records exact calls, versions, material-file hashes, ordered path IDs and per-path disorder. `chi` uses the original retained FEFF output; `chi_rounded` passes the serialized values back through Larch, reconstructing `pha = real_phc + pha_feff` and `amp = mag_feff * red_fact`. This separates quantization from the future TypeScript interpolation implementation. The largest measured rounding difference is \(0.000813\%\) over \(2\leq k\leq16\ \mathring{\mathrm A}^{-1}\), below the \(0.1\%\) generator limit. The stored low-\(k\) values preserve Larch's numerical behavior; they are not a validated XANES model.
+
+The Einstein section also records the first three Cu and Fe paths at \(T=10,77,300,600\ \mathrm K\), with \(\theta_E=250\ \mathrm K\). Larch's implementation includes every path vertex in the reduced-mass calculation, including repeated visits. Case (c) records both original and rounded-geometry results.
+
+Regenerate and verify with the supplied environment, without installing packages:
+
+```powershell
+& 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' -B scripts/twin/make-feff-library.py
+& 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' -B scripts/twin/make-feff-library.py --check
+& 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' -B -m unittest discover -s scripts/twin -p test_feff_library.py
+npx tsc --noEmit
+npx vitest run
+```
+
+`--check` recomputes all FEFF runs and fixtures in a fresh worktree-local temporary directory and compares every output byte. The recorded environment is xraylarch 2026.3.1, XrayDB 4.5.8, pymatgen 2026.9.24, NumPy 2.4.6, SciPy 1.17.1 and spglib 2.8.0. Reproducibility is checked in this environment with the recorded FEFF executable; it is not promised across different FEFF or numerical-library builds. No FEFF binary or source-paper PDF is redistributed.
+
+### FEFF and Larch references
+
+- J. J. Rehr and R. C. Albers, “Theoretical approaches to x-ray absorption fine structure,” *Rev. Mod. Phys.* 72, 621-654 (2000), [DOI](https://doi.org/10.1103/RevModPhys.72.621).
+- S. I. Zabinsky et al., “Multiple-scattering calculations of x-ray-absorption spectra,” *Phys. Rev. B* 52, 2995-3009 (1995), [DOI](https://doi.org/10.1103/PhysRevB.52.2995).
+- M. Newville, “Larch: An Analysis Package for XAFS and Related Spectroscopies,” *J. Phys.: Conf. Ser.* 430, 012007 (2013), [DOI](https://doi.org/10.1088/1742-6596/430/1/012007).
