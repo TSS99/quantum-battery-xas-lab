@@ -171,3 +171,108 @@ export interface Acquisition {
   /** Hidden truth for scenarios and tests; never shown before the reveal. */
   truth?: Record<string, number>;
 }
+
+/** Literature reference and the location of the transcribed numbers. */
+export interface FeffCitation {
+  reference: string;
+  doi: string;
+  locator: string;
+  url: string;
+}
+
+/** FEFF names retained verbatim. reff, lam and xyz_A are in angstrom;
+ * k and rep are in inverse angstrom; phases are in radians.
+ * The seven arrays share FEFF's native, nonuniform k grid.
+ */
+export interface FeffPath {
+  id: string;
+  reff: number;
+  degen: number;
+  nleg: number;
+  geometry: {
+    label: string;
+    atomic_number: number;
+    ipot: number;
+    mass_amu: number;
+    xyz_A: [number, number, number];
+  }[];
+  k: number[];
+  real_phc: number[];
+  mag_feff: number[];
+  pha_feff: number[];
+  red_fact: number[];
+  lam: number[];
+  rep: number[];
+}
+
+export interface FeffIndexEntry {
+  id: string;
+  formula: string;
+  absorber: string;
+  edge: 'K' | 'L3';
+  edge_energy_eV: number;
+  /** Total retained paths across all absorber sites. */
+  number_of_paths: number;
+}
+
+/** Computed EXAFS path data, loaded separately for each material. */
+export interface FeffMaterial {
+  schema_version: 1;
+  id: string;
+  formula: string;
+  absorber: string;
+  edge: 'K' | 'L3';
+  edge_energy_eV: number;
+  citation: FeffCitation;
+  structure: {
+    space_group: number;
+    setting: string;
+    lattice_A_deg: [number, number, number, number, number, number];
+    positions: { label: string; element: string; wyckoff: string; fractional: [number, number, number] }[];
+    temperature_K: number;
+    notes: string;
+  };
+  checks: {
+    passed: boolean;
+    composition: { expected: string; cell: Record<string, number>; passed: boolean };
+    density: {
+      literature_g_cm3: number;
+      computed_g_cm3: number;
+      relative_error: number;
+      tolerance: number;
+      source: FeffCitation;
+      passed: boolean;
+    };
+    nearest: {
+      site: string;
+      element: string;
+      distance_A: number;
+      source: FeffCitation;
+      computed_A: number;
+      absolute_error_A: number;
+      tolerance_A: number;
+      passed: boolean;
+    }[];
+    symmetry: {
+      symprec_A: number;
+      space_group: number;
+      standard_origin_shift: [number, number, number];
+    }[];
+  };
+  sites: {
+    id: string;
+    wyckoff: string;
+    multiplicity: number;
+    weight: number;
+    absorber_fractional: [number, number, number];
+    cluster_atoms: number;
+    input_sha256: string;
+    available_paths: number;
+    paths: FeffPath[];
+  }[];
+  /** Relative L2 errors over 2 <= k <= 16 for the three documented cases.
+   * Omission compares retained paths against every FEFF output path within RMAX.
+   * It is separate from the downstream engine's numerical parity tolerance.
+   */
+  accuracy: { case: 'a' | 'b' | 'c'; rounding_relative_rms: number; omission_relative_rms: number }[];
+}
