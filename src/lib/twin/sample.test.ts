@@ -155,6 +155,19 @@ describe('muComponents', () => {
     expect(above.sharpStep_cm_inv).toBeGreaterThan(above.rest_cm_inv);
   });
 
+  const CU_FOIL_FOR_EDGE: SampleConfig = { formula: 'Cu', density: 8.96, thickness_um: 7, absorber: 'Cu', edge: 'K', form: 'foil', pinholeFraction: 0, thicknessSpread: 0, particle_um: 0, incidence_deg: 45 };
+
+  it('stays positive and continuous at the edge record, where the table jumps a fraction of an eV away', () => {
+    // Fe K: the table jumps just above 7112.0 eV; Cu K: just below 8979.0 eV.
+    const fe: SampleConfig = { ...CU_FOIL_FOR_EDGE, formula: 'Fe', absorber: 'Fe', density: 7.874 };
+    for (const [sample, e0] of [[fe, 7112], [CU_FOIL_FOR_EDGE, 8979]] as const) {
+      const values = [-0.1, -1e-4, 0, 1e-4, 0.1].map(d => muComponents(sample, e0 + d).total_cm_inv);
+      for (const v of values) expect(v).toBeGreaterThan(0);
+      // The broadened teaching edge rises about 6 % per 0.1 eV here; the side mix-up this guards against was a factor of 2 or a sign flip.
+      for (let i = 1; i < values.length; i++) expect(Math.abs(values[i] / values[i - 1] - 1)).toBeLessThan(0.15);
+    }
+  });
+
   it('rejects an absorber that is not in the formula', () => {
     expect(() => muComponents({ ...FE_SOLUTION, absorber: 'Ni' }, 8400)).toThrow(/not in the formula/);
   });

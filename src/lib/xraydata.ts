@@ -280,10 +280,23 @@ export function molarMass(formula: string | Composition): number {
 }
 
 /** Mass fraction of each element (sums to 1). */
-export function massFractions(formula: string | Composition): Record<string, number> {
+// Simulated scans ask for the same few formulas at every point, so the parse is cached per formula
+// string. The cached objects are frozen because every caller shares them.
+const fractionCache = new Map<string, Readonly<Record<string, number>>>();
+
+export function massFractions(formula: string | Composition): Readonly<Record<string, number>> {
+  if (typeof formula === 'string') {
+    const cached = fractionCache.get(formula);
+    if (cached) return cached;
+  }
   const composition = toComposition(formula);
   const total = molarMass(composition);
-  return Object.fromEntries(Object.entries(composition).map(([symbol, count]) => [symbol, count * table(symbol).molarMass / total]));
+  const fractions = Object.freeze(Object.fromEntries(Object.entries(composition).map(([symbol, count]) => [symbol, count * table(symbol).molarMass / total])));
+  if (typeof formula === 'string') {
+    if (fractionCache.size >= 256) fractionCache.clear();
+    fractionCache.set(formula, fractions);
+  }
+  return fractions;
 }
 
 // ---------------------------------------------------------------- interpolation

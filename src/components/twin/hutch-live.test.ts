@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { loadXrayData } from '@/lib/xraydata';
 import { loadOptics } from '@/lib/twin/tables';
+import { foilTransmission } from '@/lib/twin/acquire';
 import { beamAtSample } from '@/lib/twin/beam';
 import { chamberReadout } from '@/lib/twin/chambers';
 import { braggAngle_rad } from '@/lib/twin/mono';
@@ -27,6 +28,11 @@ describe('hutch live readings', () => {
     expect(live.afterI0).toBeCloseTo(i0.transmittedFlux / beam.flux, 12);
     expect(live.afterSample).toBeCloseTo(live.afterI0 * through, 12);
     expect(live.afterIt).toBeLessThan(live.afterSample);
+    // The Cu reference foil dims the beam again before the Iref chamber.
+    expect(live.foilTransmission).toBe(foilTransmission(DEFAULT_TWIN.reference!, DEFAULT_TWIN.sample, 9000));
+    expect(live.afterFoil).toBeCloseTo(live.afterIt * live.foilTransmission!, 12);
+    expect(live.iref).toEqual(chamberReadout(chamber('Iref'), beam.flux * live.afterFoil, 9000));
+    for (const reading of [live.i0, live.it, live.iref]) expect(reading!.saturated).toBe(false);
     expect(live.doseRate_Gy_per_s).toBeGreaterThan(0);
   });
 

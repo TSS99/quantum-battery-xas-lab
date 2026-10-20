@@ -3,6 +3,7 @@
  * each element, from the twin physics modules at the current energy. Expected values only, no
  * noise. Needs `loadXrayData()` and `loadOptics()` first. No React, so it is unit tested in Node.
  */
+import { foilTransmission } from '@/lib/twin/acquire';
 import { beamAtSample } from '@/lib/twin/beam';
 import { chamberReadout, type ChamberReadout } from '@/lib/twin/chambers';
 import { sampleDoseRate } from '@/lib/twin/damage';
@@ -22,6 +23,9 @@ export interface HutchLive {
   /** Fraction of the beam through the sample and its environment windows. */
   sampleTransmission: number | null;
   it: ChamberReadout | null;
+  /** Fraction of the beam through the reference foil; null without a foil. */
+  foilTransmission: number | null;
+  iref: ChamberReadout | null;
   /** Line photons per second reaching the fluorescence detector, before dead time; null below the tabulated range. */
   fluorescence_per_s: number | null;
   /** Surface dose rate on the sample, Gy/s. */
@@ -30,6 +34,7 @@ export interface HutchLive {
   afterI0: number;
   afterSample: number;
   afterIt: number;
+  afterFoil: number;
   /** Why a number is missing, in plain words. */
   notes: string[];
 }
@@ -41,15 +46,15 @@ export function hutchLive(state: TwinState): HutchLive {
   const { energy_eV, profile, sample, environment } = state;
   const notes: string[] = [];
   const live: HutchLive = {
-    energy_eV, theta_deg: null, flux: null, i0: null, sampleFlux: null, sampleTransmission: null, it: null,
-    fluorescence_per_s: null, doseRate_Gy_per_s: null, afterI0: 1, afterSample: 1, afterIt: 1, notes,
+    energy_eV, theta_deg: null, flux: null, i0: null, sampleFlux: null, sampleTransmission: null, it: null, foilTransmission: null, iref: null,
+    fluorescence_per_s: null, doseRate_Gy_per_s: null, afterI0: 1, afterSample: 1, afterIt: 1, afterFoil: 1, notes,
   };
   let beam;
   try { beam = beamAtSample(profile, energy_eV); } catch (error) { notes.push(message(error)); return live; }
   live.theta_deg = beam.thetaB_rad * 180 / Math.PI;
   live.flux = beam.flux;
 
-  const i0Config = chamber(state, 'I0'), itConfig = chamber(state, 'It');
+  const i0Config = chamber(state, 'I0'), itConfig = chamber(state, 'It'), irefConfig = chamber(state, 'Iref');
   live.i0 = i0Config ? chamberReadout(i0Config, beam.flux, energy_eV) : null;
   const sampleFlux = live.i0 ? live.i0.transmittedFlux : beam.flux;
   live.sampleFlux = sampleFlux;
@@ -60,6 +65,10 @@ export function hutchLive(state: TwinState): HutchLive {
   live.afterSample = live.afterI0 * through;
   live.it = itConfig ? chamberReadout(itConfig, sampleFlux * through, energy_eV) : null;
   live.afterIt = live.it && beam.flux > 0 ? live.it.transmittedFlux / beam.flux : live.afterSample;
+  const foil = state.reference ? foilTransmission(state.reference, sample, energy_eV) : 1;
+  live.foilTransmission = state.reference ? foil : null;
+  live.afterFoil = live.afterIt * foil;
+  live.iref = irefConfig ? chamberReadout(irefConfig, beam.flux * live.afterFoil, energy_eV) : null;
 
   try {
     const line = fluorescenceLine(sample.absorber, sample.edge);

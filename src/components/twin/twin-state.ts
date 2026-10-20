@@ -15,7 +15,7 @@ export interface ProfilePreset {
  * Generic 3 GeV bending magnet beamline for hard X-ray XAS (plan section 3.8 a), never a real facility.
  * Ring values match a row of the source table in the physics dossier (3.0 GeV, 1.4 T, 0.3 A). The other numbers are
  * illustrative preset inputs that the controls (T4d) and the models (T2) will refine: dark currents are 0 until the
- * ion chamber model sets them, and the gains are placeholders for auto gain.
+ * ion chamber model sets them, and the gains are set for the default Cu K scan (see below).
  */
 const BM3_PROFILE: TwinProfile = {
   format: 'xaslab-twin-profile/1',
@@ -28,10 +28,12 @@ const BM3_PROFILE: TwinProfile = {
   ],
   mono: { crystal: 'Si111', offset_eV: 0, detune: 0, glitchSeed: 1 },
   // I0 with 15 cm of N2 absorbs about 9.5 % at the Cu K edge (xraydb material_mu), close to the usual 10 to 20 %.
+  // Gains are the decade that keeps each amplifier between about 0.2 and 5 V across the Cu K scan with the default
+  // sample and Cu reference foil (acquire.ts; full scale 10 V): about 6e-6 A in I0, 1e-5 to 5e-5 A in It, 2e-7 to 4e-6 A in Iref.
   chambers: [
-    { id: 'I0', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e7, dark_A: 0 },
-    { id: 'It', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e7, dark_A: 0 },
-    { id: 'Iref', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e8, dark_A: 0 },
+    { id: 'I0', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e5, dark_A: 0 },
+    { id: 'It', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e5, dark_A: 0 },
+    { id: 'Iref', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e6, dark_A: 0 },
   ],
   // Window around Cu Ka1 and Ka2 (8046.3 and 8026.7 eV in xraydb).
   sdd: { elements: 4, distance_mm: 30, area_mm2: 50, peaking_us: 1, roi_eV: [7890, 8190], soller: false, exitAngle_deg: 45 },
@@ -56,6 +58,8 @@ export const DEFAULT_TWIN: TwinState = {
   // A 7 µm Cu reference foil: edge step about 1.5 (mu x 0.25 below and 1.72 above the edge, xraydb, 8.96 g/cm3).
   sample: { formula: 'Cu', density: 8.96, thickness_um: 7, absorber: 'Cu', edge: 'K', form: 'foil', pinholeFraction: 0, thicknessSpread: 0, particle_um: 0, incidence_deg: 45 },
   environment: { kind: 'ambient', temperature_K: 295, windows: [] },
+  // The usual Cu reference foil, 7 µm like the sample, between the It and Iref chambers.
+  reference: { formula: 'Cu', density: 8.96, thickness_um: 7 },
   // Pre-edge, edge and EXAFS regions relative to the edge; k = 2.8 per angstrom is 30 eV above it.
   scan: {
     kind: 'step', repeats: 1, settle_s: 0.2,
