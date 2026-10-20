@@ -1,6 +1,6 @@
 # Beamline twin generated tables
 
-`optics.json` contains compact, browser-loadable optics, source, emission-line and gas data. `fixtures.json` is test-only reference output evaluated directly with the Python libraries. The exact numerical call patterns and package version are recorded in each file's `calls` field.
+`optics.json` contains compact, browser-loadable optics, source, emission-line and gas data. `fixtures.json` and `beam-fixtures.json` are test-only reference output evaluated directly with the Python libraries. The exact numerical call patterns and package version are recorded in each file's `calls` field.
 
 ## Contents
 
@@ -40,6 +40,14 @@ Away from the coating edges (more than 0.2% in energy from one) the error stays 
 
 The Vitest suite independently requires Darwin values within 2%, full-tail detune throughput within 10%, mirror values within 1% or 5% across a rapidly changing cutoff, \(G_1\) within 0.5%, and Be/Si attenuation within 1%. `optics.json` is 134,184 bytes with gzip level 9, below the 150 KiB budget.
 
+### `beam-fixtures.json`: whole-beamline reference
+
+`beam-fixtures.json` checks the models in `src/lib/twin/{source,mono,mirrors,beam}.ts` against values recomputed from XrayDB and SciPy without reading `optics.json`, so it tests the physics chain and the table interpolation together. It holds twelve configurations, three crystals by two generic bending magnets (3 GeV at 1.4 T and 6 GeV at 0.86 T) by mirrors in or out by zero or half-width detune, each at 5, 8.979, 12, 18 and 25 keV, plus five single-crystal resolution rows and seven mirror reflectivity rows.
+
+Per configuration and energy it records the Bragg angle, the Darwin and divergence energy widths, the pass bandwidth, the relative angular acceptance, the detune throughput, the mirror transmission, the source flux and the resulting flux for every allowed order, and the harmonic fraction. The detune throughput and acceptance use the same full-tail Darwin-Prins construction as `make-optics-tables.py`, recomputed here; they reproduce the `fixtures.json` detune rows to ten digits. The Vitest suite requires the Bragg angle to the stored twelve significant digits, bandwidth, resolution, mirror transmission and source flux within 1%, relative acceptance within 2%, and flux and harmonic fraction within 5%.
+
+Two conventions differ from the physics dossier and are deliberate. The flux bandwidth is the Darwin energy FWHM over the photon energy. That is larger than the exact aligned band \(\int R_1R_2\,d\varepsilon/\varepsilon\), because peak reflectivity is below one, by a factor of 1.61 at 5 keV, 1.20 at 9 keV and 1.02 at 25 keV for Si(111) and 1.80 at 5 keV for Si(311); the harmonic fraction is a ratio of two such bands, so most of that bias cancels. The quadrature resolution uses the Darwin FWHM rather than the classic Darwin width, so totals are \(\sqrt{9/8}\) larger than the dossier's section 2.3 table, and the intrinsic term then equals the tabulated `energy_fwhm` exactly. Orders whose energy exceeds the tabulated 60 keV mirror ceiling are reported as omitted rather than estimated.
+
 ## Sources, licences and citations
 
 - The XrayDB database is version 9.2 and is dedicated to the public domain under CC0 1.0 Universal. The `xraydb` 4.5.8 Python package is MIT licensed and is used only to generate these files.
@@ -55,6 +63,7 @@ From the repository root, use the pinned environment supplied for this project:
 
 ```powershell
 & 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' scripts/twin/make-optics-tables.py
+& 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' scripts/twin/reference_beam.py
 ```
 
-The script prints the uncompressed and gzip sizes plus the measured mirror errors. It contains no timestamps or randomness. Two consecutive runs with the same XrayDB, SciPy and NumPy versions must produce byte-identical files.
+The first script prints the uncompressed and gzip sizes plus the measured mirror errors; the second prints the file size and configuration count. Neither contains timestamps or randomness. Two consecutive runs with the same XrayDB, SciPy and NumPy versions must produce byte-identical files.

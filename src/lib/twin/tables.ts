@@ -123,6 +123,12 @@ function crystalTable(crystal: Crystal): RawCrystal {
   return found;
 }
 
+function mirrorTable(coating: MirrorCoating): RawMirror {
+  const found = data().mirrors.get(coating);
+  if (!found) throw new Error(`Unknown mirror coating "${coating}".`);
+  return found;
+}
+
 function requireFinite(value: number, label: string): void {
   if (!Number.isFinite(value)) throw new RangeError(`${label} must be finite.`);
 }
@@ -218,8 +224,7 @@ export function allowedOrders(crystal: Crystal): readonly number[] {
  */
 export function mirrorReflectivity(coating: MirrorCoating, angle_mrad: number,
                                    energy_eV: number): number {
-  const table = data().mirrors.get(coating);
-  if (!table) throw new Error(`Unknown mirror coating "${coating}".`);
+  const table = mirrorTable(coating);
   const energies = table[2];
   const angleRows = table[3];
   const angles = angleRows.map(row => row[0]);
@@ -228,6 +233,17 @@ export function mirrorReflectivity(coating: MirrorCoating, angle_mrad: number,
   const [aLo, aHi, angleT] = bracket(angles, angle_mrad, 'Mirror angle (mrad)');
   const atAngle = (index: number) => lerp(angleRows[index][1][eLo], angleRows[index][1][eHi], energyT);
   return lerp(atAngle(aLo), atAngle(aHi), angleT);
+}
+
+/** Grazing angles stored for one coating, ascending (mrad). */
+export function mirrorAngles_mrad(coating: MirrorCoating): number[] {
+  return mirrorTable(coating)[3].map(row => row[0]);
+}
+
+/** Lowest and highest tabulated photon energy for one coating (eV). */
+export function mirrorEnergyRange_eV(coating: MirrorCoating): [number, number] {
+  const energies = mirrorTable(coating)[2];
+  return [energies[0], energies[energies.length - 1]];
 }
 
 export function emissionLines(symbol: string): readonly EmissionLine[] {
