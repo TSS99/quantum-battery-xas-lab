@@ -87,8 +87,9 @@ function AnySample({ twin, run }: { twin: TwinState; run: (c: TwinCommand) => vo
 
 /** Right rail: detector model, profile, and one folding section per component; every control goes through applyCommand. */
 export function ControlRail() {
-  const { store: { twin }, dispatch } = useTwin();
+  const { store: { twin, view }, dispatch } = useTwin();
   const tables = useTables();
+  const locked = (key: 'profile' | 'sample' | 'mono') => view.locked.includes(key);
   const run = (command: TwinCommand) => dispatch({ type: 'command', command });
   const { profile: p, sample: s, environment: env, scan } = twin;
   const now = useMemo(() => tables === 'ready' ? (() => { try { return status(twin); } catch { return null; } })() : null, [tables, twin]);
@@ -106,7 +107,7 @@ export function ControlRail() {
       <button type="button" aria-pressed={twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: true })}>Realistic</button>
     </div>
     <label className="twin-field">Beamline profile
-      <select value={p.preset} onChange={e => run({ type: 'profile', id: e.target.value })}>
+      <select value={p.preset} onChange={e => run({ type: 'profile', id: e.target.value })} disabled={locked('profile')}>
         {PROFILE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
       </select>
     </label>
@@ -132,7 +133,7 @@ export function ControlRail() {
 
     <Fold id="twin-c-mono" title="Monochromator" desktopOpen>
       <label className="twin-field">Crystals
-        <select value={p.mono.crystal} onChange={e => run({ type: 'crystal', crystal: e.target.value as Crystal })}>
+        <select value={p.mono.crystal} onChange={e => run({ type: 'crystal', crystal: e.target.value as Crystal })} disabled={locked('mono')}>
           {(['Si111', 'Si311', 'Si220'] as const).map(c => <option key={c} value={c}>Si({c.slice(2)})</option>)}
         </select>
       </label>
@@ -166,7 +167,7 @@ export function ControlRail() {
 
     <Fold id="twin-c-sample" title="Sample" desktopOpen>
       <label className="twin-field">Preset
-        <select value={presetId} onChange={e => { if (e.target.value !== 'custom') run({ type: 'samplePreset', id: e.target.value }); }} disabled={tables !== 'ready'}>
+        <select value={presetId} onChange={e => { if (e.target.value !== 'custom') run({ type: 'samplePreset', id: e.target.value }); }} disabled={tables !== 'ready' || locked('sample')}>
           {presetId === 'custom' && <option value="custom">Your sample</option>}
           {SAMPLE_PRESETS.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
@@ -176,7 +177,7 @@ export function ControlRail() {
       {now?.edgeStep != null && <Rows rows={[['Edge step', <Num>{now.edgeStep.toFixed(2)}</Num>], [<>Total <Tex plain>{'\\mu x'}</Tex> here</>, <Num>{now.muX!.toFixed(2)}</Num>]]} />}
       <Range label="Pinholes" value={Math.round(s.pinholeFraction * 100)} min={0} max={30} step={1} unit="%" hint="of the beam misses the sample" onChange={pct => run({ type: 'sample', patch: { pinholeFraction: pct / 100 } })} />
       <Range label="Thickness spread" value={Math.round(s.thicknessSpread * 100)} min={0} max={50} step={1} unit="%" hint="relative standard deviation" onChange={pct => run({ type: 'sample', patch: { thicknessSpread: pct / 100 } })} />
-      {tables === 'ready' && <details className="twin-details"><summary>Any formula</summary><AnySample key={s.formula + s.absorber + s.edge} twin={twin} run={run} /></details>}
+      {tables === 'ready' && !locked('sample') && <details className="twin-details"><summary>Any formula</summary><AnySample key={s.formula + s.absorber + s.edge} twin={twin} run={run} /></details>}
     </Fold>
 
     <Fold id="twin-c-environment" title="Environment">
