@@ -1,31 +1,29 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { BeamScene } from '../beamline-scene';
+import { useEffect, useMemo, useState } from 'react';
 import { Tex } from '../tex';
-import { elementInfo, loadXrayData, transmittance } from '@/lib/xraydata';
+import { loadXrayData } from '@/lib/xraydata';
+import { loadOptics } from '@/lib/twin/tables';
+import { HutchScene } from './hutch-scene';
+import { hutchLive } from './hutch-live';
 import { useTwin } from './twin-store';
 
-/** Photons into the sample assumed by the stand-in drawing until the source model is connected. */
-const INCIDENT = 1e5;
-
-/** Stand-in scene: the quick beamline drawing, driven by the twin energy and sample. The full hutch scene replaces it. */
+/** The beamline hutch, driven by the twin state once the X-ray and optics tables have loaded. */
 export function TwinScene() {
   const { store: { twin, view }, dispatch } = useTwin();
   const [tables, setTables] = useState<'loading' | 'ready' | 'failed'>('loading');
-  useEffect(() => { loadXrayData().then(() => setTables('ready'), () => setTables('failed')); }, []);
-  const { sample, energy_eV } = twin;
-  let scene = null;
-  if (tables === 'ready') {
-    const edge = elementInfo(sample.absorber).edges.find(e => e.edge === sample.edge);
-    const fraction = transmittance(sample.formula, sample.density, sample.thickness_um, energy_eV);
-    scene = <BeamScene energy={energy_eV} edgeEnergy={edge?.energy_eV ?? NaN} transmittance={fraction} incident={INCIDENT} transmitted={INCIDENT * fraction} thickness={sample.thickness_um} scanning={false} formula={sample.formula} absorber={sample.absorber} edge={sample.edge} />;
-  }
+  useEffect(() => { Promise.all([loadXrayData(), loadOptics()]).then(() => setTables('ready'), () => setTables('failed')); }, []);
+  const live = useMemo(() => {
+    if (tables !== 'ready') return null;
+    try { return hutchLive(twin); } catch (error) { return error instanceof Error ? error.message : String(error); }
+  }, [tables, twin]);
+  const failed = tables === 'failed' || typeof live === 'string';
   return <section className={'twin-scene' + (view.labels ? '' : ' no-labels')} aria-labelledby="twin-scene-title" hidden={view.enlarged}>
     <div className="twin-section-head">
       <h2 id="twin-scene-title">Beamline</h2>
       <button type="button" className="button secondary small" aria-pressed={view.labels} aria-keyshortcuts="L" onClick={() => dispatch({ type: 'labels' })}>Labels</button>
     </div>
-    {scene ?? <div className="twin-scene-wait" role={tables === 'failed' ? 'alert' : undefined}>{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : 'Loading the X-ray tables…'}</div>}
-    <p className="twin-note">A stand-in for the full hutch scene, which comes next. Absorption is tabulated; the counts assume <Tex plain>{'10^5'}</Tex> photons into the sample because the source model is not connected yet.</p>
+    {live && typeof live !== 'string' ? <HutchScene twin={twin} live={live} labels={view.labels} />
+      : <div className="twin-scene-wait" role={failed ? 'alert' : undefined}>{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : typeof live === 'string' ? 'The beamline could not be computed: ' + live : 'Loading the X-ray tables…'}</div>}
+    <p className="twin-note">Not to scale: the beamline is shortened at the break symbols. The crystals are drawn at a Bragg angle held between <Tex plain>{'7^\\circ'}</Tex> and <Tex plain>{'40^\\circ'}</Tex> so both stay visible; the readings give the true angle. Readings are expected values from the source, optics, ion chamber and sample models, without noise. The reference foil is not modelled yet, so the beam is not dimmed after it and <Tex plain>{'I_\\mathrm{ref}'}</Tex> shows no reading; the electron-yield model is relative, so the drain current has none either.</p>
   </section>;
 }

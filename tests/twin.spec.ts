@@ -80,7 +80,7 @@ test('shortcut keys are ignored while typing in a field', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue('7112');
   await expect(changed(page)).toContainText('Energy set to');
-  await expect(page.locator('.beam-legend')).toContainText('Bragg angle');
+  await expect(page.locator('.hutch-readouts')).toContainText('Bragg angle');
   // Out of the field the same keys act again.
   await mode(page, 'Transmission').focus();
   await page.keyboard.press('7');
@@ -131,6 +131,46 @@ test('results dock tabs, Acquire, Enlarge, labels and rails respond to clicks an
   await expect(page.getByRole('complementary', { name: 'Explanation' })).toBeVisible();
 });
 
+test('hutch scene: every part is a button that opens its card, labels toggle, and the mode lights its path', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page);
+  const scene = page.locator('.hutch');
+  const part = (name: string) => scene.getByRole('button', { name, exact: true });
+  await expect(scene.locator('.hutch-parts').getByRole('button')).toHaveCount(19);
+  await part('I0 chamber').click();
+  await expect(part('I0 chamber')).toHaveAttribute('aria-expanded', 'true');
+  const card = page.getByRole('region', { name: 'I0 chamber' });
+  await expect(card).toContainText('ion chamber');
+  await expect(card).toContainText('Current');
+  await page.keyboard.press('Escape');
+  await expect(card).toBeHidden();
+  await expect(part('I0 chamber')).toBeFocused();
+  // Without labels every part is still a button, drawn as a dot on the hardware.
+  await page.getByRole('button', { name: 'Labels', exact: true }).click();
+  await expect(scene).toHaveClass(/no-labels/);
+  await expect(scene.locator('.hutch-parts').getByRole('button')).toHaveCount(19);
+  await part('Monochromator').click();
+  await expect(page.getByRole('region', { name: 'Monochromator' })).toContainText('Bragg angle');
+  expect(await axeViolations(page)).toEqual([]);
+  await page.keyboard.press('l');
+  await expect(scene).not.toHaveClass(/no-labels/);
+  // Transmission lights the beam through the sample to It; fluorescence lights the detector instead.
+  const leg = (name: string) => scene.locator(`[data-leg="${name}"]`).first();
+  await expect(leg('sample-to-it')).toHaveClass(/is-lit/);
+  await expect(part('It chamber')).toHaveClass(/is-focus/);
+  await mode(page, 'Fluorescence').click();
+  await expect(leg('sample-to-it')).not.toHaveClass(/is-lit/);
+  await expect(leg('to-detector')).toHaveClass(/is-lit/);
+  await expect(part('Fluorescence detector')).toHaveClass(/is-focus/);
+  await expect(part('It chamber')).toHaveClass(/is-idle/);
+  await mode(page, 'Electron yield').click();
+  await expect(leg('to-ammeter')).toHaveClass(/is-lit/);
+  await mode(page, 'Monochromator').click();
+  await expect(scene).toHaveClass(/cue-rocking/);
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('keyboard shortcuts dialog lists the keys, blocks them while open and returns focus', async ({ page }) => {
   await openTwin(page);
   const opener = page.getByRole('button', { name: 'Keyboard shortcuts' });
@@ -150,6 +190,10 @@ test('phone layout: one column, sticky mode bar, folded explanation and controls
   await openTwin(page);
   const width = () => page.evaluate(() => document.documentElement.scrollWidth);
   expect(await width()).toBeLessThanOrEqual(390);
+  // The drawing scrolls sideways inside its own box, centred on the sample.
+  const drawing = page.getByRole('region', { name: 'Beamline drawing, scrolls sideways' });
+  await expect(drawing).toBeVisible();
+  expect(await drawing.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
   expect(await page.locator('.twin-modes').evaluate(el => getComputedStyle(el).position)).toBe('sticky');
   // Scroll snapping must not shift the bar on load: the first group name and mode start in view.
   expect(await page.locator('.twin-modes').evaluate(el => el.scrollLeft)).toBe(0);
