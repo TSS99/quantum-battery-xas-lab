@@ -24,6 +24,31 @@ describe('strict unit and provenance contracts', () => {
     expect(parsed.provenance).toBe('imported');
   });
 
+  const normalized: Spectrum = { ...measured, id: 'norm-1', sigma_mu_cm_inv: undefined, mu_cm_inv: [0, 0.02, 0.6, 1.1, 1], quantity: 'normalized' };
+
+  it.each(['CSV', 'JSON'])('exports a normalized curve as dimensionless mu_norm and reads it back through %s', format => {
+    const serialized = format === 'CSV' ? spectrumToCSV(normalized) : spectrumToJSON(normalized);
+    expect(serialized).toContain('mu_norm');
+    expect(serialized).not.toContain('mu_cm_inv');
+    expect(serialized).not.toContain('cm^-1');
+    const parsed = parseSpectrum(serialized, `norm.${format.toLowerCase()}`);
+    expect(parsed.quantity).toBe('normalized');
+    expect(parsed.mu_cm_inv).toEqual(normalized.mu_cm_inv);
+    expect(parseSpectrum(format === 'CSV' ? spectrumToCSV({ ...normalized, quantity: 'flattened' }) : spectrumToJSON({ ...normalized, quantity: 'flattened' })).quantity).toBe('flattened');
+  });
+
+  it('keeps units and value fields consistent for normalized curves', () => {
+    const envelope = JSON.parse(spectrumToJSON(normalized));
+    expect(envelope.units).toEqual({ energy: 'eV', mu: 'normalized' });
+    expect(() => parseSpectrum(JSON.stringify({ ...envelope, units: { energy: 'eV', mu: 'cm^-1' } }))).toThrow('mu_norm');
+    expect(() => parseSpectrum(JSON.stringify({ energy_eV: measured.energy_eV, mu_cm_inv: measured.mu_cm_inv, quantity: 'normalized' }))).toThrow('mu_norm or mu_flat');
+    expect(() => parseSpectrum(JSON.stringify({ energy_eV: measured.energy_eV, mu_cm_inv: measured.mu_cm_inv, mu_norm: measured.mu_cm_inv }))).toThrow('one value array');
+    expect(() => validateSpectrum({ ...normalized, sigma_mu_cm_inv: [1, 1, 1, 1, 1] })).toThrow('only for absolute');
+    expect(() => validateSpectrum({ ...normalized, quantity: 'arbitrary' })).toThrow('quantity');
+    expect(spectrumView(normalized, 'raw').valueUnit).toBe('dimensionless');
+    expect(spectrumView(normalized, 'derivative').valueUnit).toBe('eV^-1');
+  });
+
   it('retains a synthetic declaration on import without claiming measured provenance', () => {
     const synthetic = snapshotSpectrum(DEFAULT_STATE);
     const roundTrip = parseSpectrum(spectrumToJSON(synthetic), 'synthetic.json');
@@ -35,7 +60,9 @@ describe('strict unit and provenance contracts', () => {
   it('accepts only explicit absolute coefficient headers and rejects nonnumeric or incomplete rows', () => {
     const rows = '\n1,2\n2,3\n3,4\n4,5\n5,6';
     expect(() => parseSpectrum(`energy,mu${rows}`, 'bad.csv')).toThrow('headers');
-    expect(() => parseSpectrum(`energy_eV,mu_norm${rows}`, 'bad.csv')).toThrow('headers');
+    expect(() => parseSpectrum(`energy_eV,mu_normalized${rows}`, 'bad.csv')).toThrow('headers');
+    expect(() => parseSpectrum(`energy_eV,mu_norm,mu_cm_inv${rows.replace(/\n(\d),(\d)/g, '\n$1,$2,$2')}`, 'bad.csv')).toThrow('headers');
+    expect(() => parseSpectrum(`energy_eV,mu_norm,sigma_mu_cm_inv${rows.replace(/\n(\d),(\d)/g, '\n$1,$2,1')}`, 'bad.csv')).toThrow('headers');
     expect(() => parseSpectrum(`energy_eV,mu_cm_inv${rows}\n6,NaN`, 'bad.csv')).toThrow('numeric');
     expect(() => parseSpectrum(`energy_eV,mu_cm_inv${rows}\n6,`, 'bad.csv')).toThrow('numeric');
     expect(() => parseSpectrum(JSON.stringify({ energy_eV: [1, 2, 3, 4, 5], mu: [1, 2, 3, 4, 5] }), 'bad.json')).toThrow('mu_cm_inv');

@@ -246,6 +246,16 @@ progress::-moz-progress-bar {background:var(--accent)}
 .fraction-bar,.mixing-bar {height:6px;background:var(--mn);border-radius:4px;overflow:hidden}
 .fraction-bar span,.mixing-bar span {display:block;height:100%;background:var(--li);transition:width .24s}
 .curve-chips {display:flex;flex-wrap:wrap;gap:8px}
+/* Measured data: numbered steps inside one panel; fields wrap to one column on narrow screens. */
+.measured h3 {font-size:16px;font-weight:600;padding-top:16px;border-top:1px solid var(--hairline)}
+.measured fieldset {min-width:0;margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:16px}
+.measured legend {padding:0;margin-bottom:12px;font-size:14px;color:var(--text);overflow-wrap:anywhere}
+.measured .channel-list {gap:0}
+.measured .channel-list small {margin-left:4px}
+.param-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));gap:16px 20px;align-items:start}
+.param-grid small {font-size:13px}
+.merge-kind {max-width:360px}
+.measured label.button:has(input:focus-visible) {outline:2px solid var(--accent);outline-offset:4px;box-shadow:var(--ring)}
 .beam-scroll {border-radius:12px;overflow-x:auto;overflow-y:hidden;background:radial-gradient(90% 70% at 55% 30%,#1c2733,#0d1217 75%);border:1px solid var(--hairline)}
 .beam-scroll svg {width:100%;min-width:600px;height:auto;display:block}
 .bl-edge {fill:none;stroke:rgb(255 255 255/.16);stroke-width:1}
