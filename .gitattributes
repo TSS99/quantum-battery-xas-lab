@@ -1,0 +1,4 @@
+# The FEFF library files are checked against the SHA-256 hashes in their manifest
+# (src/lib/twin/feff-data.test.ts), so git must keep their bytes exactly as generated.
+src/data/twin/feff/*.json -text
+src/data/twin/feff-fixtures.json -text

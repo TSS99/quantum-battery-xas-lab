@@ -165,6 +165,29 @@ describe('commands', () => {
     expect(applyCommand(r.state, { type: 'profile', id: 'bm3' }).state.sample.absorber).toBe('Cu');
   });
 
+  it('any formula: a new absorber moves the energy, the window and the reference foil', () => {
+    const r = applyCommand(DEFAULT_STATE, { type: 'sample', patch: { formula: 'Fe2O3', density: 5.26, absorber: 'Fe', edge: 'K', form: 'pellet' } });
+    expect(r.state.sample.formula).toBe('Fe2O3');
+    expect(r.state.energy_eV).toBeCloseTo(edgeEnergy(r.state.sample) + 20, 9);
+    expect(r.state.reference?.formula).toBe('Fe');
+    expect(r.note).toMatch(/Fe K edge/);
+    expect(() => applyCommand(DEFAULT_STATE, { type: 'sample', patch: { formula: 'NiO', absorber: 'Cu' } })).toThrow(/Cu is not in NiO/);
+    // Changing only the pinholes leaves the energy alone.
+    expect(applyCommand(DEFAULT_STATE, { type: 'sample', patch: { pinholeFraction: 0.1 } }).state.energy_eV).toBe(DEFAULT_STATE.energy_eV);
+  });
+
+  it('environment, detector, scan and source commands clamp to their ranges', () => {
+    const cell = applyCommand(DEFAULT_STATE, { type: 'environment', kind: 'liquid-cell' }).state.environment;
+    expect(cell.windows).toHaveLength(2);
+    const furnace = applyCommand(DEFAULT_STATE, { type: 'environment', kind: 'furnace' }).state.environment;
+    expect(furnace.temperature_K).toBe(300);
+    expect(furnace.windows).toEqual([]);
+    expect(applyCommand(DEFAULT_STATE, { type: 'sdd', patch: { distance_mm: 1 } }).state.profile.sdd.distance_mm).toBe(5);
+    expect(applyCommand(DEFAULT_STATE, { type: 'scan', plan: { ...DEFAULT_STATE.scan, repeats: 99 } }).state.scan.repeats).toBe(50);
+    expect(() => applyCommand(DEFAULT_STATE, { type: 'scan', plan: { ...DEFAULT_STATE.scan, regions: [{ space: 'E', start: 10, end: 0, step: 1, dwell_s: 1 }] } })).toThrow();
+    expect(applyCommand(DEFAULT_STATE, { type: 'source', current_mA: 900 }).state.profile.source.current_mA).toBe(500);
+  });
+
   it('temperature follows the range of the environment', () => {
     const cryo = { ...DEFAULT_STATE, environment: { ...DEFAULT_STATE.environment, kind: 'cryostat' as const } };
     expect(applyCommand(cryo, { type: 'temperature', temperature_K: 4 }).state.environment.temperature_K).toBe(10);

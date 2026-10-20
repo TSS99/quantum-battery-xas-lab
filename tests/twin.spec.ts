@@ -203,6 +203,54 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   expect(errors).toEqual([]);
 });
 
+test('every controls section changes the instrument and says what changed', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page);
+  const controls = page.getByRole('complementary', { name: 'Controls' });
+  const open = async (title: string) => {
+    const fold = controls.getByRole('button', { name: title, exact: true });
+    if (await fold.getAttribute('aria-expanded') === 'false') await fold.click();
+  };
+  await open('Source');
+  await controls.getByRole('slider', { name: 'Ring current' }).fill('200');
+  await expect(changed(page)).toContainText('Ring current');
+  await open('Mirrors');
+  await controls.getByRole('checkbox', { name: /M3, harmonic rejection/ }).check();
+  await expect(changed(page)).toContainText('inserted');
+  await controls.getByLabel('Crystals').selectOption('Si311');
+  await expect(changed(page)).toContainText('Si(311)');
+  await controls.getByRole('slider', { name: 'Second crystal detune' }).fill('30');
+  await expect(changed(page)).toContainText('30 %');
+  await open('Ion chambers');
+  const it = controls.locator('.twin-chamber').nth(1);
+  await it.getByLabel('Amplifier gain').selectOption('10');
+  await expect(it).toContainText('OVER');
+  await controls.getByRole('button', { name: 'Auto gain' }).click();
+  await expect(it).not.toContainText('OVER');
+  await expect(changed(page)).toContainText('Amplifier gains set');
+  await controls.getByLabel('Preset').selectOption('fe-2mm-water');
+  await expect(changed(page)).toContainText('Fe, 2 mM in water');
+  await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue(/^71/);
+  await open('Environment');
+  await expect(controls.getByLabel('Setting')).toHaveValue('liquid-cell');
+  await controls.getByLabel('Setting').selectOption('cryostat');
+  await expect(changed(page)).toContainText('cryostat');
+  await open('Fluorescence detector');
+  await controls.getByRole('checkbox', { name: 'Soller slits' }).check();
+  await expect(changed(page)).toContainText('Fluorescence detector changed');
+  await open('Scan');
+  await controls.getByLabel('Plan').selectOption('xanes');
+  await expect(changed(page)).toContainText('Scan plan changed');
+  await expect(controls).toContainText('Beamline time');
+  await controls.getByLabel('Beamline profile').selectOption('tender');
+  await expect(changed(page)).toContainText('Tender X-rays');
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(await axeViolations(page)).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});
+
 test('keyboard shortcuts dialog lists the keys, blocks them while open and returns focus', async ({ page }) => {
   await openTwin(page);
   const opener = page.getByRole('button', { name: 'Keyboard shortcuts' });

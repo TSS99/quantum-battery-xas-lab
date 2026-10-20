@@ -127,7 +127,10 @@ const compound = (id: string) => {
 };
 
 /** CRC Handbook of Chemistry and Physics, densities of the elements at 20 °C (alpha-Mn for Mn). */
-const METAL_DENSITY: Record<string, number> = { Mn: 7.21, Fe: 7.874, Ni: 8.908, Cu: 8.96, Pt: 21.45 };
+const METAL_DENSITY: Record<string, number> = {
+  Ti: 4.506, V: 6.11, Cr: 7.15, Mn: 7.21, Fe: 7.874, Co: 8.86, Ni: 8.908, Cu: 8.96, Zn: 7.134, Zr: 6.52,
+  Mo: 10.28, Pd: 12.02, Ag: 10.49, W: 19.25, Pt: 21.45, Au: 19.3,
+};
 const foil = (symbol: string) => ({ formula: symbol, density: METAL_DENSITY[symbol] });
 
 /** Kapton HN polyimide, C22H10N2O5, 1.42 g/cm^3 (DuPont Kapton HN datasheet), 25 um per side. */
@@ -185,6 +188,13 @@ export const SAMPLE_PRESETS: readonly SamplePreset[] = [
 ];
 
 export const samplePreset = (id: string) => SAMPLE_PRESETS.find(p => p.id === id);
+
+/** A metal foil of the absorber for the reference channel when its density is tabulated here, with an edge step of 1. */
+export function referenceFor(sample: Omit<SampleConfig, 'thickness_um'>): ReferenceFoil | undefined {
+  const density = METAL_DENSITY[sample.absorber];
+  if (!density) return undefined;
+  return { formula: sample.absorber, density, thickness_um: thicknessFor({ ...sample, formula: sample.absorber, density }, { edgeStep: 1 }) };
+}
 
 /** Thickness, um, giving an edge step (or total mu x) of `target` 50 eV above the edge. Needs `loadXrayData()`. */
 export function thicknessFor(sample: Omit<SampleConfig, 'thickness_um'>, rule: { edgeStep: number } | { muX: number }): number {
