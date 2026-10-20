@@ -122,6 +122,8 @@ function partReading(id: PartId, live: HutchLive): ReactNode {
       return live.theta_deg !== null && <>Bragg angle <Tex plain>{`\\theta = ${live.theta_deg.toFixed(3)}^\\circ`}</Tex> at <Num>{live.energy_eV.toFixed(1)}</Num> <Unit>eV</Unit>.</>;
     case 'i0': return live.i0 && <>Current {sci(live.i0.current_A)} <Unit>A</Unit>; it absorbs <Num>{percent(live.i0.absorbedFraction) + '%'}</Num> of the beam.</>;
     case 'it': return live.it && <>Current {sci(live.it.current_A)} <Unit>A</Unit>.</>;
+    case 'iref': return live.iref && <>Current {sci(live.iref.current_A)} <Unit>A</Unit>.</>;
+    case 'reference-foil': return live.foilTransmission !== null && <>The foil passes <Num>{percent(live.foilTransmission) + '%'}</Num> of what leaves the <Tex plain>{'I_t'}</Tex> chamber.</>;
     case 'sample-stage': case 'sample-environment':
       return live.sampleTransmission !== null && <>The sample and its windows pass <Num>{percent(live.sampleTransmission) + '%'}</Num> of the beam.</>;
     case 'fluorescence-detector': return live.fluorescence_per_s !== null && <>About {sci(live.fluorescence_per_s)} line photons per second reach it, before dead time.</>;
@@ -161,7 +163,7 @@ export function HutchScene({ twin, live, labels }: HutchSceneProps) {
   const hrm = profile.mirrors.find(m => m.role === 'harmonic-rejection');
   const collimating = profile.mirrors.find(m => m.role === 'collimating'), focusing = profile.mirrors.find(m => m.role === 'focusing');
   const helium = live.energy_eV < 5000;
-  const afterI0 = beamGlow(live.afterI0), afterSample = beamGlow(live.afterSample), afterIt = beamGlow(live.afterIt);
+  const afterI0 = beamGlow(live.afterI0), afterSample = beamGlow(live.afterSample), afterIt = beamGlow(live.afterIt), afterFoil = beamGlow(live.afterFoil);
   const fluorescing = hasCue(mode, 'cone') && (live.fluorescence_per_s ?? 0) > 0;
   const [sx, sy] = P(XS - 3, YB, 0), [dx, dy] = P(XS, YB, 30);
   const focused = hasCue(mode, 'focused');
@@ -280,7 +282,7 @@ export function HutchScene({ twin, live, labels }: HutchSceneProps) {
           <g className={legClass('i0-to-sample')} data-leg="i0-to-sample"><Beam d={`M1090 ${B - YB}H${XS - 3}`} glow={afterI0} /></g>
           <g className={legClass('sample-to-it')} data-leg="sample-to-it"><Beam d={`M${XS + 3} ${B - YB}H1215`} glow={afterSample} /></g>
           <g className={legClass('it-to-iref')} data-leg="it-to-iref"><Beam d={`M1300 ${B - YB}H1390`} glow={afterIt} /></g>
-          <g className={legClass('iref-to-stop')} data-leg="iref-to-stop"><Beam d={`M1450 ${B - YB}H1500`} glow={afterIt} /></g>
+          <g className={legClass('iref-to-stop')} data-leg="iref-to-stop"><Beam d={`M1450 ${B - YB}H1500`} glow={afterFoil} /></g>
 
           {/* Hardware in front of the beam */}
           <Wall />
@@ -299,12 +301,12 @@ export function HutchScene({ twin, live, labels }: HutchSceneProps) {
             <Box x0={1348} x1={1354} y0={34} y1={92} z0={-16} z1={16} />
             <polygon points={pts([1354, 56, -10], [1354, 76, -10], [1354, 76, 10], [1354, 56, 10])} fill="url(#bl-foil)" />
           </>)}
-          {g('iref', <IonChamber id="hutch-iref" x0={1390} x1={1450} y0={38} y1={94} z={24} beam={afterIt} />)}
+          {g('iref', <IonChamber id="hutch-iref" x0={1390} x1={1450} y0={38} y1={94} z={24} beam={afterFoil} readout={live.iref ? lcdVolts(live.iref.voltage_V, live.iref.saturated) : undefined} />)}
           {g('beam-stop', <>
             <Box x0={1500} x1={1508} y0={0} y1={50} z0={-4} z1={4} />
             <Box x0={1494} x1={1514} y0={50} y1={82} z0={-12} z1={12} front="url(#bl-tungsten)" />
           </>)}
-          {[[1090, 1102, afterI0, 'i0-to-sample'], [XS + 3, XS + 12, afterSample, 'sample-to-it'], [1300, 1312, afterIt, 'it-to-iref'], [1354, 1362, afterIt, 'it-to-iref'], [1450, 1462, afterIt, 'iref-to-stop']].map(([a, b, glow, leg]) =>
+          {[[1090, 1102, afterI0, 'i0-to-sample'], [XS + 3, XS + 12, afterSample, 'sample-to-it'], [1300, 1312, afterIt, 'it-to-iref'], [1354, 1362, afterFoil, 'it-to-iref'], [1450, 1462, afterFoil, 'iref-to-stop']].map(([a, b, glow, leg]) =>
             <g key={a} className={legClass(leg as Leg)}><Beam d={`M${a} ${B - YB}H${b}`} glow={glow as number} flow={false} /></g>)}
 
           {/* What the sample does with the beam */}
@@ -362,6 +364,7 @@ export function HutchScene({ twin, live, labels }: HutchSceneProps) {
       <div><dt><Tex plain>{'I_0'}</Tex> current</dt><dd>{live.i0 ? <>{sci(live.i0.current_A)} <Unit>A</Unit></> : '—'}</dd></div>
       <div><dt>Sample transmission</dt><dd>{live.sampleTransmission === null ? '—' : <Num>{percent(live.sampleTransmission) + '%'}</Num>}</dd></div>
       <div><dt><Tex plain>{'I_t'}</Tex> current</dt><dd>{live.it ? <>{sci(live.it.current_A)} <Unit>A</Unit></> : '—'}</dd></div>
+      <div><dt><Tex plain>{'I_\\mathrm{ref}'}</Tex> current</dt><dd>{live.iref ? <>{sci(live.iref.current_A)} <Unit>A</Unit></> : '—'}</dd></div>
       <div><dt>Fluorescence line</dt><dd>{live.fluorescence_per_s === null ? '—' : <>{sci(live.fluorescence_per_s)} <Unit>s^-1</Unit></>}</dd></div>
       <div><dt>Surface dose rate</dt><dd>{live.doseRate_Gy_per_s === null ? '—' : <>{sci(live.doseRate_Gy_per_s)} <Unit>Gy/s</Unit></>}</dd></div>
     </dl>

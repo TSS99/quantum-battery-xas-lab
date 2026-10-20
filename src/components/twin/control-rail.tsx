@@ -2,10 +2,14 @@
 import { useState, type ReactNode } from 'react';
 import { Num, Tex, Unit, formulaTex } from '../tex';
 import { Range } from '../ui';
-import type { ChamberConfig } from '@/lib/twin/types';
-import { PROFILE_PRESETS, presetOf, si111BraggDeg } from './twin-state';
+import type { ChamberConfig, Crystal } from '@/lib/twin/types';
+import { braggAngle_rad } from '@/lib/twin/mono';
+import { PROFILE_PRESETS, presetOf } from './twin-state';
 import { useTwin } from './twin-store';
 import { Fold } from './fold';
+
+/** Bragg angle in degrees, or null where the crystal cannot reach the energy. */
+const braggDeg = (crystal: Crystal, energy_eV: number) => { try { return braggAngle_rad(crystal, energy_eV) * 180 / Math.PI; } catch { return null; } };
 
 function Rows({ rows }: { rows: [ReactNode, ReactNode][] }) {
   return <dl className="twin-rows">{rows.map(([label, value], i) => <div key={i}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>;
@@ -19,7 +23,7 @@ function EnergyControls() {
   const [lo, hi] = presetOf(twin).range_eV;
   const [draft, setDraft] = useState<string | null>(null);
   const commit = () => { if (draft !== null && draft.trim() !== '') dispatch({ type: 'energy', energy_eV: Number(draft) }); setDraft(null); };
-  const theta = si111BraggDeg(twin.energy_eV);
+  const theta = braggDeg(twin.profile.mono.crystal, twin.energy_eV);
   return <>
     <Range label="Photon energy" value={twin.energy_eV} min={lo} max={hi} step={0.5} digits={1} unit="eV" onChange={energy_eV => dispatch({ type: 'energy', energy_eV })} />
     <label className="twin-field"><span>Type an energy in <Unit>eV</Unit></span>
@@ -43,13 +47,14 @@ export function ControlRail() {
       <button type="button" aria-pressed={twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: true })}>Realistic</button>
     </div>
     <label className="twin-field">Beamline profile
-      {/* Only the bending magnet preset exists so far, so the choice cannot change yet. */}
-      <select defaultValue={p.preset}>
-        {PROFILE_PRESETS.map(preset => <option key={preset.id} value={preset.id} disabled={!preset.profile}>{preset.name}{preset.profile ? '' : ' (coming next)'}</option>)}
+      <select value={p.preset} onChange={e => dispatch({ type: 'command', command: { type: 'profile', id: e.target.value } })}>
+        {PROFILE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
       </select>
     </label>
     <Fold id="twin-c-source" title="Source">
-      <Rows rows={[['Device', 'Bending magnet'], ['Ring energy', q(p.source.ring_GeV, 'GeV')], ['Ring current', q(p.source.current_mA, 'mA')], ['Magnetic field', q(p.source.field_T ?? 0, 'T')], ['Horizontal acceptance', q(p.source.hAccept_mrad, 'mrad')]]} />
+      <Rows rows={p.source.kind === 'undulator' && p.source.undulator
+        ? [['Device', 'Undulator'], ['Ring energy', q(p.source.ring_GeV, 'GeV')], ['Ring current', q(p.source.current_mA, 'mA')], ['Period', q(p.source.undulator.period_mm, 'mm')], ['Periods', String(p.source.undulator.periods)]]
+        : [['Device', 'Bending magnet'], ['Ring energy', q(p.source.ring_GeV, 'GeV')], ['Ring current', q(p.source.current_mA, 'mA')], ['Magnetic field', q(p.source.field_T ?? 0, 'T')], ['Horizontal acceptance', q(p.source.hAccept_mrad, 'mrad')]]} />
       <Soon />
     </Fold>
     <Fold id="twin-c-mirrors" title="Mirrors">
@@ -57,7 +62,7 @@ export function ControlRail() {
       <Soon />
     </Fold>
     <Fold id="twin-c-mono" title="Monochromator" desktopOpen>
-      <Rows rows={[['Crystals', <>Two <Tex plain>{'\\mathrm{Si}(111)'}</Tex></>]]} />
+      <Rows rows={[['Crystals', <>Two <Tex plain>{`\\mathrm{Si}(${p.mono.crystal.slice(2)})`}</Tex></>]]} />
       <EnergyControls />
       <p className="twin-soon">Crystal choice and detune are coming next.</p>
     </Fold>

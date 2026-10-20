@@ -127,6 +127,13 @@ export interface TwinProfile {
   stability: { i0Noise: number; drift_eV_per_h: number };
 }
 
+/** Metal foil between the It and Iref chambers, measured with every scan to fix the energy scale. */
+export interface ReferenceFoil {
+  formula: string;
+  density: number;
+  thickness_um: number;
+}
+
 export interface TwinState {
   mode: TwinMode;
   /** false = educational clarity (expected values), true = realistic detectors (noise, drift, glitches, dead time). */
@@ -135,6 +142,8 @@ export interface TwinState {
   profile: TwinProfile;
   sample: SampleConfig;
   environment: EnvironmentConfig;
+  /** No foil when absent: the Iref chamber then sees what leaves the It chamber. */
+  reference?: ReferenceFoil;
   scan: ScanPlan;
   seed: number;
 }

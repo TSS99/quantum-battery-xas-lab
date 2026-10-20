@@ -17,7 +17,7 @@
  */
 
 import {
-  elementInfo, elementMuOverRhoSide, massFractions, mu, muOverRho, parseFormula, xrayDataInfo,
+  elementInfo, elementMuOverRhoSide, massFractions, mu, muAcrossEdge, muOverRho, parseFormula, xrayDataInfo,
   type Composition, type XrayEdge,
 } from '../xraydata';
 import { defaultEdgeWidth, defaultNearEdgeFeatures, type NearEdgeFeatures } from '../xas-general';
@@ -153,7 +153,8 @@ export interface MuComponents {
  * the jump, so with `sharpEdge` the total is exactly the tabulated mu.
  */
 export function muComponents(sample: SampleConfig, energy_eV: number, options: MuOptions = {}): MuComponents {
-  const composition = parseFormula(sample.formula);
+  // The formula string, not a parsed copy, so xraydata's per-formula cache applies.
+  const composition = sample.formula;
   const fractions = massFractions(composition);
   if (!(sample.absorber in fractions)) {
     throw new Error(`Absorber "${sample.absorber}" is not in the formula "${sample.formula}".`);
@@ -166,7 +167,12 @@ export function muComponents(sample: SampleConfig, energy_eV: number, options: M
   const above = elementMuOverRhoSide(sample.absorber, edge.edge, energy_eV, 'above').photo;
   const below = elementMuOverRhoSide(sample.absorber, edge.edge, energy_eV, 'below').photo;
   const sharpStep_cm_inv = Math.max(0, (above - below) * fractions[sample.absorber] * sample.density);
-  const rest_cm_inv = tabulated_cm_inv - (energy_eV >= edge.energy_eV ? sharpStep_cm_inv : 0);
+  // The table's own jump can sit a fraction of an eV from the edge record (Fe K: just above
+  // 7112.0 eV, Cu K: just below 8979.0 eV), so the side is read off the tabulated value itself:
+  // below the jump it is exactly the below-edge segment.
+  const below_cm_inv = muAcrossEdge(composition, sample.density, sample.absorber, edge.edge, energy_eV, 'below');
+  const tabulatedAbove = Math.abs(tabulated_cm_inv - below_cm_inv) > 1e-12 * tabulated_cm_inv;
+  const rest_cm_inv = tabulated_cm_inv - (tabulatedAbove ? sharpStep_cm_inv : 0);
 
   const fineStructureFactor = model.factor(energy_eV);
   if (!Number.isFinite(fineStructureFactor)) throw new Error('The fine-structure factor must be a finite number.');

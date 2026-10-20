@@ -24,6 +24,6 @@ export function TwinScene() {
     </div>
     {live && typeof live !== 'string' ? <HutchScene twin={twin} live={live} labels={view.labels} />
       : <div className="twin-scene-wait" role={failed ? 'alert' : undefined}>{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : typeof live === 'string' ? 'The beamline could not be computed: ' + live : 'Loading the X-ray tables…'}</div>}
-    <p className="twin-note">Not to scale: the beamline is shortened at the break symbols. The crystals are drawn at a Bragg angle held between <Tex plain>{'7^\\circ'}</Tex> and <Tex plain>{'40^\\circ'}</Tex> so both stay visible; the readings give the true angle. Readings are expected values from the source, optics, ion chamber and sample models, without noise. The reference foil is not modelled yet, so the beam is not dimmed after it and <Tex plain>{'I_\\mathrm{ref}'}</Tex> shows no reading; the electron-yield model is relative, so the drain current has none either.</p>
+    <p className="twin-note">Not to scale: the beamline is shortened at the break symbols. The crystals are drawn at a Bragg angle held between <Tex plain>{'7^\\circ'}</Tex> and <Tex plain>{'40^\\circ'}</Tex> so both stay visible; the readings give the true angle. Readings are expected values from the source, optics, ion chamber and sample models, without noise. The electron-yield model is relative, so the drain current has no reading.</p>
   </section>;
 }

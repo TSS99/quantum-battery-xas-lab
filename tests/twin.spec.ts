@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
 // Browser tests for the /twin/ preview. Names avoid the word "mobile" so the desktop project runs them;
@@ -108,9 +109,7 @@ test('results dock tabs, Acquire, Enlarge, labels and rails respond to clicks an
   await expect(page.getByRole('tab', { name: 'χ(k)', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: '|χ(R)|', exact: true })).toBeFocused();
-  await expect(page.getByRole('tabpanel')).toContainText('not connected yet');
-  await page.keyboard.press('i');
-  await expect(changed(page)).toContainText('Nothing was recorded');
+  await expect(page.getByRole('tabpanel')).toContainText('Press Acquire');
   const enlarge = page.getByRole('button', { name: 'Enlarge', exact: true });
   await page.keyboard.press('x');
   await expect(enlarge).toHaveAttribute('aria-pressed', 'true');
@@ -168,6 +167,39 @@ test('hutch scene: every part is a button that opens its card, labels toggle, an
   await mode(page, 'Monochromator').click();
   await expect(scene).toHaveClass(/cue-rocking/);
   await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('Acquire runs a scan in the worker: points build up, the acquisition is stored and downloads as XDI', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=7');
+  await page.getByRole('tab', { name: 'μ(E)', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Acquire/ })).toBeEnabled();
+  await page.keyboard.press('i');
+  await expect(changed(page)).toContainText('Acquiring one scan');
+  await expect(page.getByRole('progressbar', { name: 'Scan progress' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible();
+  await expect(changed(page)).toContainText('Acquisition 1 stored', { timeout: 30_000 });
+  await expect(page.getByRole('tabpanel').locator('svg path').first()).toBeVisible();
+  const gallery = page.getByRole('heading', { name: 'Acquisitions' }).locator('..');
+  await expect(gallery.getByRole('listitem')).toHaveCount(1);
+  const [download] = await Promise.all([page.waitForEvent('download'), gallery.getByRole('button', { name: 'Download acquisition 1 as XDI' }).click()]);
+  expect(download.suggestedFilename()).toBe('twin-1-CuK.xdi');
+  const text = await readFile(await download.path(), 'utf8');
+  expect(text).toMatch(/^# XDI\/1\.0 /);
+  for (const field of ['Element.symbol: Cu', 'Element.edge: K', 'Mono.d_spacing: 3.135601', 'Column.1: energy eV']) expect(text).toContain('# ' + field);
+  await page.getByRole('tab', { name: 'Normalized', exact: true }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('edge step');
+  await page.getByRole('tab', { name: 'χ(k)', exact: true }).click();
+  await expect(page.getByRole('tabpanel').locator('svg path').first()).toBeVisible();
+  await page.getByRole('tab', { name: 'Live channels', exact: true }).click();
+  await expect(page.getByRole('tabpanel')).not.toContainText('clipped');
+  await page.getByRole('tab', { name: 'XRF spectrum', exact: true }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('saturated');
+  await page.getByRole('tab', { name: 'Rocking curve', exact: true }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('third harmonic');
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(await axeViolations(page)).toEqual([]);
   expect(errors).toEqual([]);
 });
 
