@@ -3,6 +3,7 @@
 import { TWIN_MODES, type TwinMode, type TwinState } from '@/lib/twin/types';
 import { PROFILE_PRESETS } from '@/lib/twin/presets';
 import { DEFAULT_STATE, applyCommand, type TwinCommand } from '@/lib/twin/twin';
+import type { LockKey } from '@/lib/twin/scenarios';
 
 export { PROFILE_PRESETS, type ProfilePreset } from '@/lib/twin/presets';
 
@@ -27,13 +28,17 @@ export interface TwinView {
   hashRead: boolean;
   /** Counts Acquire presses (button or I); the results dock starts a scan each time it rises. */
   acquireRequest: number;
+  /** The training dialog is open. */
+  training: boolean;
+  /** Controls a running training scenario has locked. */
+  locked: LockKey[];
 }
 
 export interface TwinStore { twin: TwinState; view: TwinView }
 
 export const INITIAL_STORE: TwinStore = {
   twin: DEFAULT_TWIN,
-  view: { labels: true, enlarged: false, leftHidden: false, rightHidden: false, tab: 'mu', change: null, hashRead: false, acquireRequest: 0 },
+  view: { labels: true, enlarged: false, leftHidden: false, rightHidden: false, tab: 'mu', change: null, hashRead: false, acquireRequest: 0, training: false, locked: [] },
 };
 
 export type TwinAction =
@@ -48,7 +53,10 @@ export type TwinAction =
   | { type: 'hash'; mode?: TwinMode; seed?: number }
   | { type: 'note'; text: string }
   /** Any twin command (src/lib/twin/twin.ts); needs the X-ray tables, so failures become the change line. */
-  | { type: 'command'; command: TwinCommand };
+  | { type: 'command'; command: TwinCommand }
+  /** Replace the instrument, for a training scenario's starting state, and lock some controls. */
+  | { type: 'load'; twin: TwinState; locked: LockKey[]; note: string }
+  | { type: 'training'; open?: boolean };
 
 export interface ModeInfo {
   id: TwinMode;
@@ -162,6 +170,8 @@ export function twinReducer(store: TwinStore, action: TwinAction): TwinStore {
       view: { ...view, hashRead: true },
     };
     case 'note': return note(action.text);
+    case 'load': return { twin: action.twin, view: { ...view, locked: action.locked, change: action.note } };
+    case 'training': return { twin, view: { ...view, training: action.open ?? !view.training } };
     case 'command': {
       try {
         const result = applyCommand(twin, action.command);
@@ -196,6 +206,7 @@ export function shortcutAction(key: string): TwinAction | null {
     case 'l': return { type: 'labels' };
     case 'i': return { type: 'acquire' };
     case 'x': return { type: 'enlarge' };
+    case 't': return { type: 'training', open: true };
     case '[': return { type: 'rail', side: 'left' };
     case ']': return { type: 'rail', side: 'right' };
     default: return null;

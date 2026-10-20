@@ -8,6 +8,7 @@ const KEYS: [string, string][] = [
   ['C', 'Switch between Educational and Realistic detectors'],
   ['L', 'Show or hide the scene labels'],
   ['I', 'Acquire'],
+  ['T', 'Open the training scenarios'],
   ['X', 'Enlarge or shrink the results'],
   ['Escape', 'Shrink the enlarged results'],
   ['[', 'Show or hide the explanation (wide windows)'],

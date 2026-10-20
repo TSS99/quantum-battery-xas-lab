@@ -24,7 +24,12 @@ async function openTwin(page: Page, hash = '') {
 }
 
 async function axeViolations(page: Page) {
-  try { await page.addScriptTag({ url: AXE_URL }); } catch { test.skip(true, `axe-core could not be loaded from ${AXE_URL}`); }
+  // The CDN occasionally drops a request; try three times before giving up on the check.
+  let loaded = false;
+  for (let attempt = 0; attempt < 3 && !loaded; attempt++) {
+    try { await page.addScriptTag({ url: AXE_URL }); loaded = true; } catch { await page.waitForTimeout(1000); }
+  }
+  if (!loaded) test.skip(true, `axe-core could not be loaded from ${AXE_URL}`);
   return page.evaluate(async () => {
     const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe;
     const result = await axe.run(document, { resultTypes: ['violations'] });
@@ -251,13 +256,51 @@ test('every controls section changes the instrument and says what changed', asyn
   expect(errors).toEqual([]);
 });
 
+test('training: S0 with a fixed seed runs from the task to the reveal, replay and recording', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=3');
+  await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toBeEnabled();
+  await page.keyboard.press('t');
+  const dialog = page.getByRole('dialog', { name: 'Training scenarios' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('radio', { name: /Record this run/ }).check();
+  await dialog.getByRole('button', { name: 'Start find the edge' }).click();
+  await expect(dialog).toBeHidden();
+  const task = page.getByRole('region', { name: 'Task: Find the edge' });
+  await expect(task).toBeVisible();
+  await expect(changed(page)).toContainText('Seed 3');
+  const controls = page.getByRole('complementary', { name: 'Controls' });
+  await expect(controls.getByLabel('Beamline profile')).toBeDisabled();
+  const field = page.getByRole('spinbutton', { name: /Type an energy/ });
+  await field.fill('8979');
+  await field.press('Enter');
+  await page.waitForTimeout(1200);
+  await task.getByRole('button', { name: 'Done' }).click();
+  await task.getByRole('radio', { name: 'Certain' }).check();
+  await task.getByRole('checkbox').first().check();
+  await task.getByRole('button', { name: 'Show the truth' }).click();
+  await expect(task).toContainText('100 out of 100');
+  await expect(task.getByRole('heading', { name: 'Replay' })).toBeVisible();
+  const [download] = await Promise.all([page.waitForEvent('download'), task.getByRole('button', { name: 'Download the recording' }).click()]);
+  const log = JSON.parse(await readFile(await download.path(), 'utf8'));
+  expect(log.format).toBe('xaslab-twin-telemetry/1');
+  expect(log.scenario).toEqual({ id: 's0-find-the-edge', seed: 3 });
+  expect(log.events.some((e: { type: string }) => e.type === 'snap')).toBe(true);
+  expect(log.events.at(-1)).toMatchObject({ type: 'end', score: 100, success: true });
+  expect(await axeViolations(page)).toEqual([]);
+  await task.getByRole('button', { name: 'Close' }).click();
+  await expect(task).toBeHidden();
+  await expect(controls.getByLabel('Beamline profile')).toBeEnabled();
+  expect(errors).toEqual([]);
+});
+
 test('keyboard shortcuts dialog lists the keys, blocks them while open and returns focus', async ({ page }) => {
   await openTwin(page);
   const opener = page.getByRole('button', { name: 'Keyboard shortcuts' });
   await opener.click();
   const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('row')).toHaveCount(17);
+  await expect(dialog.getByRole('row')).toHaveCount(18);
   await page.keyboard.press('4');
   await expect(mode(page, 'Transmission')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');

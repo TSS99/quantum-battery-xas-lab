@@ -187,3 +187,23 @@
 .twin-details summary {cursor:pointer;font-size:14px;color:var(--text-2);min-height:32px;display:flex;align-items:center}
 .twin-any {display:grid;gap:10px;padding-top:8px}
 .twin-field input,.twin-field select {min-width:0;max-width:100%}
+
+/* ---------- Training: scenario list, task card, judgement, reveal ---------- */
+.twin-scenarios {display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.twin-scenarios li {display:grid;gap:8px;padding:12px 14px;border:1px solid var(--hairline);border-radius:10px}
+.twin-scenarios h3 {margin:0;font-size:16px;font-weight:600}
+.twin-scenarios p {margin:0;font-size:14px;color:var(--text-2)}
+.twin-scenarios .button {justify-self:start}
+.twin-task {flex:1 1 100%;display:grid;gap:10px;margin-top:12px;padding:14px 16px;border:1px solid #2b4644;border-radius:var(--r-surface);background:#0d1716}
+.twin-task h2 {font-size:17px;font-weight:600}
+.twin-task p {margin:0;font-size:14px}
+.twin-task-actions {display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px}
+.twin-judge {display:grid;gap:10px}
+.twin-judge fieldset {display:grid;gap:4px;margin:0;padding:8px 12px;border:1px solid var(--hairline);border-radius:10px}
+.twin-judge legend {padding:0 4px;font-size:14px}
+.twin-judge textarea {width:100%;resize:vertical}
+.twin-judge .button {justify-self:start}
+.twin-score {font-size:15px}
+.twin-score strong {font-size:28px;color:#7fd8cf}
+.twin-reveal {display:grid;gap:10px}
+.twin-replay h3 {margin:0 0 6px;font-size:15px;font-weight:600}
