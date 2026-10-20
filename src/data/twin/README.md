@@ -1,6 +1,6 @@
 # Beamline twin generated tables
 
-`optics.json` contains compact, browser-loadable optics, source, emission-line and gas data. `fixtures.json` and `beam-fixtures.json` are test-only reference output evaluated directly with the Python libraries. The exact numerical call patterns and package version are recorded in each file's `calls` field.
+`optics.json` contains compact, browser-loadable optics, source, emission-line and gas data. `fixtures.json`, `beam-fixtures.json` and `sample-fixtures.json` are test-only reference output evaluated directly with the Python libraries. The exact numerical call patterns and package version are recorded in each file's `calls` field.
 
 ## Contents
 
@@ -48,6 +48,20 @@ Per configuration and energy it records the Bragg angle, the Darwin and divergen
 
 Two conventions differ from the physics dossier and are deliberate. The flux bandwidth is the Darwin energy FWHM over the photon energy. That is larger than the exact aligned band \(\int R_1R_2\,d\varepsilon/\varepsilon\), because peak reflectivity is below one, by a factor of 1.61 at 5 keV, 1.20 at 9 keV and 1.02 at 25 keV for Si(111) and 1.80 at 5 keV for Si(311); the harmonic fraction is a ratio of two such bands, so most of that bias cancels. The quadrature resolution uses the Darwin FWHM rather than the classic Darwin width, so totals are \(\sqrt{9/8}\) larger than the dossier's section 2.3 table, and the intrinsic term then equals the tabulated `energy_fwhm` exactly. Orders whose energy exceeds the tabulated 60 keV mirror ceiling are reported as omitted rather than estimated.
 
+### `sample-fixtures.json`: sample, environment and dose reference
+
+`sample-fixtures.json` checks `src/lib/twin/{sample,damage}.ts` against values recomputed from XrayDB and SciPy without reading `elements.json` or `optics.json`. It holds ten cases over four materials: 2 mM Fe in water behind two 50 µm Kapton windows, a NiO pellet 500 µm and 2 µm thick, a 5 µm Cu foil clean and with 2 % pinholes and 15 % thickness spread, and a LiMn\(_2\)O\(_4\) pellet in a cryostat behind two 250 µm Be windows, with and without 20 µm grains. Each is evaluated at 45°/45° or at 10° exit, at \(E_0-50\), \(+50\), \(+300\), \(+600\) and \(+1000\) eV, recording \(\mu_T\), \(\mu_a\), the sample and window transmission, the full fluorescence ratio with its thin and thick limits and damping factor, the electron yield, the Larch `fluo_corr` \(\alpha\) and the dose rate.
+
+Four quantities are deliberately computed by a different route than the TypeScript side, so the fixtures test the model rather than repeat it. The thickness spread uses the analytic Gaussian average \(\exp(-\mu\bar x + \mu^2\sigma_x^2/2)\) against the Gauss-Hermite quadrature; the particle-size average is summed over a Poisson grain count against its closed form \(\exp[-n(1-e^{-\mu t})]\); the fluorescence depth integral is evaluated by `scipy.integrate.quad` against the Booth and Bridges closed form; and the edge jump continues the absorber's photoabsorption upward along a log-log line through 0.70 \(E_0\) and 0.98 \(E_0\), where the TypeScript side extrapolates the knot pair immediately below the edge. The last of these is the loosest: the two jumps agree to 0.35 % over the fixture energies, which is why the suite asks for 1 %. Both chord endpoints stay strictly below the edge because `xraydb.mu_elam` returns the above-edge branch at \(E_0(1-10^{-9})\) for several elements, Cu among them.
+
+The fixtures carry the bare tabulated edge, so the TypeScript functions are called with `sharpEdge` rather than the default teaching fine structure. Below the edge \(\mu_a\) is zero, so the fluorescence ratio and electron yield are zero there while the transmission is not. The fluorescence yield, mean line energy and line probability come from `xraydb.fluor_yield(element, edge, 'Ka', E0 + 100)` and are held fixed across the scan, because XrayDB returns zero below the edge while the line itself does not depend on the incident energy; the stored line fraction agrees with the grouping in `optics.json` to 0.08 % and the mean line energy to 0.004 %.
+
+Where a sample is opaque the suite compares optical depth rather than transmission. The 500 µm NiO pellet reaches \(\mu x \approx 86\) above the edge, where a 0.03 % difference in \(\mu\) moves \(e^{-\mu x}\) by 2 %; a ratio test on a transmission of \(10^{-38}\) measures the exponential, not the model.
+
+`fluoCorrAlpha` is `null` for the two solution cases. The \(\pm10\) eV finite difference of the Larch algorithm cannot resolve a step that small: over those 20 eV the water background falls by 0.086 cm\(^2\)/g while 2 mM of Fe adds only 0.039, so the denominator turns negative. `selfAbsorptionAlpha` throws there rather than returning a meaningless number, and the suite asserts that it does. For the concentrated cases it reproduces the dossier's section 6.2 values: 0.377 for Cu metal and 0.390 for NiO.
+
+The dose rows reproduce the dossier's section 11.1 table: 32.5 and 15.8 Gy/s for \(10^{11}\) ph/s on 5 × 1 mm\(^2\) of water at 7,112 and 10,000 eV against the quoted 33 and 16, and \(6.5\times10^7\) Gy/s for \(10^{12}\) ph/s on 5 × 5 µm\(^2\). The tabulated photoabsorption standing in for \(\mu_{\mathrm{en}}/\rho\) agrees with the NIST water table to 0.10 % at 5 keV, 0.04 % at 8 keV, 0.01 % at 10 keV and 1.16 % at 20 keV, so the suite requires 1.2 %.
+
 ## Sources, licences and citations
 
 - The XrayDB database is version 9.2 and is dedicated to the public domain under CC0 1.0 Universal. The `xraydb` 4.5.8 Python package is MIT licensed and is used only to generate these files.
@@ -64,6 +78,7 @@ From the repository root, use the pinned environment supplied for this project:
 ```powershell
 & 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' scripts/twin/make-optics-tables.py
 & 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' scripts/twin/reference_beam.py
+& 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' scripts/twin/reference_sample.py
 ```
 
-The first script prints the uncompressed and gzip sizes plus the measured mirror errors; the second prints the file size and configuration count. Neither contains timestamps or randomness. Two consecutive runs with the same XrayDB, SciPy and NumPy versions must produce byte-identical files.
+The first script prints the uncompressed and gzip sizes plus the measured mirror errors; the other two print the file size and the case count. Neither contains timestamps or randomness. Two consecutive runs with the same XrayDB, SciPy and NumPy versions must produce byte-identical files.
