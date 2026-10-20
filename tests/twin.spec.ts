@@ -13,7 +13,8 @@ const changed = (page: Page) => page.locator('.twin-changed [aria-live="polite"]
 function collectErrors(page: Page) {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  // A failed attempt to fetch the axe-core test helper from its CDN is the test's own network, not the page's.
+  page.on('console', m => { if (m.type() === 'error' && !m.location().url.startsWith(AXE_URL)) errors.push(m.text()); });
   return errors;
 }
 
