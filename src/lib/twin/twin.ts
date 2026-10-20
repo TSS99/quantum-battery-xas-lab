@@ -11,10 +11,12 @@ import { chamberReadout, type ChamberReadout } from './chambers';
 import { sampleDoseRate } from './damage';
 import { harmonicRejectionAngle } from './mirrors';
 import { backscatterEnergy_eV, detuneFactor, monoTrueEnergy_eV } from './mono';
-import { PROFILE_PRESETS, profilePreset, resolveSamplePreset, samplePreset } from './presets';
+import { PROFILE_PRESETS, profilePreset, referenceFor, resolveSamplePreset, samplePreset } from './presets';
+import { planPoints } from './scan';
+import { massFractions } from '../xraydata';
 import { fluorescence, fluorescenceLine, muComponents, transmission } from './sample';
 import { efficiency, filterTransmission, mcaSpectrum, solidAngle, type McaSpectrum } from './sdd';
-import { TWIN_MODES, type Acquisition, type ChamberConfig, type Crystal, type TwinMode, type TwinState } from './types';
+import { TWIN_MODES, type Acquisition, type ChamberConfig, type Crystal, type EnvironmentConfig, type SampleConfig, type ScanPlan, type SddConfig, type TwinMode, type TwinState } from './types';
 
 export { runScan, simulatePoint };
 
@@ -184,7 +186,13 @@ export type TwinCommand =
   | { type: 'profile'; id: string }
   | { type: 'samplePreset'; id: string }
   | { type: 'thickness'; thickness_um: number }
-  | { type: 'temperature'; temperature_K: number };
+  | { type: 'temperature'; temperature_K: number }
+  /** Any formula: a new material, absorber or edge also moves the energy, the window and the reference foil. */
+  | { type: 'sample'; patch: Partial<Omit<SampleConfig, 'libraryId'>> }
+  | { type: 'environment'; kind: EnvironmentConfig['kind'] }
+  | { type: 'sdd'; patch: Partial<Pick<SddConfig, 'distance_mm' | 'peaking_us' | 'soller' | 'elements'>> }
+  | { type: 'scan'; plan: ScanPlan }
+  | { type: 'source'; current_mA: number };
 
 /** What a command changed, for the "what just changed" line and the explanations. */
 export type ChangeKey = TwinCommand['type'];
@@ -200,6 +208,8 @@ export interface CommandResult {
 export const AUTO_GAIN_TARGET_V = 5;
 const GAIN_RANGE: [number, number] = [1e3, 1e11];
 const clamp = (value: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, value));
+/** Formula as upright LaTeX with numeric subscripts, as `formulaTex` in components/tex.tsx (which lib code must not import). */
+const formulaTex = (formula: string) => '\\mathrm{' + formula.replace(/(?<=[A-Za-z)\]])(\d+(?:\.\d+)?)/g, '_{$1}') + '}';
 const fmt = (value: number, digits = 1) => value.toFixed(digits);
 
 /** Energy range the current profile and crystal can reach, eV. */
@@ -294,6 +304,44 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
     case 'thickness': {
       const thickness_um = clamp(command.thickness_um, [0.01, 1e5]);
       return done({ ...state, sample: { ...state.sample, thickness_um } }, String.raw`Sample thickness $${+thickness_um.toPrecision(3)}\ \mu\mathrm{m}$.`);
+    }
+    case 'sample': {
+      const sample = { ...state.sample, ...command.patch };
+      if (!(sample.absorber in massFractions(sample.formula))) throw new Error(`${sample.absorber} is not in ${sample.formula}.`);
+      const e0 = edgeEnergy(sample);
+      const moved = sample.formula !== state.sample.formula || sample.absorber !== state.sample.absorber || sample.edge !== state.sample.edge;
+      let next: TwinState = { ...state, sample };
+      if (sample.absorber !== state.sample.absorber || sample.edge !== state.sample.edge) {
+        next = centredRoi({ ...next, reference: referenceFor(sample), energy_eV: clamp(e0 + 20, energyRange(next)) });
+      }
+      const changed = Object.keys(command.patch).join(', ');
+      return done(next, moved ? String.raw`Sample: $${formulaTex(sample.formula)}$, ${sample.absorber} ${sample.edge} edge at $${fmt(e0)}\ \mathrm{eV}$.` : `Sample ${changed} changed.`);
+    }
+    case 'environment': {
+      // Teaching windows: 25 um Kapton on each side of a cryostat, an operando cell or a liquid cell.
+      const kapton = { formula: 'C22H10N2O5', density: 1.42, thickness_um: 25 };
+      const windows = ['cryostat', 'operando-cell', 'liquid-cell'].includes(command.kind) ? [kapton, kapton] : [];
+      const temperature_K = clamp(state.environment.temperature_K, TEMPERATURE_RANGE[command.kind]);
+      return done({ ...state, environment: { kind: command.kind, temperature_K, windows } }, `Sample environment: ${command.kind.replace('-', ' ')}.`);
+    }
+    case 'sdd': {
+      const p = command.patch, sdd = state.profile.sdd;
+      const next = {
+        ...sdd, ...p,
+        distance_mm: clamp(p.distance_mm ?? sdd.distance_mm, [5, 5000]),
+        peaking_us: clamp(p.peaking_us ?? sdd.peaking_us, [0.05, 32]),
+        elements: Math.round(clamp(p.elements ?? sdd.elements, [1, 7])),
+      };
+      return done({ ...state, profile: { ...state.profile, sdd: next } }, 'Fluorescence detector changed.');
+    }
+    case 'scan': {
+      const plan = { ...command.plan, repeats: Math.round(clamp(command.plan.repeats, [1, 50])) };
+      planPoints(plan, edgeEnergy(state.sample));  // throws on an impossible plan
+      return done({ ...state, scan: plan }, 'Scan plan changed.');
+    }
+    case 'source': {
+      const current_mA = clamp(command.current_mA, [1, 500]);
+      return done({ ...state, profile: { ...state.profile, source: { ...state.profile.source, current_mA } } }, String.raw`Ring current $${Math.round(current_mA)}\ \mathrm{mA}$.`);
     }
     case 'temperature': {
       const temperature_K = clamp(command.temperature_K, TEMPERATURE_RANGE[state.environment.kind]);
