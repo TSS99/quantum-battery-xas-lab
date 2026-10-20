@@ -28,17 +28,28 @@ describe('default state', () => {
     expect(DEFAULT_TWIN.profile.preset).toBe('bm3');
     expect(DEFAULT_TWIN.profile.source).toMatchObject({ kind: 'bending-magnet', ring_GeV: 3 });
     expect(DEFAULT_TWIN.profile.mono.crystal).toBe('Si111');
-    expect(DEFAULT_TWIN.profile.mirrors.every(m => m.coating === 'Rh' && m.angle_mrad === 3)).toBe(true);
+    // Rh collimating and focusing mirrors in the beam; the Si harmonic rejection mirror starts retracted.
+    expect(DEFAULT_TWIN.profile.mirrors.filter(m => m.inserted).every(m => m.coating === 'Rh' && m.angle_mrad === 3)).toBe(true);
+    expect(DEFAULT_TWIN.profile.mirrors.find(m => m.role === 'harmonic-rejection')?.inserted).toBe(false);
     expect(DEFAULT_TWIN.sample).toMatchObject({ formula: 'Cu', absorber: 'Cu', edge: 'K', thickness_um: 7, form: 'foil' });
     // Just above the Cu K edge, 8979.0 eV in xraydb.
     expect(DEFAULT_TWIN.energy_eV).toBeGreaterThan(8979);
   });
-  it('has exactly one selectable preset until the others exist', () => {
-    expect(PROFILE_PRESETS.filter(p => p.profile).map(p => p.id)).toEqual(['bm3']);
+  it('offers the three generic profiles of plan 3.8', () => {
+    expect(PROFILE_PRESETS.map(p => p.id)).toEqual(['bm3', 'und6', 'tender']);
   });
 });
 
 describe('reducer', () => {
+  it('applies twin commands and turns a failed one into the change line', () => {
+    const detuned = twinReducer(INITIAL_STORE, { type: 'command', command: { type: 'detune', detune: 0.3 } });
+    expect(detuned.twin.profile.mono.detune).toBe(0.3);
+    expect(detuned.view.change).toMatch(/30 %/);
+    const failed = twinReducer(INITIAL_STORE, { type: 'command', command: { type: 'mirror', id: 'M9', inserted: true } });
+    expect(failed.twin).toBe(INITIAL_STORE.twin);
+    expect(failed.view.change).toMatch(/could not be made/);
+  });
+
   it('switches mode and says what changed', () => {
     const s = run({ type: 'mode', mode: 'xrf' });
     expect(s.twin.mode).toBe('xrf');

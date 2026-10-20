@@ -1,76 +1,15 @@
 // State for the /twin/ page: the physics contract (TwinState) plus view settings, a pure reducer,
 // the URL hash format and the keyboard map. No React or DOM here, so it is unit tested in Node.
-import { TWIN_MODES, type TwinMode, type TwinProfile, type TwinState } from '@/lib/twin/types';
+import { TWIN_MODES, type TwinMode, type TwinState } from '@/lib/twin/types';
+import { PROFILE_PRESETS } from '@/lib/twin/presets';
+import { DEFAULT_STATE, applyCommand, type TwinCommand } from '@/lib/twin/twin';
 
-export interface ProfilePreset {
-  id: string;
-  name: string;
-  /** Energy range the monochromator covers with this preset, eV. */
-  range_eV: [number, number];
-  /** Presets without a profile are listed but not selectable yet. */
-  profile?: TwinProfile;
-}
-
-/**
- * Generic 3 GeV bending magnet beamline for hard X-ray XAS (plan section 3.8 a), never a real facility.
- * Ring values match a row of the source table in the physics dossier (3.0 GeV, 1.4 T, 0.3 A). The other numbers are
- * illustrative preset inputs that the controls (T4d) and the models (T2) will refine: dark currents are 0 until the
- * ion chamber model sets them, and the gains are set for the default Cu K scan (see below).
- */
-const BM3_PROFILE: TwinProfile = {
-  format: 'xaslab-twin-profile/1',
-  name: '3 GeV bending magnet, hard X-rays',
-  preset: 'bm3',
-  source: { kind: 'bending-magnet', ring_GeV: 3, current_mA: 300, field_T: 1.4, hAccept_mrad: 1, vDiv_urad: 20 },
-  mirrors: [
-    { id: 'M1', role: 'collimating', coating: 'Rh', angle_mrad: 3, inserted: true },
-    { id: 'M2', role: 'focusing', coating: 'Rh', angle_mrad: 3, inserted: true },
-  ],
-  mono: { crystal: 'Si111', offset_eV: 0, detune: 0, glitchSeed: 1 },
-  // I0 with 15 cm of N2 absorbs about 9.5 % at the Cu K edge (xraydb material_mu), close to the usual 10 to 20 %.
-  // Gains are the decade that keeps each amplifier between about 0.2 and 5 V across the Cu K scan with the default
-  // sample and Cu reference foil (acquire.ts; full scale 10 V): about 6e-6 A in I0, 1e-5 to 5e-5 A in It, 2e-7 to 4e-6 A in Iref.
-  chambers: [
-    { id: 'I0', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e5, dark_A: 0 },
-    { id: 'It', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e5, dark_A: 0 },
-    { id: 'Iref', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e6, dark_A: 0 },
-  ],
-  // Window around Cu Ka1 and Ka2 (8046.3 and 8026.7 eV in xraydb).
-  sdd: { elements: 4, distance_mm: 30, area_mm2: 50, peaking_us: 1, roi_eV: [7890, 8190], soller: false, exitAngle_deg: 45 },
-  beam_um: [500, 200],
-  stability: { i0Noise: 1e-3, drift_eV_per_h: 0.1 },
-};
-
-export const PROFILE_PRESETS: readonly ProfilePreset[] = [
-  { id: 'bm3', name: '3 GeV bending magnet, hard X-rays', range_eV: [4500, 30000], profile: BM3_PROFILE },
-  { id: 'und6', name: '6 GeV undulator, hard X-rays', range_eV: [4500, 30000] },
-  { id: 'tender', name: 'Tender X-rays, 2 to 5 keV', range_eV: [2000, 5000] },
-];
+export { PROFILE_PRESETS, type ProfilePreset } from '@/lib/twin/presets';
 
 export const presetOf = (state: TwinState) => PROFILE_PRESETS.find(p => p.id === state.profile.preset) ?? PROFILE_PRESETS[0];
 
-export const DEFAULT_TWIN: TwinState = {
-  mode: 'transmission',
-  realistic: false,
-  // Just above the Cu K edge (8979.0 eV in xraydb), so the foil absorbs and fluoresces.
-  energy_eV: 9000,
-  profile: BM3_PROFILE,
-  // A 7 µm Cu reference foil: edge step about 1.5 (mu x 0.25 below and 1.72 above the edge, xraydb, 8.96 g/cm3).
-  sample: { formula: 'Cu', density: 8.96, thickness_um: 7, absorber: 'Cu', edge: 'K', form: 'foil', pinholeFraction: 0, thicknessSpread: 0, particle_um: 0, incidence_deg: 45 },
-  environment: { kind: 'ambient', temperature_K: 295, windows: [] },
-  // The usual Cu reference foil, 7 µm like the sample, between the It and Iref chambers.
-  reference: { formula: 'Cu', density: 8.96, thickness_um: 7 },
-  // Pre-edge, edge and EXAFS regions relative to the edge; k = 2.8 per angstrom is 30 eV above it.
-  scan: {
-    kind: 'step', repeats: 1, settle_s: 0.2,
-    regions: [
-      { space: 'E', start: -150, end: -20, step: 5, dwell_s: 1 },
-      { space: 'E', start: -20, end: 30, step: 0.5, dwell_s: 1 },
-      { space: 'k', start: 2.8, end: 14, step: 0.05, dwell_s: 1, kWeight: 1 },
-    ],
-  },
-  seed: 1,
-};
+/** The page starts from the twin's default state (src/lib/twin/twin.ts). */
+export const DEFAULT_TWIN: TwinState = DEFAULT_STATE;
 
 export type ResultTab = 'live' | 'mu' | 'normalized' | 'derivative' | 'chik' | 'chir' | 'xrf' | 'rocking';
 export const RESULT_TABS: readonly ResultTab[] = ['live', 'mu', 'normalized', 'derivative', 'chik', 'chir', 'xrf', 'rocking'];
@@ -105,7 +44,9 @@ export type TwinAction =
   | { type: 'tab'; tab: ResultTab }
   | { type: 'acquire' }
   | { type: 'hash'; mode?: TwinMode; seed?: number }
-  | { type: 'note'; text: string };
+  | { type: 'note'; text: string }
+  /** Any twin command (src/lib/twin/twin.ts); needs the X-ray tables, so failures become the change line. */
+  | { type: 'command'; command: TwinCommand };
 
 export interface ModeInfo {
   id: TwinMode;
@@ -219,6 +160,14 @@ export function twinReducer(store: TwinStore, action: TwinAction): TwinStore {
       view: { ...view, hashRead: true },
     };
     case 'note': return note(action.text);
+    case 'command': {
+      try {
+        const result = applyCommand(twin, action.command);
+        return { twin: result.state, view: { ...view, change: result.note } };
+      } catch (error) {
+        return note('That change could not be made: ' + (error instanceof Error ? error.message : String(error)));
+      }
+    }
   }
 }
 
