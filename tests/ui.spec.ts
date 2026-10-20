@@ -109,6 +109,32 @@ test('spectra validates imports without losing valid runs and exports provenance
   await expect(page.getByRole('heading', { name: 'Fit audit', exact: true })).toBeVisible({ timeout: 30_000 });
 });
 
+test('spectra reduces a selected post-edge curve to chi(k) and chi(R) in a worker', async ({ page }) => {
+  await page.goto('./spectra/');
+  const e0 = 7112, etok = 0.26246842396479836;
+  const pre = Array.from({ length: 40 }, (_, i) => e0 - 200 + i * 5);
+  const k = Array.from({ length: 281 }, (_, i) => i * 0.05);
+  const energy = [...pre, ...k.map(value => e0 + value * value / etok)];
+  const mu = energy.map((value, i) => {
+    const offset = value - e0, baseline = 35 + 0.014 * offset;
+    if (i < pre.length) return baseline;
+    const wave = k[i - pre.length], turnOn = 1 - Math.exp(-((wave / 1.35) ** 4));
+    const chi = 10.5 * Math.sin(2 * wave * 2.24 + 0.42) * Math.exp(-0.014 * wave * wave) * turnOn / (1 + 0.055 * wave);
+    return baseline + 100 * (1 - Math.exp(-offset / 5)) + chi;
+  });
+  await page.getByLabel('Import spectrum CSV or JSON').setInputFiles({
+    name: 'exafs-worker-test.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ name: 'EXAFS worker test', provenance: 'synthetic', energy_eV: energy, mu_cm_inv: mu })),
+  });
+  await expect(page.getByRole('heading', { name: 'EXAFS reduction', exact: true })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Processing complete' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('slider', { name: /exafs-chi-k:/ })).toBeVisible();
+  await expect(page.getByRole('slider', { name: /exafs-chi-r:/ })).toBeVisible();
+  await expect(page.getByText(/is not a bond length/)).toBeVisible();
+  await page.getByLabel('k-weight', { exact: true }).selectOption('3');
+  await expect(page.getByRole('status').filter({ hasText: 'Processing complete' })).toBeVisible({ timeout: 30_000 });
+});
+
 test('mobile modules fit the viewport and respect reduced-motion preference', async ({ page }) => {
   await page.goto('./');
   expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);

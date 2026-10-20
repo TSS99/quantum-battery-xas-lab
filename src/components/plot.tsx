@@ -10,9 +10,11 @@ const TEX_FONT = "KaTeX_Main, 'Latin Modern Roman', 'Times New Roman', serif";
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 /** 1.2e+5 as 1.2×10⁵ with a true minus sign, for SVG text that cannot hold KaTeX. */
 const sciText = (s: string) => s.replace(/^-/, '−').replace(/e([+-]?)(\d+)$/, (_, sign: string, exp: string) => '×10' + (sign === '-' ? '⁻' : '') + [...exp].map(d => SUP[+d]).join(''));
-export interface Series { name: string; label?: ReactNode; color: string; x: number[]; y: number[]; dashed?: boolean; sigma?: number[] }
-interface Props { series: Series[]; xLabel?: string; yLabel?: string; yTex?: string; yUnit?: string; cursor?: number; onCursor?: (n: number) => void; height?: number; exportName?: string; minY?: number; ghostKey?: string; edge?: number; reveal?: number }
-export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm⁻¹)', yTex = yLabel === 'μ (cm⁻¹)' ? '\\mu\\ (\\mathrm{cm}^{-1})' : undefined, yUnit: explicitYUnit, cursor, onCursor, height = 240, exportName = 'spectrum', minY, ghostKey, edge, reveal = 1 }: Props) {
+export interface Series { name: string; label?: ReactNode; color: string; x: number[]; y: number[]; dashed?: boolean; dash?: 'solid' | 'dashed' | 'dotted'; sigma?: number[] }
+/** A shaded x range, such as a fit window; the label is drawn when the band is wide enough. */
+export interface Band { from: number; to: number; label: string }
+interface Props { series: Series[]; xLabel?: string; yLabel?: string; yTex?: string; yUnit?: string; cursor?: number; onCursor?: (n: number) => void; height?: number; exportName?: string; minY?: number; ghostKey?: string; edge?: number; reveal?: number; bands?: Band[] }
+export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm⁻¹)', yTex = yLabel === 'μ (cm⁻¹)' ? '\\mu\\ (\\mathrm{cm}^{-1})' : undefined, yUnit: explicitYUnit, cursor, onCursor, height = 240, exportName = 'spectrum', minY, ghostKey, edge, reveal = 1, bands = [] }: Props) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, ''), reduced = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null), ref = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(700), [hover, setHover] = useState<number | null>(null);
@@ -67,11 +69,12 @@ export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm�
       {ticks.map(t => <g key={t}><line x1={L} x2={W - R} y1={py(y0 + t * (y1 - y0))} y2={py(y0 + t * (y1 - y0))} stroke="#35404d" /><text x={L - 8} y={py(y0 + t * (y1 - y0)) + 4} textAnchor="end" fill="#c4ccd6" fontSize="13" fontFamily={TEX_FONT}>{sciText(fmt(y0 + t * (y1 - y0)))}</text><text x={px(x0 + t * (x1 - x0))} y={H - B + 20} textAnchor="middle" fill="#c4ccd6" fontSize="13" fontFamily={TEX_FONT}>{sciText(fmt(x0 + t * (x1 - x0)))}</text></g>)}
       <defs><clipPath id={uid + '-clip'}><rect x={L} y={T} width={W - L - R} height={H - T - B} /></clipPath></defs>
       <g clipPath={'url(#' + uid + '-clip)'}>
+        {bands.map(band => { const a = px(Math.max(x0, band.from)), z = px(Math.min(x1, band.to)); return z > a && <g key={band.label}><rect x={a} y={T} width={z - a} height={H - T - B} fill="#9cc5e8" opacity=".09" />{z - a > 6.5 * band.label.length + 8 && <text x={a + 6} y={T + 16} fill="#c4ccd6" fontSize="12" fontFamily={TEX_FONT}>{band.label}</text>}</g>; })}
         {valid.length === 1 && <path d={line(valid[0]) + ' L' + px(x1) + ',' + py(y0) + ' L' + px(x0) + ',' + py(y0) + 'Z'} fill={valid[0].color} opacity=".06" />}
         {ghost?.series.map((s, i) => <path key={i} className="edge-ghost" d={line(s)} stroke={s.color} opacity=".3" fill="none" strokeWidth="2" />)}
         {valid.map((s, j) => <g key={s.name}>
           {s.sigma && <path d={s.x.map((x, i) => (i ? 'L' : 'M') + px(x) + ',' + py(s.y[i] + s.sigma![i])).join(' ') + s.x.map((_, i) => { const k = s.x.length - 1 - i; return 'L' + px(s.x[k]) + ',' + py(s.y[k] - s.sigma![k]); }).join(' ') + 'Z'} fill={s.color} opacity=".13" />}
-          <motion.path initial={false} animate={{ d: line(s), strokeDashoffset: j === 0 && reveal < 1 && !reduced ? 1 - reveal : 0 }} transition={{ duration: reduced ? 0 : reveal < 1 ? .065 : .24, ease: 'linear' }} pathLength={j === 0 && reveal < 1 ? 1 : undefined} fill="none" stroke={s.color} strokeWidth="2.2" strokeDasharray={j === 0 && reveal < 1 ? '1' : s.dashed ? '5 5' : undefined} />
+          <motion.path initial={false} animate={{ d: line(s), strokeDashoffset: j === 0 && reveal < 1 && !reduced ? 1 - reveal : 0 }} transition={{ duration: reduced ? 0 : reveal < 1 ? .065 : .24, ease: 'linear' }} pathLength={j === 0 && reveal < 1 ? 1 : undefined} fill="none" stroke={s.color} strokeWidth="2.2" strokeDasharray={j === 0 && reveal < 1 ? '1' : s.dash === 'dotted' ? '2 4' : s.dashed || s.dash === 'dashed' ? '6 5' : undefined} />
         </g>)}
         <line x1={px(cx)} x2={px(cx)} y1={T} y2={H - B} stroke="#ffc46b" strokeDasharray="4 4" />
         {valid.map((s, i) => <circle key={i} cx={px(s.x[nearest(s)])} cy={py(s.y[nearest(s)])} r="4" fill={s.color} stroke="#11171e" strokeWidth="1.5" />)}
@@ -81,6 +84,6 @@ export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm�
     </svg>
     <span id={uid + '-help'} className="sr-only">Use arrow keys, Home or End to inspect the curve. Drag to move the cursor.</span>
     <div className="plot-readout" aria-live="polite" aria-atomic="true"><Num>{cx.toFixed(2)}</Num> <Unit>{xUnit}</Unit>; values at the nearest samples.</div>
-    <div className="plot-legend">{valid.map((s, i) => <span key={i}><i style={{ background: s.color }} />{s.label ?? s.name}<b><Num>{fmt(s.y[nearest(s)])}</Num> <Unit>{yUnit}</Unit></b></span>)}</div>
+    <div className="plot-legend">{valid.map((s, i) => <span key={i}><i style={{ background: 'none', borderTopColor: s.color, borderTopStyle: s.dash === 'dotted' ? 'dotted' : s.dashed || s.dash === 'dashed' ? 'dashed' : 'solid' }} />{s.label ?? s.name}<b><Num>{fmt(s.y[nearest(s)])}</Num> <Unit>{yUnit}</Unit></b></span>)}</div>
   </div>;
 }

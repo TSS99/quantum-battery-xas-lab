@@ -6,8 +6,15 @@ export interface Spectrum {
   name: string;
   provenance: 'synthetic' | 'imported' | 'tabulated';
   energy_eV: number[];
+  /** Absolute linear coefficient in cm^-1, unless `quantity` says the values are dimensionless. */
   mu_cm_inv: number[];
   sigma_mu_cm_inv?: number[];
+  /**
+   * Absent: absolute linear absorption coefficient (cm^-1). 'normalized' and 'flattened' are the
+   * dimensionless Larch pre_edge outputs `norm` and `flat` from the Measured data workflow. They are
+   * exported as mu_norm / mu_flat, never as mu_cm_inv.
+   */
+  quantity?: SpectrumQuantity;
   parameters?: XASParams;
   source?: string;
   sourceSha256?: string;
@@ -17,6 +24,16 @@ export interface Spectrum {
   /** An imported file's declaration is retained, but is not independently verified. */
   declaredProvenance?: 'synthetic' | 'imported' | 'tabulated';
 }
+
+export type SpectrumQuantity = 'normalized' | 'flattened';
+/** Column and JSON field names that carry each quantity's unit. */
+const QUANTITY_FIELDS = { normalized: 'mu_norm', flattened: 'mu_flat' } as const;
+const fieldQuantity = (field: string): SpectrumQuantity | undefined => (Object.keys(QUANTITY_FIELDS) as SpectrumQuantity[]).find(q => QUANTITY_FIELDS[q] === field);
+
+/** Unit of the stored values, as text: cm^-1 or dimensionless. */
+export const spectrumUnit = (spectrum: Pick<Spectrum, 'quantity'>) => spectrum.quantity ? 'dimensionless' : 'cm^-1';
+/** Whether two curves can share a value axis. */
+export const sameUnits = (a: Pick<Spectrum, 'quantity'>, b: Pick<Spectrum, 'quantity'>) => !a.quantity === !b.quantity;
 
 export const MAX_SPECTRUM_ROWS = 20000;
 export const MAX_SPECTRUM_BYTES = 5_000_000;
@@ -32,7 +49,7 @@ function textField(value: unknown, key: string, max = 2000): string | undefined 
   return value;
 }
 
-/** Absolute linear coefficients only. Normalized mu and arbitrary units need a different contract. */
+/** Absolute linear coefficients, or dimensionless normalized curves marked by `quantity`. Arbitrary units are not accepted. */
 export function validateSpectrum(input: unknown): Spectrum {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Spectrum must be an object.');
   const data = input as Record<string, unknown>;
@@ -43,8 +60,11 @@ export function validateSpectrum(input: unknown): Spectrum {
   if (energy.some((value, i) => value < 0 || value > 1e9 || (i > 0 && value <= energy[i - 1]))) throw new Error('Energies must be nonnegative and strictly increasing in eV.');
   if (coefficient.some(value => Math.abs(value) > 1e9)) throw new Error('Absorption coefficients exceed the supported range.');
   if (data.provenance !== 'synthetic' && data.provenance !== 'imported' && data.provenance !== 'tabulated') throw new Error('Spectrum provenance must be synthetic or imported.');
+  if (data.quantity !== undefined && data.quantity !== 'normalized' && data.quantity !== 'flattened') throw new Error('Spectrum quantity must be normalized or flattened when given.');
+  const quantity = data.quantity as SpectrumQuantity | undefined;
   let sigma: number[] | undefined;
   if (data.sigma_mu_cm_inv !== undefined) {
+    if (quantity) throw new Error('Pointwise uncertainties are supported only for absolute cm^-1 coefficients.');
     sigma = finiteArray(data.sigma_mu_cm_inv, 'sigma_mu_cm_inv');
     if (sigma.length !== energy.length || sigma.some(value => value <= 0 || value > 1e9)) throw new Error('Uncertainties must be positive cm^-1 values, one per row.');
   }
@@ -79,6 +99,7 @@ export function validateSpectrum(input: unknown): Spectrum {
     energy_eV: energy,
     mu_cm_inv: coefficient,
     sigma_mu_cm_inv: sigma,
+    quantity,
     source: textField(data.source, 'source', 512),
     sourceSha256: data.sourceSha256 as string | undefined,
     sampleId: textField(data.sampleId, 'sampleId', 200),
@@ -98,9 +119,29 @@ export function snapshotSpectrum(params: XASParams, name?: string): Spectrum {
   };
 }
 
+/** mu_norm / mu_flat arrays become the stored values with their quantity; only one value array is allowed. */
+function fromFieldNames(input: Record<string, unknown>): Record<string, unknown> {
+  const { mu_norm, mu_flat, quantity, ...rest } = input;
+  const given = (['mu_cm_inv', 'mu_norm', 'mu_flat'] as const).filter(field => input[field] !== undefined);
+  if (given.length > 1) throw new Error('Give one value array: mu_cm_inv, mu_norm or mu_flat.');
+  if (!given.length || given[0] === 'mu_cm_inv') {
+    if (quantity !== undefined) throw new Error('mu_cm_inv holds absolute cm^-1 coefficients; use mu_norm or mu_flat for normalized curves.');
+    return rest;
+  }
+  return { ...rest, mu_cm_inv: given[0] === 'mu_norm' ? mu_norm : mu_flat, quantity: fieldQuantity(given[0]) };
+}
+
 function imported(input: Record<string, unknown>, filename: string): Spectrum {
   const declared = input.declaredProvenance ?? input.provenance;
-  return validateSpectrum({ ...input, provenance: 'imported', declaredProvenance: declared, source: input.source ?? filename, id: input.id ?? `imported-${Date.now()}`, name: input.name ?? filename });
+  return validateSpectrum({ ...fromFieldNames(input), provenance: 'imported', declaredProvenance: declared, source: input.source ?? filename, id: input.id ?? `imported-${Date.now()}`, name: input.name ?? filename });
+}
+
+/** The units object must agree with the value field: cm^-1 for mu_cm_inv, normalized for mu_norm, flattened for mu_flat. */
+function checkUnits(units: unknown, spectrum: Record<string, unknown>) {
+  const item = units && typeof units === 'object' ? units as Record<string, unknown> : {};
+  if (item.energy !== 'eV' || !['cm^-1', 'normalized', 'flattened'].includes(item.mu as string)) throw new Error('JSON units must be eV and cm^-1 (absolute linear coefficient), or eV and normalized or flattened.');
+  const expected = spectrum.mu_norm !== undefined ? 'normalized' : spectrum.mu_flat !== undefined ? 'flattened' : 'cm^-1';
+  if (item.mu !== expected) throw new Error(`JSON units say ${item.mu}, but the values are given as ${expected === 'cm^-1' ? 'mu_cm_inv' : QUANTITY_FIELDS[expected]}.`);
 }
 
 /** Import a strict units-bearing CSV or JSON. Import never certifies a dataset as measured. */
@@ -114,17 +155,14 @@ export function parseSpectrum(text: string, filename = 'Imported spectrum'): Spe
     const envelope = parsed as Record<string, unknown>;
     if ('schema' in envelope) {
       if (envelope.schema !== 'quantum-battery-xas-spectrum' || envelope.version !== 1) throw new Error('Unsupported spectrum schema or version.');
-      const units = envelope.units as Record<string, unknown> | undefined;
-      if (!units || units.energy !== 'eV' || units.mu !== 'cm^-1') throw new Error('JSON units must be eV and cm^-1 (absolute linear coefficient).');
       if (!envelope.spectrum || typeof envelope.spectrum !== 'object' || Array.isArray(envelope.spectrum)) throw new Error('Missing spectrum object.');
+      checkUnits(envelope.units, envelope.spectrum as Record<string, unknown>);
       return imported(envelope.spectrum as Record<string, unknown>, filename);
     }
     // Plain arrays carry their units in the exact field names. Generic mu/energy is rejected.
-    if (envelope.units !== undefined) {
-      const units = envelope.units as Record<string, unknown>;
-      if (!units || units.energy !== 'eV' || units.mu !== 'cm^-1') throw new Error('JSON units must be eV and cm^-1.');
-    }
-    return imported(envelope, filename);
+    if (envelope.units !== undefined) checkUnits(envelope.units, envelope);
+    const { units: _units, ...plain } = envelope;
+    return imported(plain, filename);
   }
   const lines = trimmed.split(/\r?\n/).filter(line => line.trim());
   let metadata: Record<string, unknown> = {};
@@ -143,8 +181,10 @@ export function parseSpectrum(text: string, filename = 'Imported spectrum'): Spe
   }
   if (!rows.length) throw new Error('CSV is empty.');
   const header = rows[0].split(',').map(value => value.trim());
-  if (new Set(header).size !== header.length || header.some(value => !['energy_eV', 'mu_cm_inv', 'sigma_mu_cm_inv'].includes(value)) || !header.includes('energy_eV') || !header.includes('mu_cm_inv')) {
-    throw new Error('CSV headers must be energy_eV,mu_cm_inv with optional sigma_mu_cm_inv. mu must be an absolute cm^-1 coefficient, not normalized or arbitrary units.');
+  const valueColumn = ['mu_cm_inv', 'mu_norm', 'mu_flat'].filter(name => header.includes(name));
+  const allowed = valueColumn[0] === 'mu_cm_inv' ? ['energy_eV', 'mu_cm_inv', 'sigma_mu_cm_inv'] : ['energy_eV', ...valueColumn];
+  if (new Set(header).size !== header.length || valueColumn.length !== 1 || header.some(value => !allowed.includes(value)) || !header.includes('energy_eV')) {
+    throw new Error('CSV headers must be energy_eV,mu_cm_inv with optional sigma_mu_cm_inv, where mu is an absolute cm^-1 coefficient. Normalized curves use energy_eV,mu_norm or energy_eV,mu_flat. Arbitrary units are not accepted.');
   }
   if (rows.length - 1 > MAX_SPECTRUM_ROWS) throw new Error(`CSV exceeds ${MAX_SPECTRUM_ROWS} rows.`);
   const energy: number[] = [], coefficient: number[] = [], sigma: number[] = [];
@@ -152,22 +192,28 @@ export function parseSpectrum(text: string, filename = 'Imported spectrum'): Spe
     const cells = rows[i].split(',').map(cell => cell.trim());
     if (cells.length !== header.length || cells.some(cell => cell === '' || !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(cell))) throw new Error(`Invalid numeric CSV row ${i + 1}.`);
     energy.push(Number(cells[header.indexOf('energy_eV')]));
-    coefficient.push(Number(cells[header.indexOf('mu_cm_inv')]));
+    coefficient.push(Number(cells[header.indexOf(valueColumn[0])]));
     if (header.includes('sigma_mu_cm_inv')) sigma.push(Number(cells[header.indexOf('sigma_mu_cm_inv')]));
   }
-  return imported({ ...metadata, energy_eV: energy, mu_cm_inv: coefficient, sigma_mu_cm_inv: sigma.length ? sigma : undefined }, filename);
+  const { quantity: _quantity, mu_cm_inv: _mu, mu_norm: _norm, mu_flat: _flat, ...described } = metadata;
+  return imported({ ...described, energy_eV: energy, [valueColumn[0]]: coefficient, sigma_mu_cm_inv: sigma.length ? sigma : undefined }, filename);
 }
+
+const QUANTITY_TEXT = { normalized: 'Normalized absorption (Larch pre_edge norm); energy=eV; mu_norm dimensionless', flattened: 'Flattened normalized absorption (Larch pre_edge flat); energy=eV; mu_flat dimensionless' } as const;
 
 export function spectrumToCSV(spectrum: Spectrum): string {
   const checked = validateSpectrum(spectrum);
-  const { energy_eV, mu_cm_inv, sigma_mu_cm_inv, ...metadata } = checked;
-  const header = `energy_eV,mu_cm_inv${sigma_mu_cm_inv ? ',sigma_mu_cm_inv' : ''}`;
+  const { energy_eV, mu_cm_inv, sigma_mu_cm_inv, quantity, ...metadata } = checked;
+  const header = `energy_eV,${quantity ? QUANTITY_FIELDS[quantity] : 'mu_cm_inv'}${sigma_mu_cm_inv ? ',sigma_mu_cm_inv' : ''}`;
   const rows = energy_eV.map((energy, i) => `${energy},${mu_cm_inv[i]}${sigma_mu_cm_inv ? `,${sigma_mu_cm_inv[i]}` : ''}`);
-  return [`# Absolute linear absorption coefficient; energy=eV; mu=cm^-1`, `# metadata: ${JSON.stringify(metadata)}`, header, ...rows].join('\n');
+  return [`# ${quantity ? QUANTITY_TEXT[quantity] : 'Absolute linear absorption coefficient; energy=eV; mu=cm^-1'}`, `# metadata: ${JSON.stringify(metadata)}`, header, ...rows].join('\n');
 }
 
 export function spectrumToJSON(spectrum: Spectrum): string {
-  return JSON.stringify({ schema: 'quantum-battery-xas-spectrum', version: 1, units: { energy: 'eV', mu: 'cm^-1' }, spectrum: validateSpectrum(spectrum) }, null, 2);
+  const checked = validateSpectrum(spectrum);
+  if (!checked.quantity) return JSON.stringify({ schema: 'quantum-battery-xas-spectrum', version: 1, units: { energy: 'eV', mu: 'cm^-1' }, spectrum: checked }, null, 2);
+  const { mu_cm_inv, quantity, ...rest } = checked;
+  return JSON.stringify({ schema: 'quantum-battery-xas-spectrum', version: 1, units: { energy: 'eV', mu: quantity }, spectrum: { ...rest, [QUANTITY_FIELDS[quantity]]: mu_cm_inv } }, null, 2);
 }
 
 /** Subtract first-window mean and divide by last-minus-first mean; no XAFS background fit. */
@@ -275,7 +321,7 @@ export function spectrumView(spectrum: Spectrum, view: SpectrumView, applyCalibr
     energy_eV: spectrum.energy_eV.map(energy => energy + offset),
     values: view === 'raw' ? [...spectrum.mu_cm_inv] : view === 'normalized' ? normalizeSpectrum(spectrum) : derivativeSpectrum(spectrum),
     sigma: view === 'raw' ? spectrum.sigma_mu_cm_inv?.slice() : undefined,
-    valueUnit: view === 'raw' ? 'cm^-1' : view === 'normalized' ? 'dimensionless' : 'cm^-1/eV',
+    valueUnit: view === 'raw' ? spectrumUnit(spectrum) : view === 'normalized' ? 'dimensionless' : spectrum.quantity ? 'eV^-1' : 'cm^-1/eV',
     appliedOffset_eV: offset,
   };
 }
@@ -286,7 +332,7 @@ export function spectrumManifest(spectrum: Spectrum, state: LabState, view: Spec
     schema: 'quantum-battery-xas-run', version: 1, appVersion: '0.1.0', exportedAt: new Date().toISOString(),
     codeRevision: 'Record the publishing commit separately',
     provenanceLabel: spectrumProvenance(checked), sourceIntegrity: checked.sourceSha256 ? 'SHA-256 of the original imported bytes' : 'No original-file hash available',
-    units: { rawEnergy: 'eV', rawAbsorption: 'cm^-1', rawSigma: 'cm^-1 (pointwise standard deviation supplied by user)' },
+    units: { rawEnergy: 'eV', rawAbsorption: checked.quantity ? `dimensionless (Larch pre_edge ${checked.quantity === 'normalized' ? 'norm' : 'flat'})` : 'cm^-1', rawSigma: 'cm^-1 (pointwise standard deviation supplied by user)' },
     rawSpectrum: checked, laboratoryContext: validateScenario(state),
     processing: { view, normalization: view === 'normalized' ? 'Subtract mean of first 10% of rows; divide by last 10% mean minus first 10% mean' : null,
       derivative: view === 'derivative' ? 'Three-point nonuniform interior derivative; two-point endpoints' : null,
