@@ -180,6 +180,7 @@ body:has(.twin-app) {background:#050608}
 
 /* ---------- Controls card ---------- */
 .twin-toolbar {display:flex;flex-direction:column;gap:10px;padding:14px 16px 8px}
+.twin-toolbar-head {display:flex;align-items:center;justify-content:space-between;gap:8px}
 .twin-toolbar-buttons {display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .twin-right {display:flex;flex-direction:column;gap:14px;min-width:0;padding:10px 16px 20px}
 .twin-clarity {display:grid;grid-template-columns:1fr 1fr;gap:8px}

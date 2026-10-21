@@ -43,6 +43,7 @@ The Explore/Research switch changes explanatory depth. It does not change the mo
 * **Results:** live channels, μ(E), normalized, derivative, χ(k), |χ(R)|, a first shell EXAFS fit, the XRF spectrum with a draggable counting window and the rocking curve. Acquisitions download as XDI, CSV or JSON; the results can be popped out into a second window.
 * **EXAFS:** FEFF6L path sums for the library materials with Einstein disorder at the sample temperature, and a Levenberg-Marquardt fit with Larch-scaled uncertainties, checked against Larch `feffit`.
 * **Training:** five scenarios with hidden truth, a judge, a reveal and a replay: find the edge, calibrate the energy with a Cu foil, a small EXAFS amplitude, a dilute sample and self absorption.
+* **Sessions and sharing:** save the instrument, settings and every acquisition as a session file and load it back; copy a share link that carries the settings and seed; import your own XDI or named columns as Measured data; download a Larch script per acquisition that repeats the dock's reduction (checked against xraylarch).
 * **Calibrate from data:** load your own XDI or columns to fit the energy offset, harmonic fraction and dead time, edit the instrument profile, or test yourself on a seeded mystery instrument.
 
 Keys: 1 to 8 switch modes, I acquires, Space pauses, X enlarges the results, L toggles labels, T opens training, [ and ] hide the side panels, and \` opens the console.

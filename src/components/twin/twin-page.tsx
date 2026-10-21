@@ -96,9 +96,11 @@ function TwinLayout() {
     </div>
     <div className="twin-col twin-col-right">
       <div className="twin-toolbar twin-card" role="group" aria-label="Page tools">
-        <p className="twin-kicker" aria-hidden="true">Controls</p>
-        <div className="twin-toolbar-buttons">
+        <div className="twin-toolbar-head">
+          <p className="twin-kicker" aria-hidden="true">Controls</p>
           <button type="button" className="twin-chip is-accent" aria-haspopup="dialog" aria-keyshortcuts="T" onClick={() => dispatch({ type: 'training', open: true })}><GraduationCap size={15} aria-hidden="true" />Training</button>
+        </div>
+        <div className="twin-toolbar-buttons">
           <button type="button" className="twin-icon" ref={sessionButton} aria-haspopup="dialog" title="Session" onClick={() => setSessionOpen(true)}><FolderArchive size={16} aria-hidden="true" /><span className="sr-only">Session</span></button>
           <button type="button" className="twin-icon" ref={calibrateButton} aria-haspopup="dialog" title="Calibrate from data" onClick={() => setCalibrateOpen(true)}><FlaskConical size={16} aria-hidden="true" /><span className="sr-only">Calibrate from data</span></button>
           <button type="button" className="twin-icon" aria-haspopup="dialog" aria-keyshortcuts="`" title="Console (`)" onClick={() => window.dispatchEvent(new Event('xaslab:console'))}><SquareTerminal size={16} aria-hidden="true" /><span className="sr-only">Console</span></button>

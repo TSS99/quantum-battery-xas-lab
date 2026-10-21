@@ -152,6 +152,7 @@ export const TWIN_METHODS: readonly TwinMethod[] = [
       { file: 'src/lib/xas-reduction.test.ts', name: 'finds the Cu foil and fluorescence E0' },
       { file: 'src/lib/exafs.test.ts', name: 'matches the stored xraylarch output for' },
       { file: 'src/lib/exafs.test.ts', name: 'matches xraylarch 2026.3.1 xftf for' },
+      { file: 'src/lib/twin/larch-export.test.ts', name: 'matches xraylarch for E0, edge step and the uncorrected peak R' },
     ],
   },
   {
