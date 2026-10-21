@@ -143,13 +143,15 @@ All cells are static, ordered models. NiO omits its small magnetic rhombohedral 
 
 `feff-fixtures.json` is test-only and is not imported by runtime code. It contains all ten requested materials, each with \(k=0,0.05,\ldots,16\ \mathring{\mathrm A}^{-1}\) and:
 
+`exafs-engine-fixture.json` is the additional one-path Larch check for nonzero imaginary energy shift and third and fourth cumulants. `scripts/twin/check_exafs.py` reconstructs the stored, rounded first Cu path in Larch, records the exact call and versions, and writes this fixture without rerunning FEFF.
+
 | Case | \(S_0^2\) | \(E_0\) (eV) | \(\Delta R\) | \(\sigma^2\) (\(\mathring{\mathrm A}^2\)) |
 | --- | ---: | ---: | --- | --- |
 | a | 0.9 | 0 | 0 | 0.003 |
 | b | 0.8 | +3 | \(0.01r_{\mathrm{eff}}\) | 0.006 |
 | c | 1.0 | -2 | 0 | `sigma2_eins(300, 250, path)` |
 
-Every curve is a multiplicity-weighted average of `larch.xafs.ff2chi` site results. The fixture records exact calls, versions, material-file hashes, ordered path IDs and per-path disorder. `chi` uses the original retained FEFF output; `chi_rounded` passes the serialized values back through Larch, reconstructing `pha = real_phc + pha_feff` and `amp = mag_feff * red_fact`. This separates quantization from the future TypeScript interpolation implementation. The largest measured rounding difference is \(0.000813\%\) over \(2\leq k\leq16\ \mathring{\mathrm A}^{-1}\), below the \(0.1\%\) generator limit. The stored low-\(k\) values preserve Larch's numerical behavior; they are not a validated XANES model.
+Every curve is a multiplicity-weighted average of `larch.xafs.ff2chi` site results. The fixture records exact calls, versions, material-file hashes, ordered path IDs and per-path disorder. `chi` uses the original retained FEFF output; `chi_rounded` passes the serialized values back through Larch, reconstructing `pha = real_phc + pha_feff` and `amp = mag_feff * red_fact`. This separates storage quantization from the TypeScript interpolation check. The largest measured rounding difference is \(0.000813\%\) over \(2\leq k\leq16\ \mathring{\mathrm A}^{-1}\), below the \(0.1\%\) generator limit. The stored low-\(k\) values preserve Larch's numerical behavior; they are not a validated XANES model.
 
 The Einstein section also records the first three Cu and Fe paths at \(T=10,77,300,600\ \mathrm K\), with \(\theta_E=250\ \mathrm K\). Larch's implementation includes every path vertex in the reduced-mass calculation, including repeated visits. Case (c) records both original and rounded-geometry results.
 
@@ -158,6 +160,7 @@ Regenerate and verify with the supplied environment, without installing packages
 ```powershell
 & 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' -B scripts/twin/make-feff-library.py
 & 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' -B scripts/twin/make-feff-library.py --check
+& 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' -B scripts/twin/check_exafs.py
 & 'C:\Users\Tilock\astra-runner\pyenv\Scripts\python.exe' -B -m unittest discover -s scripts/twin -p test_feff_library.py
 npx tsc --noEmit
 npx vitest run

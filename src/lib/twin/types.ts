@@ -285,3 +285,74 @@ export interface FeffMaterial {
    */
   accuracy: { case: 'a' | 'b' | 'c'; rounding_relative_rms: number; omission_relative_rms: number }[];
 }
+
+/** Adjustable terms in one Larch/FEFF path calculation. Omitted terms use Larch's defaults. */
+export interface ExafsPathParameters {
+  /** Passive-electron amplitude reduction factor, S0^2. */
+  s02?: number;
+  /** Shift of the photoelectron energy origin, in eV. */
+  e0_eV?: number;
+  /** Change in half-path length, in angstrom. */
+  deltar_A?: number;
+  /** Mean-square relative displacement, in square angstrom. */
+  sigma2_A2?: number;
+  /** Third cumulant, in cubic angstrom. */
+  c3_A3?: number;
+  /** Fourth cumulant, in angstrom to the fourth power. */
+  c4_A4?: number;
+  /** Imaginary energy shift used by Larch, in eV. */
+  ei_eV?: number;
+  /** Override FEFF's path degeneracy. */
+  degen?: number;
+}
+
+/** Global EXAFS parameters with optional overrides for individual paths. */
+export interface ExafsParameters extends ExafsPathParameters {
+  /**
+   * Overrides keyed by `pathId` (all sites) or `siteId/pathId` (one absorber site).
+   * The site-qualified key has the highest precedence.
+   */
+  paths?: Record<string, ExafsPathParameters>;
+  /** Optional absorber-site populations. They are normalised to sum to one. */
+  siteWeights?: Record<string, number>;
+}
+
+export interface ExafsSumOptions {
+  /** Overrides `params.siteWeights`; omitted sites retain their library weights. */
+  siteWeights?: Record<string, number>;
+}
+
+export interface ExafsPathContribution {
+  /** Stable, site-qualified key because FEFF path ids repeat between absorber sites. */
+  key: string;
+  siteId: string;
+  pathId: string;
+  siteWeight: number;
+  parameters: Required<ExafsPathParameters>;
+  /** Site-weighted contribution; summing every contribution reproduces `ExafsResult.chi`. */
+  chi: number[];
+}
+
+export interface ExafsResult {
+  k_A_inv: number[];
+  chi: number[];
+  contributions: ExafsPathContribution[];
+  provenance: Extract<Provenance, 'computed'>;
+}
+
+export interface ExafsEnergyResult {
+  energy_eV: number[];
+  k_A_inv: number[];
+  chi: number[];
+  /** Fine-structure multiplier: zero below E0 and 1 + chi at and above E0. */
+  factor: number[];
+  provenance: Extract<Provenance, 'computed'>;
+}
+
+export interface ExafsEnergyPoint {
+  energy_eV: number;
+  k_A_inv: number;
+  chi: number;
+  factor: number;
+  provenance: Extract<Provenance, 'computed'>;
+}
