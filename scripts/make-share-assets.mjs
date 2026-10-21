@@ -1,13 +1,16 @@
 // Renders the share images (public/og/*.png, 1200x630), apple-icon.png and favicon.ico
 // from src/data/site-pages.json and src/app/icon.svg. Run after changing page titles:
 //   PLAYWRIGHT_CHANNEL=chrome node scripts/make-share-assets.mjs
-// Add --elements-only to render just the element reference card, leaving existing assets intact.
+// Add --elements-only (or --only=<slug>) to render just that card, leaving the other assets intact.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from '@playwright/test';
 
 const site = JSON.parse(await readFile('src/data/site-pages.json', 'utf8'));
-const elementsOnly = process.argv.includes('--elements-only');
-const pages = elementsOnly ? [site.elements] : [...site.pages, site.elements];
+const only = process.argv.includes('--elements-only') ? 'elements' : process.argv.find(a => a.startsWith('--only='))?.slice(7);
+const cards = [...site.pages, site.elements, site.twin];
+const pages = only ? cards.filter(p => p.slug === only) : cards;
+if (!pages.length) throw new Error(`No card with the slug "${only}".`);
+const oneCard = !!only;
 const icon = await readFile('src/app/icon.svg', 'utf8');
 const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -72,7 +75,7 @@ async function renderIcon(size) {
   await tab.setContent(`<html><body style="margin:0;background:transparent">${icon.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`);
   return tab.screenshot({ omitBackground: true, clip: { x: 0, y: 0, width: size, height: size } });
 }
-if (!elementsOnly) {
+if (!oneCard) {
 await writeFile('src/app/apple-icon.png', await renderIcon(180));
 // Install icons for the web app manifest (src/app/manifest.ts). The maskable one keeps the mark inside the 80% safe zone.
 await mkdir('public/icons', { recursive: true });
@@ -88,4 +91,4 @@ header.writeUInt16LE(1, 10); header.writeUInt16LE(32, 12); header.writeUInt32LE(
 await writeFile('src/app/favicon.ico', Buffer.concat([header, png]));
 }
 await browser.close();
-console.log(`Wrote ${pages.length} share images${elementsOnly ? '.' : ', apple-icon.png, favicon.ico and the install icons.'}`);
+console.log(`Wrote ${pages.length} share images${oneCard ? '.' : ', apple-icon.png, favicon.ico and the install icons.'}`);

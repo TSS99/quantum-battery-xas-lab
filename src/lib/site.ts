@@ -8,6 +8,8 @@ export const SITE_URL = site.siteUrl;
 export const PAGES: SitePage[] = site.pages;
 /** The element pages (/elements/ and /elements/<symbol>/) sit outside the eight modules and share one card. */
 export const ELEMENTS_PAGE = site.elements;
+/** The beamline twin runs full screen outside the eight modules and has its own card. */
+export const TWIN_PAGE = site.twin;
 
 /** Absolute URL with a trailing slash, matching trailingSlash: true. */
 export const pageUrl = (slug: string) => `${SITE_URL}/${slug ? slug + '/' : ''}`;
@@ -71,6 +73,15 @@ export function pageJsonLd(slug: string) {
   const graph: object[] = [webSite, webApplication];
   if (slug) graph.push(breadcrumbs([[sitePage(slug).name, slug]]));
   return { '@context': 'https://schema.org', '@graph': graph };
+}
+
+export function twinMetadata(): Metadata {
+  return routeMetadata({ path: TWIN_PAGE.slug, title: TWIN_PAGE.title, description: TWIN_PAGE.description, ogSlug: TWIN_PAGE.slug, ogAlt: TWIN_PAGE.ogAlt });
+}
+
+/** JSON-LD for the twin: Overview > Beamline twin. */
+export function twinJsonLd() {
+  return { '@context': 'https://schema.org', '@graph': [webSite, webApplication, breadcrumbs([[TWIN_PAGE.name, TWIN_PAGE.slug]])] };
 }
 
 /** JSON-LD for the element pages: Overview > Elements, then the element when there is one. */

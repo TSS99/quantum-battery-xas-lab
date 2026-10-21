@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
-// Browser tests for the /twin/ preview. Names avoid the word "mobile" so the desktop project runs them;
+// Browser tests for the /twin/ beamline twin. Names avoid the word "mobile" so the desktop project runs them;
 // the phone checks set a 390 px viewport themselves.
 const MODES = ['Transmission', 'Fluorescence', 'Electron yield', 'XRF spectrum', 'Monochromator', 'Energy calibration', 'Time resolved', 'Beam damage'];
 // axe-core is not a dependency of the project, so the accessibility check loads a pinned copy from a CDN.
@@ -39,22 +39,24 @@ async function axeViolations(page: Page) {
   });
 }
 
-test('twin page loads with one h1, a preview breadcrumb, noindex and no console errors', async ({ page }) => {
+test('twin page loads with one h1, a breadcrumb, indexable metadata and no console errors', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page);
-  await expect(page).toHaveTitle('Beamline twin | XAS Lab');
+  await expect(page).toHaveTitle('Beamline twin: operate an XAS beamline in your browser | XAS Lab');
   await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveCount(1);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Beamline twin');
   const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
   await expect(crumbs.getByRole('link', { name: 'Beamline twin' })).toHaveAttribute('aria-current', 'page');
-  await expect(crumbs).toContainText('Preview');
+  await expect(crumbs).not.toContainText('Preview');
   await expect(crumbs).not.toContainText('Page not found');
   // The twin runs full screen: no site header or module bar, and the breadcrumb leads back to the lab.
   await expect(page.getByRole('navigation', { name: 'Laboratory modules' })).toHaveCount(0);
   await expect(crumbs.getByRole('link', { name: 'XAS Lab' })).toHaveAttribute('href', /\/quantum-battery-xas-lab\/?$|^\/$/);
   // Chromium has speech synthesis, so the explanation offers to read itself aloud.
   await expect(page.getByRole('complementary', { name: 'Explanation' }).getByRole('button', { name: 'Read aloud' })).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+  await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://tss99.github.io/quantum-battery-xas-lab/twin/');
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/og\/twin\.png$/);
   await expect(page.locator('.katex-error')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

@@ -3,7 +3,6 @@
 
 .bare-main {display:block;min-height:100vh}
 body:has(.twin-app) {background:#050608}
-.preview-badge {display:inline-block;margin-left:10px;padding:0 8px;border:1px solid rgb(159 163 252/.45);border-radius:var(--r-pill);color:var(--accent-light);font-size:12px;line-height:20px;vertical-align:1px}
 
 .twin-app {
   --tw-bg:#050608; --tw-card:rgb(11 14 19/.84); --tw-card-solid:#0b0e13; --tw-line:rgb(255 255 255/.08); --tw-line-2:rgb(255 255 255/.15);
@@ -44,7 +43,6 @@ body:has(.twin-app) {background:#050608}
 .twin-crumbs a {color:inherit;text-decoration:none}
 .twin-crumbs a:hover {color:var(--tw-text)}
 .twin-crumbs a[aria-current="page"] {color:var(--tw-body)}
-.twin-crumbs .preview-badge {margin-left:8px;border-color:var(--tw-accent-line);color:var(--tw-accent);font:500 9.5px/18px var(--tw-mono);letter-spacing:.12em}
 .twin-hero h1 {margin:0;font:400 54px/.94 var(--tw-serif);letter-spacing:-.01em;color:var(--tw-text)}
 .twin-hero h1 em {display:block;font-style:italic;color:var(--tw-accent)}
 .twin-intro {margin:0;font-size:14px;line-height:1.5;color:var(--tw-body)}

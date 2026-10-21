@@ -66,6 +66,7 @@ export function LandingHero() {
       <motion.p className="hero-sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .8, delay: .9 }}>Plan samples for any material, follow the beam through a real beamline, process and fit spectra, and see the quantum workflow behind XAS.</motion.p>
       <motion.div className="hero-actions" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7, delay: 1.1, ease }}>
         <Link className="button cta" href="/crystal/">Start with a sample<Chevron /></Link>
+        <Link className="button secondary" href="/twin/">Operate the beamline twin</Link>
         <Link className="button secondary" href="/validation/">How it is checked</Link>
       </motion.div>
     </div>

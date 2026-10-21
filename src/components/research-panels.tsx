@@ -6,6 +6,7 @@ import { useLab } from './lab-context';
 import { Num, ScienceText, Tex, Unit } from './tex';
 import { EXPERIMENT_ART } from './experiment-art';
 import { ModelEquations } from './model-equations';
+import { TwinMethods } from './twin-methods';
 import { SceneDefs } from './scene-kit';
 import { Badge, Disclosure, Metric, Panel, Range, TryThis, download } from './ui';
 import { DEFAULT_STATE, scenarioFromJSON, scenarioToJSON, scenarioToURL, type LabState, validateScenario } from '@/lib/scenario';
@@ -128,6 +129,7 @@ export function ValidationPanel(){const {state,complete}=useLab();const [checks,
 <li>A model sweep is not operando data and cannot diagnose oxygen redox or degradation.</li>
 <li>A high similarity score does not validate a model. Imported measurements and calibration are unverified.</li>
 </ul></Panel>
+ <TwinMethods />
  <Panel title="Research references"><p>The anchor papers simulate the oxygen K-edge of a <Tex plain>{'\\mathrm{Li_4Mn_2O}'}</Tex> cluster. The Mn teaching spectrum here is a separate example.</p><ol className="reference-list">{papers.map(([id,title,authors,why])=><li key={id}><a href={`https://arxiv.org/abs/${id}`} target="_blank" rel="noreferrer">{title}</a><span>{authors}</span><p>{why}</p></li>)}</ol></Panel>
  <Panel title="Model equations"><p>Each equation is written the way the code evaluates it, with what its symbols mean, their units, and the file and function that compute it.</p><details className="disclosure" open={state.expert}><summary>Equations, symbols and sources</summary><div><ModelEquations /></div></details></Panel>
  <details className="research-drawer" open={state.expert} onToggle={e=>{if(e.currentTarget.open)complete(['cost']);}}><summary>Limits and further work</summary><div className="drawer-body"><p>Material predictions need a structure, an active space, a core-excited Hamiltonian and calibrated reference spectra. Check convergence before comparing with a measurement.</p><p>Dense matrix storage grows as <Tex>{'4^n'}</Tex>. The browser solver is limited to six qubits. Its gate counts exclude state preparation, measurement and error correction.</p><div className="equation"><Tex>{'\\text{model error} \\neq \\text{numerical error}'}</Tex><Tex>{'\\text{counting noise} \\neq \\text{systematic uncertainty}'}</Tex></div></div></details></>;

@@ -453,3 +453,19 @@ progress::-moz-progress-bar {background:var(--accent)}
   html {scroll-behavior:auto}
   *,*::before,*::after {animation:none!important;transition:none!important}
 }
+
+/* Methods page: the beamline twin's models, checks and tests. Phones get one card per model. */
+.twin-methods thead th:nth-child(1) {width:16%}
+.twin-methods thead th:nth-child(2) {width:34%}
+.twin-methods thead th:nth-child(3) {width:20%}
+.twin-methods thead th:nth-child(4) {width:14%}
+.twin-methods small {color:var(--muted);font-size:12px}
+.twin-methods summary {cursor:pointer;color:var(--accent)}
+.twin-methods ul {margin:6px 0 0;padding-left:16px}
+@media (max-width:760px) {
+  .twin-methods thead {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .twin-methods,.twin-methods tbody,.twin-methods tr,.twin-methods th,.twin-methods td {display:block;width:auto}
+  .twin-methods tr {padding:10px 0;border-bottom:1px solid var(--hairline)}
+  .twin-methods th,.twin-methods td {padding:3px 0;border:0}
+  .twin-methods td[data-label]::before {content:attr(data-label) ": ";color:var(--muted)}
+}

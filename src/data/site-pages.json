@@ -3,6 +3,13 @@
   "siteUrl": "https://tss99.github.io/quantum-battery-xas-lab",
   "author": { "name": "TSS99", "url": "https://github.com/TSS99" },
   "repository": "https://github.com/TSS99/quantum-battery-xas-lab",
+  "twin": {
+    "slug": "twin",
+    "name": "Beamline twin",
+    "title": "Beamline twin: operate an XAS beamline in your browser",
+    "description": "Run a working X-ray absorption beamline: monochromator, mirrors, ion chambers and a fluorescence detector. Scan, fit the EXAFS, train on faults and calibrate from your own data.",
+    "ogAlt": "Beamline twin card: an XAS beamline from the source to the detectors"
+  },
   "elements": {
     "slug": "elements",
     "name": "Elements",

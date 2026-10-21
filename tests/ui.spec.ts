@@ -413,3 +413,21 @@ test('element links handle unavailable storage and reject nonexistent shells', a
   await page.getByRole('link', { name: 'Inspect the absorption background', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'This edge is outside' })).toBeVisible();
 });
+
+test('the beamline twin is linked from the header and landing page, and the Methods page lists its models and tests', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('.hero-actions').getByRole('link', { name: 'Operate the beamline twin' })).toHaveAttribute('href', /\/twin\/$/);
+  await page.goto('./validation/');
+  // Phones reach the header links through the menu.
+  if ((page.viewportSize()?.width ?? 1440) < 800) await page.getByRole('button', { name: 'Open menu' }).click();
+  const menu = (page.viewportSize()?.width ?? 1440) < 800 ? page.locator('#mobile-menu') : page.locator('.header-links');
+  await expect(menu.getByRole('link', { name: /^Beamline twin/ }).first()).toHaveAttribute('href', /\/twin\/$/);
+  await page.keyboard.press('Escape');
+  const table = page.getByRole('table', { name: 'Beamline twin models, checks and tests' });
+  await expect(table.getByRole('row')).toHaveCount(18);
+  await expect(table).toContainText('Larch sigma2_eins');
+  await table.getByText('3 tests').first().click();
+  await expect(table.locator('details[open] li').first()).toContainText('.test.ts');
+  await expect(page.getByRole('heading', { name: 'Sources and licences' })).toBeVisible();
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+});

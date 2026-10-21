@@ -72,7 +72,7 @@ function TwinLayout() {
       <header className="twin-hero">
         <nav aria-label="Breadcrumb" className="twin-crumbs"><ol>
           <li><Link href="/">XAS Lab</Link></li>
-          <li><Link href="/twin/" aria-current="page">Beamline twin</Link><span className="preview-badge">Preview</span></li>
+          <li><Link href="/twin/" aria-current="page">Beamline twin</Link></li>
         </ol></nav>
         <h1>Beamline <em>twin</em></h1>
         <p className="twin-intro">A working X-ray absorption beamline. Every reading comes from tabulated cross sections and optics: the beam crosses the mirrors, the monochromator, the sample and the detectors as it would at a synchrotron.</p>

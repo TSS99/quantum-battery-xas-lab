@@ -34,6 +34,19 @@ The project uses Next.js App Router with static export, React, TypeScript, Motio
 
 The Explore/Research switch changes explanatory depth. It does not change the model's validity. Shared parameters are saved in local browser storage when available. Imported/snapshotted runs are held in the current session; export them before refreshing or closing the tab.
 
+## Beamline twin
+
+`/twin/` is a working X-ray absorption beamline that runs full screen in the browser, laid out like an instrument console. The physics lives in `src/lib/twin/` (pure TypeScript, run in a Web Worker) and every model is listed with its checks and tests on the Methods page.
+
+* **Instrument:** bending magnet or undulator source, mirrors with harmonic rejection, a Si(111), Si(311) or Si(220) monochromator with detune and glitches, three ion chambers with gas, gain and saturation, and a multi-element fluorescence detector with Fano widths, dead time per element and pile-up. Click any part of the drawing for its physics card and live equation.
+* **Eight modes:** transmission, fluorescence, electron yield, XRF spectrum, monochromator, energy calibration, time resolved and beam damage, each with a General and a Physics explanation that can be read aloud.
+* **Results:** live channels, μ(E), normalized, derivative, χ(k), |χ(R)|, a first shell EXAFS fit, the XRF spectrum with a draggable counting window and the rocking curve. Acquisitions download as XDI, CSV or JSON; the results can be popped out into a second window.
+* **EXAFS:** FEFF6L path sums for the library materials with Einstein disorder at the sample temperature, and a Levenberg-Marquardt fit with Larch-scaled uncertainties, checked against Larch `feffit`.
+* **Training:** five scenarios with hidden truth, a judge, a reveal and a replay: find the edge, calibrate the energy with a Cu foil, a small EXAFS amplitude, a dilute sample and self absorption.
+* **Calibrate from data:** load your own XDI or columns to fit the energy offset, harmonic fraction and dead time, edit the instrument profile, or test yourself on a seeded mystery instrument.
+
+Keys: 1 to 8 switch modes, I acquires, Space pauses, X enlarges the results, L toggles labels, T opens training, [ and ] hide the side panels, and \` opens the console.
+
 ## Research and industry workflows
 
 This release supports beamtime training, methods demonstrations, exploratory overlays of user-supplied absolute absorption data, numerical convergence checks and auditable handoff. Export original arrays, units, source records, calibration status, processing choices and a scenario/run manifest together. Preserve the source-code revision with any research record.
