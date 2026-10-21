@@ -99,6 +99,8 @@ export function ControlRail() {
   const duration = e0 === null ? null : (() => { try { return planDuration(scan, e0); } catch { return null; } })();
   const presetId = SAMPLE_PRESETS.find(x => x.sample.formula === s.formula && x.sample.absorber === s.absorber && x.sample.edge === s.edge)?.id ?? 'custom';
   const tRange = TEMPERATURE_RANGE[env.kind];
+  // The counting window sliders reach as far as the XRF spectrum shows, 1 keV above the beam energy.
+  const roiMax = Math.ceil(Math.max(twin.energy_eV + 1000, p.sdd.roi_eV[1]) / 10) * 10;
 
   const preset = SAMPLE_PRESETS.find(x => x.id === presetId);
 
@@ -199,7 +201,9 @@ export function ControlRail() {
       <Range label="Exit angle" value={p.sdd.exitAngle_deg} min={1} max={90} step={1} unit="°" hint="between the sample surface and the detector" onChange={exitAngle_deg => run({ type: 'sdd', patch: { exitAngle_deg } })} />
       <label className="twin-check"><input type="checkbox" checked={p.sdd.soller} onChange={e => run({ type: 'sdd', patch: { soller: e.target.checked } })} />Soller slits</label>
       {now?.deadFraction != null && <p className={'twin-soon' + (now.deadFraction > 0.5 ? ' twin-alert' : '')}>Input rate {sci(now.icr!)} <Unit>s^-1</Unit>, dead time <Num>{(now.deadFraction * 100).toFixed(1) + '%'}</Num></p>}
-      <Rows rows={[['Elements', String(p.sdd.elements)], ['Counting window', <><Num>{String(p.sdd.roi_eV[0])}</Num> to <Num>{String(p.sdd.roi_eV[1])}</Num> <Unit>eV</Unit></>]]} />
+      <Range label="Counting window from" value={p.sdd.roi_eV[0]} min={0} max={roiMax} step={10} unit="eV" onChange={from => run({ type: 'sdd', patch: { roi_eV: [from, p.sdd.roi_eV[1]] } })} />
+      <Range label="Counting window to" value={p.sdd.roi_eV[1]} min={0} max={roiMax} step={10} unit="eV" hint="also set by dragging on the XRF spectrum" onChange={to => run({ type: 'sdd', patch: { roi_eV: [p.sdd.roi_eV[0], to] } })} />
+      <Rows rows={[['Elements', String(p.sdd.elements)]]} />
     </Fold>
 
     <Fold id="twin-c-scan" title="Scan">

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Square, Volume2 } from 'lucide-react';
+import { AudioLines, Square, Volume2 } from 'lucide-react';
 import { Num, Tex, Unit } from '../tex';
 import type { TwinMode } from '@/lib/twin/types';
 import { modeInfo } from './twin-state';
@@ -62,24 +62,53 @@ function speechText(root: HTMLElement) {
   return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
 
-/** Reads the card aloud with the browser's own speech synthesis; nothing leaves the device. Hidden where unsupported. */
-function ReadAloud({ target, topic, className }: { target: () => HTMLElement | null; topic: string; className: string }) {
-  const [supported, setSupported] = useState(false), [speaking, setSpeaking] = useState(false);
+type Level = 'general' | 'physics';
+const LEVEL_KEY = 'xaslab:twin:level', NARRATE_KEY = 'xaslab:twin:narrate';
+
+/** A per-viewer setting kept in localStorage; storage can be missing or blocked, so every access is guarded. */
+function useStored<T extends string>(key: string, fallback: T, allowed: readonly T[]) {
+  const [value, setValue] = useState<T>(fallback);
+  useEffect(() => {
+    try { const saved = localStorage.getItem(key) as T | null; if (saved && allowed.includes(saved)) setValue(saved); } catch { /* storage unavailable */ }
+  }, [key]); // Read once per key; the allowed list is a constant.
+  const set = (next: T) => { setValue(next); try { localStorage.setItem(key, next); } catch { /* storage unavailable */ } };
+  return [value, set] as const;
+}
+
+function useSpeech() {
+  const [supported, setSupported] = useState(false);
   useEffect(() => { setSupported('speechSynthesis' in window); }, []);
-  // A new mode or part stops the old reading.
-  useEffect(() => { if ('speechSynthesis' in window) speechSynthesis.cancel(); setSpeaking(false); }, [topic]);
-  useEffect(() => () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); }, []);
-  if (!supported) return null;
-  const toggle = () => {
-    speechSynthesis.cancel();
+  return supported;
+}
+
+/** Reads the card aloud with the browser's own speech synthesis; nothing leaves the device. Hidden where unsupported.
+ * With auto narrate on, each new mode, part or level is read as soon as it shows (never on page load, which has no user gesture). */
+function ReadAloud({ target, topic, auto, className }: { target: () => HTMLElement | null; topic: string; auto: boolean; className: string }) {
+  const supported = useSpeech(), [speaking, setSpeaking] = useState(false);
+  const speak = () => {
     const el = target();
-    if (speaking || !el) { setSpeaking(false); return; }
+    if (!el) return;
     const utterance = new SpeechSynthesisUtterance(speechText(el));
     utterance.lang = 'en';
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => setSpeaking(false);
     speechSynthesis.speak(utterance);
     setSpeaking(true);
+  };
+  // A new mode or part stops the old reading, and starts the new one when auto narrate is on.
+  const first = useRef(true);
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel(); setSpeaking(false);
+    if (first.current) { first.current = false; return; }
+    if (auto) speak();
+  }, [topic, auto]); // Only a new topic or the toggle starts a reading.
+  useEffect(() => () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); }, []);
+  if (!supported) return null;
+  const toggle = () => {
+    speechSynthesis.cancel();
+    if (speaking) { setSpeaking(false); return; }
+    speak();
   };
   return <button type="button" className={'twin-icon twin-speak ' + className} aria-pressed={speaking} title={speaking ? 'Stop reading' : 'Read aloud'} onClick={toggle}>
     {speaking ? <Square size={14} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}<span className="sr-only">Read aloud</span>
@@ -102,11 +131,14 @@ export function ExplainRail() {
     dispatch({ type: 'part', id: null });
     document.querySelector<HTMLElement>(`[data-part-button="${id}"]`)?.focus();
   };
+  const [level, setLevel] = useStored<Level>(LEVEL_KEY, 'general', ['general', 'physics']);
+  const [narrate, setNarrate] = useStored(NARRATE_KEY, 'off', ['on', 'off'] as const);
+  const speech = useSpeech();
   const physics = part && PART_PHYSICS[part.id];
   const physicsLive = part && readings && physics?.live ? physics.live(twin, readings) : null;
 
   return <aside className="twin-card twin-left" aria-label="Explanation">
-    <ReadAloud target={() => main.current} topic={view.part ?? twin.mode} className={part ? 'is-part' : ''} />
+    <ReadAloud target={() => main.current} topic={view.part ?? twin.mode + ':' + level} auto={narrate === 'on'} className={part ? 'is-part' : ''} />
     <div ref={main}>{part
       ? <section id="hutch-card" ref={card} className="twin-part" aria-labelledby="hutch-card-title" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); closePart(); } }}>
         <p className="twin-kicker">The instrument</p>
@@ -125,7 +157,13 @@ export function ExplainRail() {
       </section>
       : <Fold id="twin-looking" title="What you are looking at" level={2} desktopOpen className="twin-looking">
         <p className="twin-title">{info.headline[0]} <em>{info.headline[1]}</em></p>
-        <p className="twin-body"><TexProse>{info.looking}</TexProse></p>
+        <div className="twin-level">
+          <div className="twin-chipset" role="group" aria-label="Explanation level">
+            {(['general', 'physics'] as const).map(l => <button key={l} type="button" className="twin-chip" aria-pressed={level === l} onClick={() => setLevel(l)}>{l === 'general' ? 'General' : 'Physics'}</button>)}
+          </div>
+          {speech && <button type="button" className="twin-chip" aria-pressed={narrate === 'on'} title="Read each new explanation aloud" onClick={() => setNarrate(narrate === 'on' ? 'off' : 'on')}><AudioLines size={14} aria-hidden="true" />Auto narrate</button>}
+        </div>
+        <p className="twin-body"><TexProse>{level === 'general' ? info.general : info.looking}</TexProse></p>
       </Fold>}</div>
     <div className="twin-changed">
       <h2 className="twin-kicker">What just changed</h2>

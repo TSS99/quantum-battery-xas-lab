@@ -68,7 +68,9 @@ export interface ModeInfo {
   key: string;
   name: string;
   group: 'Measure' | 'Tune' | 'Learn';
-  /** "What you are looking at": one paragraph, $...$ around LaTeX. */
+  /** "What you are looking at" in plain words, for the General level: one paragraph, $...$ around LaTeX. */
+  general: string;
+  /** "What you are looking at" with the governing physics, for the Physics level: one paragraph, $...$ around LaTeX. */
   looking: string;
   /** The line shown in "What just changed" when this mode is chosen. */
   switched: string;
@@ -79,41 +81,49 @@ export interface ModeInfo {
 export const MODES: readonly ModeInfo[] = [
   {
     id: 'transmission', key: '1', name: 'Transmission', group: 'Measure', headline: ['What gets', 'through'],
+    general: String.raw`The beam goes straight through the sample. One detector measures the X-rays before the sample and a second measures what comes out. The more the sample absorbs at an energy, the bigger the drop between the two, and that drop plotted against energy is the spectrum. It works best for concentrated samples of even thickness.`,
     looking: String.raw`The monochromator passes one photon energy $E$. Ion chamber $I_0$ measures the beam before the sample and $I_t$ measures what gets through, so the Beer-Lambert law gives the absorption directly: $\mu(E)\,x = \ln(I_0/I_t)$. A reference foil after the sample is measured at the same time in a third chamber, $I_\mathrm{ref}$, and pins the energy scale. Transmission suits concentrated, even samples with an edge step $\Delta\mu x$ near 1 and a total $\mu x$ below about 3.`,
     switched: String.raw`Transmission: $\mu(E)\,x = \ln(I_0/I_t)$ from the two ion chambers.`,
   },
   {
     id: 'fluorescence', key: '2', name: 'Fluorescence', group: 'Measure', headline: ['Light the sample', 'gives back'],
+    general: String.raw`When there is too little of the element to dim the beam much, watch what it gives back instead. An atom that absorbs an X-ray soon emits light of an energy set by its element, and a detector at the side counts that light. More absorption means more emitted light. A detector flooded with photons misses some of them (dead time), and in a thick, concentrated sample part of the emitted light is absorbed again on its way out (self-absorption).`,
     looking: String.raw`When the absorber is dilute, or the sample is too thick for the beam to get through, measure the X-rays the absorber emits instead. Each absorbed photon leaves a core hole, and a fraction of those holes, the fluorescence yield, refill by emitting a characteristic line such as $\mathrm{K}\alpha$. An energy-dispersive detector at $90^\circ$ to the beam, in the horizontal plane along the beam's polarization where elastic scatter is weakest, counts the photons in a window around that line. For a dilute or thin sample, $\mu(E) \propto I_f/I_0$. In a concentrated, thick sample the escaping fluorescence no longer follows $\mu(E)$ and the peaks flatten (self-absorption), and at high count rates the detector loses events (dead time).`,
     switched: String.raw`Fluorescence: the detector at $90^\circ$ counts the emission line, $\mu(E) \propto I_f/I_0$.`,
   },
   {
     id: 'electron-yield', key: '3', name: 'Electron yield', group: 'Measure', headline: ['Electrons from', 'the surface'],
+    general: String.raw`Every absorbed X-ray knocks electrons out of the sample, and the current that flows in to replace them follows the absorption. Only electrons from close to the surface escape, so this mode looks at the surface layer rather than the bulk. The sample has to conduct.`,
     looking: String.raw`Absorbed photons eject photoelectrons and Auger electrons, and the current that flows from ground to replace them, the total electron yield, follows the absorption. Only electrons made near the surface escape, so the signal comes from the top few nanometres at soft X-ray edges and from tens to hundreds of nanometres at hard X-ray K edges. With incidence angle $\phi$, electron escape depth $\lambda_e$, absorption $\mu_a$ by the edge of interest and total attenuation $\mu_T$, the yield is $Y \propto \mu_a\lambda_e/(\sin\phi + \mu_T\lambda_e)$. It follows $\mu_a$ while $\mu_T\lambda_e \ll \sin\phi$ and saturates, flattening white lines, at grazing incidence or strong soft X-ray resonances. The sample must conduct or be well grounded.`,
     switched: String.raw`Electron yield: the drain current from the sample follows $\mu(E)$ near its surface.`,
   },
   {
     id: 'xrf', key: '4', name: 'XRF spectrum', group: 'Tune', headline: ['Every line', 'the detector sees'],
+    general: String.raw`Hold the energy fixed and sort the light the sample gives back by its energy. Each element in the beam shows its own peaks, and the beam itself shows up as scattered light. The shaded window marks which photons count as signal in fluorescence mode.`,
     looking: String.raw`At a fixed incident energy $E$, the fluorescence detector sorts every photon by its energy. The spectrum shows the emission lines of each element the beam can excite, the elastic scatter peak at $E$ and the Compton peak just below it. The line widths come from the detector, roughly $150\ \mathrm{eV}$ at $8\ \mathrm{keV}$ for a silicon drift detector. The region of interest set here is the window that fluorescence mode counts; choosing it well, and adding a filter of the element one below the absorber ($Z-1$), keeps most of the scatter out of the signal.`,
     switched: String.raw`XRF spectrum: the detector's energy spectrum at the current $E$, with the counting window.`,
   },
   {
     id: 'mono', key: '5', name: 'Monochromator', group: 'Tune', headline: ['One energy', 'from a white beam'],
+    general: String.raw`The beam from the ring holds every energy at once. Two silicon crystals, tilted to one angle, reflect a single energy and pass it on; turning them changes the energy. They also pass a little light at $3$ times that energy, which spoils the measurement unless it is removed.`,
     looking: String.raw`Two parallel silicon crystals select the energy by Bragg's law, $E = hc/(2d\sin\theta)$, with an intrinsic bandwidth $\Delta E/E$ of about $10^{-4}$ for $\mathrm{Si}(111)$. The same angle also passes harmonics $nE$ whose reflections are allowed. For $\mathrm{Si}(111)$ the $222$ reflection is nearly forbidden, so the first strong harmonic is $3E$. The sample absorbs the harmonics far less than the fundamental but the detectors still count them, which shrinks the edge step and the EXAFS amplitude. Two cures: detune the second crystal slightly, which costs the fundamental little because harmonic rocking curves are much narrower, or set a mirror angle that reflects $E$ but not $3E$. The rocking curve is the intensity as the second crystal turns through the reflection.`,
     switched: String.raw`Monochromator: Bragg angle, harmonics and the rocking curve of the second crystal.`,
   },
   {
     id: 'calibration', key: '6', name: 'Energy calibration', group: 'Tune', headline: ['Pinning down', 'the energy scale'],
+    general: String.raw`The energy the monochromator reports can be a few electronvolts off. A thin metal foil with a well known edge is measured at the same time as the sample, and its edge corrects the energy scale of every scan.`,
     looking: String.raw`A monochromator reading can be off by a few electronvolts, and the offset drifts, so every scan carries its own check. A metal foil of known edge energy sits after the sample and is measured with $I_\mathrm{ref}$ at the same time: $\mu_\mathrm{ref}(E)\,x = \ln(I_t/I_\mathrm{ref})$. The first inflection point of the foil's edge, the first peak of $d\mu/dE$, is set to its tabulated value, and the same shift $\Delta E = E_\mathrm{true} - E_\mathrm{reading}$ is applied to the sample. An error of $1\ \mathrm{eV}$ matters, because edge shifts between oxidation states are only a few electronvolts.`,
     switched: String.raw`Energy calibration: the first inflection point of the reference foil fixes the energy scale.`,
   },
   {
     id: 'time-resolved', key: '7', name: 'Time resolved', group: 'Learn', headline: ['Spectra', 'on the move'],
+    general: String.raw`To watch a battery charge or a reaction run, spectra are taken quickly, one after another. Faster spectra are noisier, because each one counts fewer X-rays. Each spectrum is matched as a mix of the starting and final states, which shows how far the change has gone.`,
     looking: String.raw`To follow a reaction or a battery as it charges, the monochromator sweeps without stopping and the detectors are read on the fly, so a spectrum takes from well under a second to a few minutes instead of the tens of minutes of a step scan. Faster spectra collect fewer photons $N$ per point, and the relative counting noise scales as $1/\sqrt{N}$. In this mode a cathode is charged while spectra are taken, and each one is fitted as a mix of two reference states, $\mu(E) = f\,\mu_A(E) + (1-f)\,\mu_B(E)$, which tracks the fraction $f$ over time.`,
     switched: String.raw`Time resolved: continuous scans while a cathode charges, fitted as a mix of two states.`,
   },
   {
     id: 'damage', key: '8', name: 'Beam damage', group: 'Learn', headline: ['When the beam', 'changes the sample'],
+    general: String.raw`The beam leaves energy in the sample, and some samples change because of it. A spectrum that keeps shifting from one scan to the next is the warning sign. Spreading the beam, moving to a fresh spot, cooling the sample or weakening the beam all help.`,
     looking: String.raw`The beam deposits energy in the sample. For a slab of thickness $x$ and density $\rho$ under a beam of area $A$ carrying $\Phi$ photons per second of energy $E$, the dose rate is about $\dot D = \Phi E\,(1-e^{-\mu x})/(\rho A x)$, in grays per second ($1\ \mathrm{Gy} = 1\ \mathrm{J/kg}$), so halving the beam area doubles it. Some samples change under that dose: metal ions in solution such as $\mathrm{Cu}^{2+}$ are reduced by the electrons and radicals the beam creates, and the edge moves to lower energy from one scan to the next. The usual remedies are to defocus, move to a fresh spot between scans, cool the sample or attenuate the beam.`,
     switched: String.raw`Beam damage: dose from flux, spot size and absorption, and what it does to the sample.`,
   },

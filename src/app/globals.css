@@ -203,6 +203,7 @@ progress::-moz-progress-bar {background:var(--accent)}
 .plot-wrap {display:flex;flex-direction:column;gap:8px;min-width:0}
 .plot-top {display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--text-2)}
 .plot-wrap svg {display:block;width:100%;height:auto;border-radius:10px;cursor:crosshair;touch-action:pan-y}
+.plot-grip {cursor:ew-resize;touch-action:none}
 .plot-readout {font-size:13px;color:var(--muted);min-height:22px}
 .plot-legend {display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--text-2)}
 .plot-legend>span {display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}

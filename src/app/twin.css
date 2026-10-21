@@ -324,3 +324,13 @@ body:has(.twin-app) {background:#050608}
   .twin-clarity span {display:none}
   .twin-clarity button {min-height:44px}
 }
+
+/* ---------- Explanation level (General or Physics) and auto narrate ---------- */
+.twin-level {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.twin-level .twin-chip {min-height:32px;padding:4px 11px;font-size:12.5px}
+
+/* ---------- Pop out: one result view in a second window ---------- */
+.twin-app.twin-popout {display:block;height:auto;min-height:100vh;overflow:visible;padding:16px}
+.twin-popout-head {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.twin-popout-head h1 {display:flex;align-items:center;gap:8px}
+.twin-popout-view {display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tw-body)}

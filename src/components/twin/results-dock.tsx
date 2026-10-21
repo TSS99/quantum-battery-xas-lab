@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useReducedMotion } from 'motion/react';
-import { Aperture, Download, Maximize2, Minimize2, Square } from 'lucide-react';
+import { Aperture, Download, ExternalLink, Maximize2, Minimize2, Pause, Play, Square } from 'lucide-react';
 import { Num, Tex, Unit } from '../tex';
 import { Plot, type Series } from '../plot';
 import { download } from '../ui';
@@ -91,7 +92,33 @@ function csv(acquisition: Acquisition) {
   return names.join(',') + '\n' + rows.join('\n') + '\n';
 }
 
-/** Bottom dock: result tabs, Acquire (one scan in the worker), the acquisition gallery and Enlarge. */
+/** A second window for one result view. React renders into it through a portal, so it stays live with no server. */
+interface PopUp { win: Window; root: HTMLElement }
+
+function openPopUp(): PopUp | null {
+  const win = window.open('', 'xaslab-twin-results', 'popup,width=960,height=660');
+  if (!win) return null;
+  const doc = win.document;
+  // The page's own styles, so plots, KaTeX and the fonts look the same; links need absolute addresses there.
+  const styles = [...document.querySelectorAll<HTMLLinkElement | HTMLStyleElement>('link[rel="stylesheet"], style')].map(node => {
+    const copy = node.cloneNode(true) as HTMLLinkElement | HTMLStyleElement;
+    if (node instanceof HTMLLinkElement) (copy as HTMLLinkElement).href = node.href;
+    return copy;
+  });
+  const viewport = doc.createElement('meta');
+  viewport.name = 'viewport'; viewport.content = 'width=device-width, initial-scale=1';
+  doc.head.replaceChildren(viewport, ...styles);
+  doc.title = 'Results · Beamline twin · XAS Lab';
+  doc.documentElement.lang = 'en';
+  // The root layout puts the font variables on html and body.
+  doc.documentElement.className = document.documentElement.className;
+  doc.body.className = document.body.className;
+  const root = doc.createElement('div');
+  root.className = (document.querySelector('.twin-fonts')?.className ?? '') + ' twin-app twin-popout';
+  doc.body.replaceChildren(root);
+  return { win, root };
+}
+
 /** Which fine structure the scan's sample used: the FEFF library's path sum or the teaching shape. */
 function FineStructureNote({ acquisition }: { acquisition: Acquisition }) {
   const label = acquisition.metadata['Sample.fine_structure'];
@@ -101,6 +128,7 @@ function FineStructureNote({ acquisition }: { acquisition: Acquisition }) {
   return <p className="twin-readout">Fine structure: <TexProse>{tex}</TexProse>.</p>;
 }
 
+/** Bottom dock: result tabs, Acquire (one scan in the worker), the acquisition gallery, Enlarge and Pop out. */
 export function ResultsDock() {
   const { store: { twin, view }, dispatch } = useTwin();
   const { progress, start, cancel } = useTwinScan();
@@ -108,9 +136,20 @@ export function ResultsDock() {
   const tabs = useRef<HTMLDivElement>(null);
   const [tables, setTables] = useState(false);
   const [stored, setStored] = useState<Stored[]>([]);
-  const [scanState, setScanState] = useState<{ twin: TwinState; times: number[]; started: number; minutes: number } | null>(null);
-  const [now, setNow] = useState(0);
+  const [scanState, setScanState] = useState<{ twin: TwinState; times: number[]; minutes: number } | null>(null);
+  // Replay time in milliseconds; it stands still while the scan is paused.
+  const [elapsed, setElapsed] = useState(0), [paused, setPaused] = useState(false);
   const handled = useRef(0), saved = useRef<Acquisition | null>(null);
+  const [popUp, setPopUp] = useState<PopUp | null>(null), [popTab, setPopTab] = useState<ResultTab>('mu');
+  const popRef = useRef<PopUp | null>(null);
+  useEffect(() => {
+    popRef.current = popUp;
+    if (!popUp) return;
+    const timer = setInterval(() => { if (popUp.win.closed) setPopUp(null); }, 500);
+    return () => clearInterval(timer);
+  }, [popUp]);
+  // Leaving the page closes the second window, which would otherwise stay open and empty.
+  useEffect(() => () => popRef.current?.win.close(), []);
   useEffect(() => { Promise.all([loadXrayData(), loadOptics()]).then(() => setTables(true), () => undefined); }, []);
 
   // Each Acquire press (button or I) starts one scan with the settings of that moment.
@@ -126,18 +165,24 @@ export function ResultsDock() {
     const settle = twin.scan.kind === 'step' ? twin.scan.settle_s : 0;
     let t = 0;
     const times = Array.from({ length: plan.dwell_s.length * repeats }, (_, i) => (t += plan.dwell_s[i % plan.dwell_s.length] + settle));
-    setScanState({ twin, times, started: performance.now(), minutes: planDuration(twin.scan, e0).total_s / 60 });
+    setScanState({ twin, times, minutes: planDuration(twin.scan, e0).total_s / 60 });
+    setElapsed(0); setPaused(false);
     start(twin, twin.scan, times.length);
   }, [view.acquireRequest, tables, twin, start, dispatch]);
 
   // Replay the streamed points at a watchable pace (instantly with reduced motion).
-  const shown = !scanState ? 0 : reduced ? progress.points.length : Math.min(progress.points.length, Math.ceil(progress.total * (now - scanState.started) / REPLAY_MS));
+  const shown = !scanState ? 0 : reduced ? progress.points.length : Math.min(progress.points.length, Math.ceil(progress.total * elapsed / REPLAY_MS));
   const replaying = !!scanState && (progress.running || shown < progress.points.length);
   useEffect(() => {
-    if (!replaying) return;
-    let frame = requestAnimationFrame(function tick(time) { setNow(time); frame = requestAnimationFrame(tick); });
+    if (!replaying || paused) return;
+    let last = performance.now();
+    let frame = requestAnimationFrame(function tick(time) { setElapsed(e => e + Math.max(0, time - last)); last = time; frame = requestAnimationFrame(tick); });
     return () => cancelAnimationFrame(frame);
-  }, [replaying]);
+  }, [replaying, paused]);
+  const togglePause = () => {
+    setPaused(!paused);
+    dispatch({ type: 'note', text: paused ? 'Scan resumed.' : `Scan paused at point ${shown} of ${progress.total}. Press Space to go on.` });
+  };
 
   // Store each finished acquisition once its replay has caught up.
   useEffect(() => {
@@ -161,8 +206,8 @@ export function ResultsDock() {
   const points: SimulatedPoint[] = progress.points.slice(0, shown);
   const latest = stored.at(-1)?.acquisition ?? null;
   const mode = scanState?.twin.mode ?? twin.mode;
-  const panel = (() => {
-    switch (view.tab) {
+  const panelFor = (tab: ResultTab) => {
+    switch (tab) {
       case 'live': {
         if (!points.length) return <Empty>Press Acquire to start a scan; the chamber outputs appear here as it runs.</Empty>;
         const volts = (counts: number, i: number) => counts / READOUT_DEFAULTS.v2fFullScale_Hz / (scanState!.times[i] - (scanState!.times[i - 1] ?? 0) - (scanState!.twin.scan.kind === 'step' ? scanState!.twin.scan.settle_s : 0)) * READOUT_DEFAULTS.fullScale_V;
@@ -199,7 +244,7 @@ export function ResultsDock() {
         </>;
       }
       case 'normalized': case 'derivative': case 'chik': case 'chir':
-        return <><Reduced tab={view.tab} acquisition={latest} mode={stored.at(-1)?.mode ?? mode} />{latest && <><Badges provenance={latest.provenance} /><FineStructureNote acquisition={latest} /></>}</>;
+        return <><Reduced tab={tab} acquisition={latest} mode={stored.at(-1)?.mode ?? mode} />{latest && <><Badges provenance={latest.provenance} /><FineStructureNote acquisition={latest} /></>}</>;
       case 'xrf': {
         if (!tables) return <Empty>Loading the X-ray tables…</Empty>;
         const mca = xrfSpectrum(twin);
@@ -207,7 +252,9 @@ export function ResultsDock() {
         const top = Math.min(mca.energies_eV.length, Math.ceil((twin.energy_eV + 1000) / mca.channelWidth_eV));
         return <>
           <Plot series={[{ name: 'Counts', color: '#74dcaa', x: Array.from(mca.energies_eV.slice(0, top)), y: Array.from(mca.counts.slice(0, top)) }]} yLabel="Counts per channel" yTex={String.raw`\mathrm{counts}`} minY={0}
-            bands={[{ from: twin.profile.sdd.roi_eV[0], to: twin.profile.sdd.roi_eV[1], label: 'ROI' }]} exportName="twin-xrf" />
+            bands={[{ from: twin.profile.sdd.roi_eV[0], to: twin.profile.sdd.roi_eV[1], label: 'ROI' }]} exportName="twin-xrf"
+            onBand={(_, band) => dispatch({ type: 'command', command: { type: 'sdd', patch: { roi_eV: [band.from, band.to] } } })} />
+          <p className="twin-readout">Drag the edges of the shaded window to set what fluorescence mode counts; the Fluorescence detector controls set it by keyboard.</p>
           <p className="twin-readout">Input rate <Num>{mca.icr.toExponential(2)}</Num> <Unit>s^-1</Unit>, dead time <Num>{(mca.deadFraction * 100).toFixed(1) + '%'}</Num>. Elastic and Compton scatter are not included.</p>
           {mca.deadFraction > 0.5 && <p className="twin-warning">The detector is saturated: it loses <Num>{(mca.deadFraction * 100).toFixed(mca.deadFraction > 0.999 ? 2 : 0) + '%'}</Num> of the events, so the spectrum is nearly empty. Move it back, use a dilute sample, or attenuate the beam.</p>}
           <Badges provenance={mca.provenance} />
@@ -224,16 +271,27 @@ export function ResultsDock() {
         </>;
       }
     }
-  })();
+  };
+  const panel = panelFor(view.tab);
+
+  const popOut = () => {
+    if (popUp && !popUp.win.closed) { popUp.win.focus(); return; }
+    const opened = openPopUp();
+    if (!opened) { dispatch({ type: 'note', text: 'The browser blocked the second window. Allow pop-ups for this site to use Pop out.' }); return; }
+    setPopTab(view.tab); setPopUp(opened);
+    dispatch({ type: 'note', text: `${TABS[view.tab].name} opened in a second window. It updates with this page, and its View list shows the other results.` });
+  };
 
   return <section className="twin-dock twin-card" aria-labelledby="twin-results-title">
     <div className="twin-dock-head">
       <h2 id="twin-results-title" className="twin-kicker"><span className={'twin-dot' + (replaying ? ' is-live' : '')} aria-hidden="true" />Results</h2>
-      <span className="twin-kicker twin-dock-sub" aria-hidden="true">{TABS[view.tab].name}{replaying ? ' · scanning' : stored.length ? ` · ${stored.length} stored` : ''}</span>
+      <span className="twin-kicker twin-dock-sub" aria-hidden="true">{TABS[view.tab].name}{replaying ? paused ? ' · paused' : ' · scanning' : stored.length ? ` · ${stored.length} stored` : ''}</span>
       <div className="twin-dock-actions">
+        {replaying && <button type="button" className="twin-icon" data-scan-pause aria-pressed={paused} aria-keyshortcuts="Space" title={paused ? 'Resume (Space)' : 'Pause (Space)'} onClick={togglePause}>{paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}<span className="sr-only">Pause</span></button>}
         {replaying
-          ? <button type="button" className="twin-acquire is-stop" onClick={() => { cancel(); setScanState(null); dispatch({ type: 'note', text: 'Scan stopped; nothing was stored.' }); }}><Square size={14} aria-hidden="true" />Stop</button>
+          ? <button type="button" className="twin-acquire is-stop" onClick={() => { cancel(); setScanState(null); setPaused(false); dispatch({ type: 'note', text: 'Scan stopped; nothing was stored.' }); }}><Square size={14} aria-hidden="true" />Stop</button>
           : <button type="button" className="twin-acquire" aria-keyshortcuts="I" disabled={!tables} onClick={() => dispatch({ type: 'acquire' })}><Aperture size={15} aria-hidden="true" />Acquire</button>}
+        <button type="button" className="twin-icon" title="Pop out" onClick={popOut}><ExternalLink size={16} aria-hidden="true" /><span className="sr-only">Pop out</span></button>
         <button type="button" className="twin-icon" aria-pressed={view.enlarged} aria-keyshortcuts="X" title="Enlarge (X)" onClick={() => dispatch({ type: 'enlarge' })}>{view.enlarged ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}<span className="sr-only">Enlarge</span></button>
       </div>
     </div>
@@ -263,5 +321,17 @@ export function ResultsDock() {
         </span>
       </li>)}</ol>
     </div>}
+    {popUp && createPortal(<>
+      <header className="twin-popout-head">
+        <h1 className="twin-kicker"><span className={'twin-dot' + (replaying ? ' is-live' : '')} aria-hidden="true" />Results · Beamline twin</h1>
+        <label className="twin-popout-view">View <select value={popTab} onChange={e => setPopTab(e.target.value as ResultTab)}>
+          {RESULT_TABS.map(tab => <option key={tab} value={tab}>{TABS[tab].name}</option>)}
+        </select></label>
+      </header>
+      <main className="twin-tabpanel">
+        <p><TexProse>{TABS[popTab].shows}</TexProse></p>
+        {panelFor(popTab)}
+      </main>
+    </>, popUp.root)}
   </section>;
 }

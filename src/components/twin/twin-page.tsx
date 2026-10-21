@@ -20,7 +20,7 @@ function typingIn(target: EventTarget | null) {
     target instanceof HTMLInputElement && !KEY_FREE_INPUTS.includes(target.type));
 }
 
-/** Page shortcuts (keys 1 to 8, C, L, I, X, [ and ]), never while typing and never inside a dialog. */
+/** Page shortcuts (keys 1 to 8, C, L, I, X, T, Space, [ and ]), never while typing and never inside a dialog. */
 function useShortcuts(dispatch: Dispatch<TwinAction>) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -28,6 +28,13 @@ function useShortcuts(dispatch: Dispatch<TwinAction>) {
       if (event.target instanceof Element && event.target.closest('dialog')) return;
       if (typingIn(event.target)) return;
       if (event.key === 'Escape') { dispatch({ type: 'enlarge', value: false }); return; }
+      if (event.key === ' ') {
+        // Space pauses or resumes a running scan, except on controls that Space itself operates.
+        if (event.repeat || event.target instanceof Element && event.target.closest('button, a, summary, [role="tab"], [role="slider"], [tabindex]')) return;
+        const pause = document.querySelector<HTMLButtonElement>('[data-scan-pause]');
+        if (pause) { event.preventDefault(); pause.click(); }
+        return;
+      }
       const action = event.repeat ? null : shortcutAction(event.key);
       // The one-column layout always shows both rails, so [ and ] would announce a change that does not happen.
       if (!action || action.type === 'rail' && matchMedia(NARROW_QUERY).matches) return;

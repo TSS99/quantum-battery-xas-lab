@@ -215,6 +215,92 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   expect(errors).toEqual([]);
 });
 
+test('Space pauses and resumes a running scan', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=7');
+  await expect(page.getByRole('button', { name: /^Acquire/ })).toBeEnabled();
+  await page.keyboard.press('i');
+  const pause = page.getByRole('button', { name: 'Pause', exact: true });
+  await expect(pause).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(pause).toHaveAttribute('aria-pressed', 'true');
+  await expect(changed(page)).toContainText('Scan paused at point');
+  const bar = page.getByRole('progressbar', { name: 'Scan progress' });
+  const held = await bar.getAttribute('aria-valuenow');
+  await page.waitForTimeout(800);
+  await expect(bar).toHaveAttribute('aria-valuenow', held!);
+  await page.keyboard.press('Space');
+  await expect(changed(page)).toContainText('Scan resumed');
+  await expect(changed(page)).toContainText('Acquisition 1 stored', { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
+test('Pop out shows the results in a second window with its own view list', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=7');
+  await page.getByRole('tab', { name: 'Rocking curve', exact: true }).click();
+  const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Pop out' }).click()]);
+  await expect(popup.getByRole('heading', { level: 1 })).toContainText('Results');
+  const view = popup.getByRole('combobox', { name: 'View' });
+  await expect(view).toHaveValue('rocking');
+  await expect(popup.getByRole('slider', { name: /^twin-rocking/ })).toBeVisible();
+  await view.selectOption('xrf');
+  await expect(popup.getByRole('slider', { name: /^twin-xrf/ })).toBeVisible();
+  await expect(changed(page)).toContainText('opened in a second window');
+  await expect(popup.locator('.katex-error')).toHaveCount(0);
+  await popup.close();
+  expect(errors).toEqual([]);
+});
+
+test('the XRF counting window moves by dragging its edge and by the keyboard controls', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=xrf&seed=7');
+  await page.getByRole('tab', { name: 'XRF spectrum', exact: true }).click();
+  const controls = page.getByRole('complementary', { name: 'Controls' });
+  const fold = controls.getByRole('button', { name: 'Fluorescence detector', exact: true });
+  if (await fold.getAttribute('aria-expanded') === 'false') await fold.click();
+  const to = controls.getByRole('slider', { name: 'Counting window to' });
+  const before = Number(await to.inputValue());
+  const grip = page.getByRole('tabpanel').locator('[data-band-edge="to"]');
+  const box = (await grip.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(changed(page)).toContainText('Counting window set to');
+  await expect.poll(async () => Number(await to.inputValue())).toBeGreaterThan(before + 50);
+  const dragged = Number(await to.inputValue());
+  await to.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(async () => Number(await to.inputValue())).toBeLessThan(dragged);
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('the explanation switches between General and Physics, remembers it, and auto narrate toggles', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=7');
+  const card = page.getByRole('complementary', { name: 'Explanation' });
+  const level = card.getByRole('group', { name: 'Explanation level' });
+  await expect(level.getByRole('button', { name: 'General' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(card).toContainText('goes straight through the sample');
+  await expect(card).not.toContainText('Beer-Lambert');
+  await level.getByRole('button', { name: 'Physics' }).click();
+  await expect(card).toContainText('Beer-Lambert');
+  await page.reload();
+  await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
+  await expect(level.getByRole('button', { name: 'Physics' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(card).toContainText('Beer-Lambert');
+  const narrate = card.getByRole('button', { name: 'Auto narrate' });
+  await expect(narrate).toHaveAttribute('aria-pressed', 'false');
+  await narrate.click();
+  await expect(narrate).toHaveAttribute('aria-pressed', 'true');
+  await narrate.click();
+  await expect(narrate).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('every controls section changes the instrument and says what changed', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page);
@@ -331,7 +417,7 @@ test('keyboard shortcuts dialog lists the keys, blocks them while open and retur
   await opener.click();
   const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('row')).toHaveCount(18);
+  await expect(dialog.getByRole('row')).toHaveCount(19);
   await page.keyboard.press('4');
   await expect(mode(page, 'Transmission')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
