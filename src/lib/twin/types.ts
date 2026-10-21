@@ -171,6 +171,8 @@ export interface PointResult {
 
 export interface Acquisition {
   id: string;
+  /** User-facing file or acquisition name. */
+  name?: string;
   kind: TwinMode;
   /** XDI column names: energy, i0, itrans, ifluor, irefer, mutrans, mufluor, murefer, ... */
   columns: Record<string, number[]>;

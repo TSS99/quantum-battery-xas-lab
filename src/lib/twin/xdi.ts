@@ -43,6 +43,7 @@ export function writeXdi(acquisition: Pick<Acquisition, 'columns' | 'metadata'>,
   const lines = [`# ${XDI_VERSION} ${APPLICATION}`];
   labels.forEach((label, i) => lines.push(`# Column.${i + 1}: ${label}${UNITS[label] ? ' ' + UNITS[label] : ''}`));
   for (const [key, value] of Object.entries(metadata)) {
+    if (/^Column\.\d+$/i.test(key)) continue; // regenerated above from the actual column order
     if (!/^[A-Za-z][\w]*\.[\w]+$/.test(key)) throw new Error(`"${key}" is not a valid XDI field name (Namespace.tag).`);
     lines.push(`# ${key}: ${value.replace(/[\r\n]+/g, ' ')}`);
   }

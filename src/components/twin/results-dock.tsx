@@ -1,26 +1,29 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useReducedMotion } from 'motion/react';
-import { Aperture, Download, ExternalLink, Maximize2, Minimize2, Pause, Play, Square } from 'lucide-react';
+import { Aperture, Download, ExternalLink, Maximize2, Minimize2, Pause, Play, Square, Upload } from 'lucide-react';
 import { Num, Tex, Unit } from '../tex';
 import { Plot, type Series } from '../plot';
 import { download } from '../ui';
 import { loadXrayData } from '@/lib/xraydata';
 import { gradient, preEdge } from '@/lib/xas-reduction';
-import { processExafs } from '@/lib/exafs';
 import { loadPaths } from '@/lib/twin/exafs';
 import { firstShellFit } from '@/lib/twin/first-shell-fit';
 import { libraryMaterialId } from '@/lib/twin/sample';
 import { loadOptics } from '@/lib/twin/tables';
+import { dSpacing_A } from '@/lib/twin/mono';
 import { edgeEnergy, type SimulatedPoint } from '@/lib/twin/acquire';
 import { READOUT_DEFAULTS } from '@/lib/twin/chambers';
 import { planDuration, planPoints } from '@/lib/twin/scan';
 import { rockingCurve, xrfSpectrum } from '@/lib/twin/twin';
 import { writeXdi } from '@/lib/twin/xdi';
-import type { Acquisition, FeffMaterial, Provenance, SampleConfig, TwinMode, TwinState } from '@/lib/twin/types';
+import { importAcquisition } from '@/lib/twin/import';
+import { larchScript } from '@/lib/twin/larch-export';
+import { muOf, reduceAcquisition } from '@/lib/twin/reduction';
+import type { Acquisition, FeffMaterial, Provenance, TwinMode, TwinState } from '@/lib/twin/types';
 import { RESULT_TABS, type ResultTab } from './twin-state';
-import { useTwin } from './twin-store';
+import { storedAcquisition, useTwin, type StoredAcquisition } from './twin-store';
 import { TexProse } from './tex-prose';
 import { useTwinScan } from './use-twin-worker';
 
@@ -42,15 +45,6 @@ const REPLAY_MS = 4000;
 const BADGE: Record<Provenance, string> = { tabulated: 'Tabulated', computed: 'Computed', measured: 'Measured', 'teaching-model': 'Teaching model' };
 const FLUOR_MODES: readonly TwinMode[] = ['fluorescence', 'xrf'];
 
-interface Stored { n: number; acquisition: Acquisition; mode: TwinMode; sample: string; minutes: number; config: SampleConfig; temperature_K: number }
-
-/** μ(E) for the mode: ln(I0/It) in transmission-type modes, If/I0 in fluorescence. */
-function muOf(columns: Record<string, number[]>, mode: TwinMode) {
-  const y = FLUOR_MODES.includes(mode) ? columns.mufluor : columns.mutrans;
-  const keep = columns.energy.map((_, i) => Number.isFinite(y[i]));
-  return { energy: columns.energy.filter((_, i) => keep[i]), mu: y.filter((_, i) => keep[i]) };
-}
-
 function Badges({ provenance }: { provenance: Provenance[] }) {
   return <p className="twin-badges">{provenance.map(p => <span key={p} className={'twin-badge is-' + p}>{BADGE[p]}</span>)}</p>;
 }
@@ -65,8 +59,7 @@ function Reduced({ tab, acquisition, mode }: { tab: ResultTab; acquisition: Acqu
     try {
       const pre = preEdge(energy, mu);
       if (tab === 'normalized' || tab === 'derivative') return { pre, energy, mu, exafs: null, error: null };
-      const kmaxData = Math.sqrt(0.26246842 * (energy[energy.length - 1] - pre.e0));
-      const exafs = processExafs(energy, mu, { rbkg: 1, kmin: 2, kmax: Math.min(12, kmaxData - 0.3), kweight: 2, dk: 1, window: 'hanning' });
+      const exafs = reduceAcquisition(acquisition, mode).exafs;
       return { pre, energy, mu, exafs, error: null };
     } catch (error) { return { pre: null, energy, mu, exafs: null, error: error instanceof Error ? error.message : String(error) }; }
   }, [acquisition, mode, tab]);
@@ -99,7 +92,7 @@ const FIT_ROWS = [
 ] as const;
 
 /** First shell fit of the latest acquisition (src/lib/twin/first-shell-fit.ts), for samples in the FEFF library. */
-function FitPanel({ stored }: { stored: Stored | undefined }) {
+function FitPanel({ stored }: { stored: StoredAcquisition | undefined }) {
   const id = stored ? libraryMaterialId(stored.config) : null;
   const [material, setMaterial] = useState<FeffMaterial | null>(null);
   useEffect(() => {
@@ -115,7 +108,10 @@ function FitPanel({ stored }: { stored: Stored | undefined }) {
     catch (error) { return { value: null, error: error instanceof Error ? error.message : String(error) }; }
   }, [stored, material, id]);
   if (!stored) return <Empty>Press Acquire to record a scan; the fit runs on the latest acquisition.</Empty>;
-  if (!id) return <Empty>Fits use the FEFF paths in the twin&apos;s library, which has no entry for this sample. Choose a library sample, such as the Cu foil.</Empty>;
+  if (stored.acquisition.provenance.includes('measured') && stored.acquisition.metadata['XASLab.declared_edge'] !== 'true') return <Empty>The Fit tab needs an element and edge declared by the imported file. Plain columns without that metadata can still be reduced in the other tabs.</Empty>;
+  if (!id) return <Empty>{stored.acquisition.provenance.includes('measured')
+    ? 'The imported element, edge and sample do not match a material in the FEFF library. The other result tabs remain available.'
+    : 'Fits use the FEFF paths in the twin\'s library, which has no entry for this sample. Choose a library sample, such as the Cu foil.'}</Empty>;
   if (!fit) return <Empty>Loading the FEFF paths…</Empty>;
   if (!fit.value) return <Empty>The fit could not run: {fit.error}</Empty>;
   const { result, truth, window_A, kRange, reff_A } = fit.value;
@@ -197,12 +193,13 @@ function FineStructureNote({ acquisition }: { acquisition: Acquisition }) {
 
 /** Bottom dock: result tabs, Acquire (one scan in the worker), the acquisition gallery, Enlarge and Pop out. */
 export function ResultsDock() {
-  const { store: { twin, view }, dispatch } = useTwin();
+  const { store: { twin, view }, dispatch, acquisitions: stored, setAcquisitions: setStored } = useTwin();
   const { progress, start, cancel } = useTwinScan();
   const reduced = useReducedMotion();
   const tabs = useRef<HTMLDivElement>(null);
   const [tables, setTables] = useState(false);
-  const [stored, setStored] = useState<Stored[]>([]);
+  const importInput = useRef<HTMLInputElement>(null);
+  const [importStatus, setImportStatus] = useState('');
   const [scanState, setScanState] = useState<{ twin: TwinState; times: number[]; minutes: number } | null>(null);
   // Replay time in milliseconds; it stands still while the scan is paused.
   const [elapsed, setElapsed] = useState(0), [paused, setPaused] = useState(false);
@@ -260,6 +257,24 @@ export function ResultsDock() {
     setStored(list => [...list, { n, acquisition, mode: scanState.twin.mode, sample: scanState.twin.sample.formula, minutes: scanState.minutes, config: scanState.twin.sample, temperature_K: scanState.twin.environment.temperature_K }]);
     dispatch({ type: 'note', text: `Acquisition ${n} stored: ${acquisition.columns.energy.length} points, ${scanState.minutes.toFixed(1)} min of beamline time.` });
   }, [progress.acquisition, replaying, scanState, stored.length, dispatch]);
+
+  const loadData = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const imported = importAcquisition(await file.text(), file.name, {
+        sample: twin.sample,
+        monoDSpacing_A: dSpacing_A(twin.profile.mono.crystal),
+      });
+      const item = storedAcquisition(imported.acquisition, stored.length + 1, twin);
+      setStored(list => [...list, item]);
+      setImportStatus(`${file.name} imported as measured data.`);
+      dispatch({ type: 'note', text: `${file.name} imported as measured data.` });
+    } catch (error) {
+      setImportStatus(error instanceof Error ? error.message : String(error));
+    }
+    event.target.value = '';
+  };
 
   function onTabKey(event: KeyboardEvent) {
     const i = RESULT_TABS.indexOf(view.tab), n = RESULT_TABS.length;
@@ -377,18 +392,31 @@ export function ResultsDock() {
       <p><TexProse>{TABS[view.tab].shows}</TexProse></p>
       {panel}
     </div>
-    {stored.length > 0 && <div className="twin-gallery">
-      <h3>Acquisitions</h3>
-      <ol>{stored.map(s => <li key={s.n}>
-        <span><strong>#{s.n}</strong> {s.sample}, {s.mode.replace('-', ' ')}, <Num>{String(s.acquisition.columns.energy.length)}</Num> points</span>
+    <div className="twin-gallery">
+      <div className="twin-gallery-head"><h3>Acquisitions</h3>
+        <input ref={importInput} className="sr-only" type="file" accept=".xdi,.txt,.dat,.csv,text/plain" aria-label="Acquisition data file" onChange={loadData} />
+        <button type="button" className="button secondary small" onClick={() => importInput.current?.click()}><Upload size={14} aria-hidden="true" />Import data</button>
+      </div>
+      {stored.length ? <ol>{stored.map(s => <li key={s.n}>
+        <span><strong>#{s.n}</strong> {s.acquisition.name ?? s.sample}, {s.mode.replace('-', ' ')}, <Num>{String(s.acquisition.columns.energy.length)}</Num> points {s.acquisition.provenance.map(p => <span key={p} className={'twin-badge is-' + p}>{BADGE[p]}</span>)}</span>
         <span className="twin-gallery-actions">
-          {(['xdi', 'csv', 'json'] as const).map(kind => <button key={kind} type="button" className="button secondary small" aria-label={`Download acquisition ${s.n} as ${kind.toUpperCase()}`}
-            onClick={() => download(`twin-${s.n}-${s.acquisition.metadata['Element.symbol']}${s.acquisition.metadata['Element.edge']}.${kind}`,
-              kind === 'xdi' ? writeXdi(s.acquisition, [`Acquisition ${s.n} from the XAS Lab beamline twin (simulated data).`]) : kind === 'csv' ? csv(s.acquisition) : JSON.stringify(s.acquisition),
-              kind === 'json' ? 'application/json' : 'text/plain')}><Download size={14} aria-hidden="true" />{kind.toUpperCase()}</button>)}
+          {(['xdi', 'csv', 'json', 'larch'] as const).map(kind => <button key={kind} type="button" className="button secondary small" aria-label={`Download acquisition ${s.n} as ${kind === 'larch' ? 'Larch' : kind.toUpperCase()}`}
+            onClick={() => {
+              const base = `twin-${s.n}-${s.acquisition.metadata['Element.symbol']}${s.acquisition.metadata['Element.edge']}`;
+              try {
+                if (kind === 'larch') {
+                  const script = larchScript(s.acquisition, base, s.mode);
+                  download(script.filename, script.code, 'text/x-python');
+                } else {
+                  const text = kind === 'xdi' ? writeXdi(s.acquisition, [`Acquisition ${s.n} from the XAS Lab beamline twin (${s.acquisition.provenance.includes('measured') ? 'measured data' : 'simulated data'}).`]) : kind === 'csv' ? csv(s.acquisition) : JSON.stringify(s.acquisition);
+                  download(`${base}.${kind}`, text, kind === 'json' ? 'application/json' : 'text/plain');
+                }
+              } catch (error) { dispatch({ type: 'note', text: `The ${kind} download could not be made: ${error instanceof Error ? error.message : String(error)}` }); }
+            }}><Download size={14} aria-hidden="true" />{kind === 'larch' ? 'Larch' : kind.toUpperCase()}</button>)}
         </span>
-      </li>)}</ol>
-    </div>}
+      </li>)}</ol> : <p className="twin-empty">No acquisitions stored.</p>}
+      <p className="twin-dialog-status" role="status">{importStatus}</p>
+    </div>
     {popUp && createPortal(<>
       <header className="twin-popout-head">
         <h1 className="twin-kicker"><span className={'twin-dot' + (replaying ? ' is-live' : '')} aria-hidden="true" />Results · Beamline twin</h1>

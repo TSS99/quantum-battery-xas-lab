@@ -91,9 +91,21 @@ describe('reducer', () => {
 });
 
 describe('URL hash', () => {
-  it('round-trips mode and seed', () => {
-    for (const mode of TWIN_MODES) for (const seed of [0, 1, 7, 4294967295]) expect(parseHash(formatHash({ mode, seed }))).toEqual({ mode, seed });
-    expect(formatHash(DEFAULT_TWIN)).toBe('#mode=transmission&seed=1');
+  it('round-trips the settings that define a shared twin', () => {
+    const shared = twinReducer(INITIAL_STORE, { type: 'command', command: { type: 'thickness', thickness_um: 11.5 } }).twin;
+    const changed = { ...shared, mode: 'fluorescence' as const, seed: 4294967295, energy_eV: 9012.5, realistic: true };
+    const hash = formatHash(changed), parsed = parseHash(hash);
+    expect(hash).toMatch(/^#v=1&mode=fluorescence&seed=4294967295&s=/);
+    expect(hash.length).toBeLessThanOrEqual(1800);
+    const restored = twinReducer(INITIAL_STORE, { type: 'hash', ...parsed }).twin;
+    expect(restored).toMatchObject({ mode: changed.mode, seed: changed.seed, energy_eV: changed.energy_eV, realistic: true });
+    expect(restored.profile.preset).toBe(changed.profile.preset);
+    expect(restored.sample).toMatchObject({ formula: changed.sample.formula, absorber: changed.sample.absorber, edge: changed.sample.edge, thickness_um: 11.5 });
+    expect(restored.scan).toEqual(changed.scan);
+  });
+  it('keeps old mode and seed links working', () => {
+    expect(parseHash('#mode=xrf&seed=7')).toEqual({ mode: 'xrf', seed: 7 });
+    expect(twinReducer(INITIAL_STORE, { type: 'hash', ...parseHash('#mode=damage&seed=42') }).twin).toMatchObject({ mode: 'damage', seed: 42 });
   });
   it('drops unknown modes and invalid seeds', () => {
     expect(parseHash('#mode=raman&seed=-1')).toEqual({});
@@ -101,6 +113,7 @@ describe('URL hash', () => {
     expect(parseHash('#seed=4294967296')).toEqual({});
     expect(parseHash('')).toEqual({});
     expect(parseHash('mode=xrf')).toEqual({ mode: 'xrf' });
+    expect(parseHash('#v=1&mode=xrf&seed=7&s=not-base64')).toEqual({ mode: 'xrf', seed: 7 });
   });
 });
 
