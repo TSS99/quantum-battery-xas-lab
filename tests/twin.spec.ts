@@ -113,7 +113,7 @@ test('the Realistic switch toggles by click and by C', async ({ page }) => {
 test('results dock tabs, Acquire, Enlarge, labels and rails respond to clicks and keys', async ({ page }) => {
   await openTwin(page);
   const tabs = page.getByRole('tablist', { name: 'Result views' }).getByRole('tab');
-  await expect(tabs).toHaveCount(8);
+  await expect(tabs).toHaveCount(9);
   await page.getByRole('tab', { name: 'χ(k)', exact: true }).click();
   await expect(page.getByRole('tab', { name: 'χ(k)', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('ArrowRight');
@@ -204,6 +204,12 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   await expect(page.getByRole('tabpanel')).toContainText('edge step');
   await page.getByRole('tab', { name: 'χ(k)', exact: true }).click();
   await expect(page.getByRole('tabpanel').locator('svg path').first()).toBeVisible();
+  // The first shell fit uses the same FEFF paths, so it lands near the values that made the spectrum.
+  await page.getByRole('tab', { name: 'Fit', exact: true }).click();
+  const fitTable = page.getByRole('table', { name: 'First shell fit' });
+  await expect(fitTable.getByRole('columnheader', { name: 'Used by the twin' })).toBeVisible();
+  await expect(fitTable.getByRole('row')).toHaveCount(5);
+  await expect(page.getByRole('tabpanel')).toContainText('independent points');
   await page.getByRole('tab', { name: 'Live channels', exact: true }).click();
   await expect(page.getByRole('tabpanel')).not.toContainText('clipped');
   await page.getByRole('tab', { name: 'XRF spectrum', exact: true }).click();

@@ -13,8 +13,8 @@ export const presetOf = (state: TwinState) => PROFILE_PRESETS.find(p => p.id ===
 /** The page starts from the twin's default state (src/lib/twin/twin.ts). */
 export const DEFAULT_TWIN: TwinState = DEFAULT_STATE;
 
-export type ResultTab = 'live' | 'mu' | 'normalized' | 'derivative' | 'chik' | 'chir' | 'xrf' | 'rocking';
-export const RESULT_TABS: readonly ResultTab[] = ['live', 'mu', 'normalized', 'derivative', 'chik', 'chir', 'xrf', 'rocking'];
+export type ResultTab = 'live' | 'mu' | 'normalized' | 'derivative' | 'chik' | 'chir' | 'fit' | 'xrf' | 'rocking';
+export const RESULT_TABS: readonly ResultTab[] = ['live', 'mu', 'normalized', 'derivative', 'chik', 'chir', 'fit', 'xrf', 'rocking'];
 
 /** View settings that are not part of the simulated instrument. */
 export interface TwinView {

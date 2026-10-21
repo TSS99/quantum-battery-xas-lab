@@ -9,13 +9,16 @@ import { download } from '../ui';
 import { loadXrayData } from '@/lib/xraydata';
 import { gradient, preEdge } from '@/lib/xas-reduction';
 import { processExafs } from '@/lib/exafs';
+import { loadPaths } from '@/lib/twin/exafs';
+import { firstShellFit } from '@/lib/twin/first-shell-fit';
+import { libraryMaterialId } from '@/lib/twin/sample';
 import { loadOptics } from '@/lib/twin/tables';
 import { edgeEnergy, type SimulatedPoint } from '@/lib/twin/acquire';
 import { READOUT_DEFAULTS } from '@/lib/twin/chambers';
 import { planDuration, planPoints } from '@/lib/twin/scan';
 import { rockingCurve, xrfSpectrum } from '@/lib/twin/twin';
 import { writeXdi } from '@/lib/twin/xdi';
-import type { Acquisition, Provenance, TwinMode, TwinState } from '@/lib/twin/types';
+import type { Acquisition, FeffMaterial, Provenance, SampleConfig, TwinMode, TwinState } from '@/lib/twin/types';
 import { RESULT_TABS, type ResultTab } from './twin-state';
 import { useTwin } from './twin-store';
 import { TexProse } from './tex-prose';
@@ -29,6 +32,7 @@ const TABS: Record<ResultTab, { name: string; tex?: string; shows: string }> = {
   derivative: { name: 'Derivative', shows: String.raw`$d\mu/dE$, whose first peak marks $E_0$ and the energy calibration point.` },
   chik: { name: 'χ(k)', tex: String.raw`\chi(k)`, shows: String.raw`The EXAFS $k^2\chi(k)$ after background removal (Larch AUTOBK port).` },
   chir: { name: '|χ(R)|', tex: String.raw`|\chi(R)|`, shows: String.raw`$|\chi(R)|$, the Fourier transform of $k^2\chi(k)$ with a Hanning window.` },
+  fit: { name: 'Fit', shows: String.raw`A first shell fit of $|\chi(R)|$ with the FEFF paths the twin used, next to the values that made the spectrum.` },
   xrf: { name: 'XRF spectrum', shows: String.raw`The fluorescence detector's energy spectrum at the current $E$ in one second, with the counting window shaded.` },
   rocking: { name: 'Rocking curve', shows: String.raw`What the second crystal passes as it turns through the reflection, for the fundamental and the third harmonic.` },
 };
@@ -38,7 +42,7 @@ const REPLAY_MS = 4000;
 const BADGE: Record<Provenance, string> = { tabulated: 'Tabulated', computed: 'Computed', measured: 'Measured', 'teaching-model': 'Teaching model' };
 const FLUOR_MODES: readonly TwinMode[] = ['fluorescence', 'xrf'];
 
-interface Stored { n: number; acquisition: Acquisition; mode: TwinMode; sample: string; minutes: number }
+interface Stored { n: number; acquisition: Acquisition; mode: TwinMode; sample: string; minutes: number; config: SampleConfig; temperature_K: number }
 
 /** μ(E) for the mode: ln(I0/It) in transmission-type modes, If/I0 in fluorescence. */
 function muOf(columns: Record<string, number[]>, mode: TwinMode) {
@@ -84,6 +88,69 @@ function Reduced({ tab, acquisition, mode }: { tab: ResultTab; acquisition: Acqu
   const { autobk, xftf } = result.exafs;
   if (tab === 'chik') return <Plot series={[{ name: 'k²χ(k)', label: <Tex plain>{'k^2\\chi(k)'}</Tex>, color: '#7fd8cf', x: autobk.k, y: autobk.chi.map((c, i) => c * autobk.k[i] ** 2) }]} xLabel="k (Å⁻¹)" yLabel="k²χ(k)" yTex={String.raw`k^2\chi(k)\ (\mathring{\mathrm{A}}^{-2})`} exportName="twin-chik" />;
   return <Plot series={[{ name: '|χ(R)|', label: <Tex plain>{'|\\chi(R)|'}</Tex>, color: '#ffc46b', x: xftf.r, y: xftf.magnitude }]} xLabel="R (Å)" yLabel="|χ(R)|" yTex={String.raw`|\chi(R)|\ (\mathring{\mathrm{A}}^{-3})`} exportName="twin-chir" />;
+}
+
+/** Fit parameters: name in the fit, typeset symbol, typeset unit and decimals. */
+const FIT_ROWS = [
+  ['s02', String.raw`S_0^2`, '', 3],
+  ['e0', String.raw`\Delta E_0`, String.raw`\mathrm{eV}`, 2],
+  ['dr', String.raw`\Delta R`, String.raw`\mathring{\mathrm{A}}`, 4],
+  ['ss', String.raw`\sigma^2`, String.raw`\mathring{\mathrm{A}}^2`, 5],
+] as const;
+
+/** First shell fit of the latest acquisition (src/lib/twin/first-shell-fit.ts), for samples in the FEFF library. */
+function FitPanel({ stored }: { stored: Stored | undefined }) {
+  const id = stored ? libraryMaterialId(stored.config) : null;
+  const [material, setMaterial] = useState<FeffMaterial | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let live = true;
+    loadPaths(id).then(m => { if (live) setMaterial(m); }, () => undefined);
+    return () => { live = false; };
+  }, [id]);
+  const fit = useMemo(() => {
+    if (!stored || !material || material.id !== id) return null;
+    const { energy, mu } = muOf(stored.acquisition.columns, stored.mode);
+    try { return { value: firstShellFit(material, energy, mu, stored.temperature_K), error: null }; }
+    catch (error) { return { value: null, error: error instanceof Error ? error.message : String(error) }; }
+  }, [stored, material, id]);
+  if (!stored) return <Empty>Press Acquire to record a scan; the fit runs on the latest acquisition.</Empty>;
+  if (!id) return <Empty>Fits use the FEFF paths in the twin&apos;s library, which has no entry for this sample. Choose a library sample, such as the Cu foil.</Empty>;
+  if (!fit) return <Empty>Loading the FEFF paths…</Empty>;
+  if (!fit.value) return <Empty>The fit could not run: {fit.error}</Empty>;
+  const { result, truth, window_A, kRange, reff_A } = fit.value;
+  const end = result.curves.r_A.findIndex(r => r > 6);
+  const upTo = (values: number[]) => values.slice(0, end < 0 ? values.length : end);
+  const used = { s02: truth.s02, e0: null, dr: truth.deltar_A, ss: truth.sigma2_A2 } as const;
+  const off = FIT_ROWS.filter(([key]) => {
+    const p = result.parameters[key], t = used[key];
+    return t !== null && p.stderr !== null && Math.abs(p.value - t) > 2 * p.stderr;
+  });
+  const dr = result.parameters.dr.value;
+  return <>
+    <Plot series={[
+      { name: 'Data |χ(R)|', label: <>Data <Tex plain>{'|\\chi(R)|'}</Tex></>, color: '#7fd8cf', x: upTo(result.curves.r_A), y: upTo(result.curves.dataR.magnitude) },
+      { name: 'Fit |χ(R)|', label: <>Fit <Tex plain>{'|\\chi(R)|'}</Tex></>, color: '#ffc46b', dash: 'dashed', x: upTo(result.curves.r_A), y: upTo(result.curves.modelR.magnitude) },
+    ]} xLabel="R (Å)" yLabel="|χ(R)|" yTex={String.raw`|\chi(R)|\ (\mathring{\mathrm{A}}^{-3})`} minY={0} bands={[{ from: window_A[0], to: window_A[1], label: 'Fit range' }]} exportName="twin-fit" />
+    <table className="twin-fit-table">
+      <caption className="sr-only">First shell fit</caption>
+      <thead><tr><th scope="col">Parameter</th><th scope="col">Fit</th><th scope="col">Used by the twin</th></tr></thead>
+      <tbody>{FIT_ROWS.map(([key, symbol, unit, digits]) => {
+        const p = result.parameters[key], t = used[key];
+        return <tr key={key}>
+          <th scope="row"><Tex plain>{symbol}</Tex></th>
+          <td><Num>{p.value.toFixed(digits)}</Num>{p.stderr !== null && <> <Tex plain>{'\\pm'}</Tex> <Num>{p.stderr.toFixed(digits)}</Num></>}{unit && <> <Tex plain>{unit}</Tex></>}</td>
+          <td>{t === null ? <>depends on where <Tex plain>{'E_0'}</Tex> is placed</> : <><Num>{t.toFixed(digits)}</Num>{unit && <> <Tex plain>{unit}</Tex></>}</>}</td>
+        </tr>;
+      })}</tbody>
+    </table>
+    <p className="twin-readout"><TexProse>{String.raw`Distance $R = ${(reff_A + dr).toFixed(3)}\ \mathring{\mathrm{A}}$ from the FEFF path at $${reff_A.toFixed(3)}\ \mathring{\mathrm{A}}$. R factor $${result.rFactor === null ? '-' : result.rFactor.toFixed(4)}$ with $${result.nIdp.toFixed(1)}$ independent points for $${result.nVarys}$ variables, fitted over $k$ from $${kRange[0]}$ to $${kRange[1].toFixed(1)}\ \mathring{\mathrm{A}}^{-1}$ and $R$ from $${window_A[0].toFixed(2)}$ to $${window_A[1].toFixed(2)}\ \mathring{\mathrm{A}}$ with $k^2$ weight. As in Larch, the standard errors are scaled by $\sqrt{\chi^2_\nu}$.`}</TexProse></p>
+    <p className="twin-readout">{off.length === 0
+      ? 'The fit agrees with every value the twin used within two standard errors.'
+      : <TexProse>{`${off.map(([, symbol]) => `$${symbol}$`).join(', ')} ${off.length > 1 ? 'differ' : 'differs'} from the value the twin used by more than two standard errors. Background removal, the fit window and, in fluorescence, self-absorption all bias a first shell fit.`}</TexProse>}</p>
+    {result.warnings.map(w => <p key={w} className="twin-warning">{w}</p>)}
+    <Badges provenance={['computed']} />
+  </>;
 }
 
 function csv(acquisition: Acquisition) {
@@ -190,7 +257,7 @@ export function ResultsDock() {
     if (!acquisition || replaying || !scanState || saved.current === acquisition) return;
     saved.current = acquisition;
     const n = stored.length + 1;
-    setStored(list => [...list, { n, acquisition, mode: scanState.twin.mode, sample: scanState.twin.sample.formula, minutes: scanState.minutes }]);
+    setStored(list => [...list, { n, acquisition, mode: scanState.twin.mode, sample: scanState.twin.sample.formula, minutes: scanState.minutes, config: scanState.twin.sample, temperature_K: scanState.twin.environment.temperature_K }]);
     dispatch({ type: 'note', text: `Acquisition ${n} stored: ${acquisition.columns.energy.length} points, ${scanState.minutes.toFixed(1)} min of beamline time.` });
   }, [progress.acquisition, replaying, scanState, stored.length, dispatch]);
 
@@ -245,6 +312,7 @@ export function ResultsDock() {
       }
       case 'normalized': case 'derivative': case 'chik': case 'chir':
         return <><Reduced tab={tab} acquisition={latest} mode={stored.at(-1)?.mode ?? mode} />{latest && <><Badges provenance={latest.provenance} /><FineStructureNote acquisition={latest} /></>}</>;
+      case 'fit': return <FitPanel stored={stored.at(-1)} />;
       case 'xrf': {
         if (!tables) return <Empty>Loading the X-ray tables…</Empty>;
         const mca = xrfSpectrum(twin);
