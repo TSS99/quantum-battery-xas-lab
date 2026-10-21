@@ -16,7 +16,7 @@ describe('training scenarios', () => {
       const c = scenario.setup({ ...DEFAULT_STATE, seed: 8 }, seededRandom(8));
       expect(a).toEqual(b);
       expect(a.state.seed).toBe(7);
-      expect(JSON.stringify(c.truth) + c.state.energy_eV).not.toBe(JSON.stringify(a.truth) + a.state.energy_eV);
+      expect(JSON.stringify({ ...c, state: { ...c.state, seed: 0 } })).not.toBe(JSON.stringify({ ...a, state: { ...a.state, seed: 0 } }));
     }
   });
 
@@ -45,6 +45,79 @@ describe('training scenarios', () => {
     expect(s1.metrics({ state, truth, acquisitions: [], answer: truth.offset_eV + 1.5 }).score).toBe(50);
     expect(s1.metrics({ state, truth, acquisitions: [] })).toMatchObject({ score: 0, success: false });
     expect(s1.reveal(truth)).toContain(Math.abs(truth.offset_eV).toFixed(1));
+  });
+
+  it('S2 hides each of its faults across seeds, each one costs real amplitude, and its fix restores it', () => {
+    const s2 = scenarioOf('s2-amplitude')!;
+    const seen = new Set<number>();
+    for (let seed = 1; seed <= 40 && seen.size < 2; seed++) {
+      const { state, truth } = s2.setup(DEFAULT_STATE, seededRandom(seed));
+      if (seen.has(truth.fault)) continue;
+      seen.add(truth.fault);
+      expect(state.mode).toBe('transmission');
+      // The fault is visible: at least 5 % of the edge step is missing at the start.
+      expect(truth.amplitude).toBeLessThan(0.95);
+      expect(truth.amplitude).toBeGreaterThan(0.2);
+      expect(s2.metrics({ state, truth, acquisitions: [] }).success).toBe(false);
+      let fixed = state;
+      if (truth.fault === 0) fixed = { ...state, sample: { ...state.sample, pinholeFraction: 0 } };
+      if (truth.fault === 1) fixed = { ...state, sample: { ...state.sample, thickness_um: Math.round(state.sample.thickness_um / 3), thicknessSpread: 0.02 } };
+      const after = s2.metrics({ state: fixed, truth, acquisitions: [] });
+      expect(after.success, `fault ${truth.fault}`).toBe(true);
+      expect(after.score).toBeGreaterThanOrEqual(85);
+    }
+    expect([...seen].sort()).toEqual([0, 1]);
+  });
+
+  it('S2 measures with chamber currents, so a clipped amplifier does not change the score', () => {
+    const s2 = scenarioOf('s2-amplitude')!;
+    const { state, truth } = s2.setup(DEFAULT_STATE, seededRandom(2));
+    const loud = { ...state, profile: { ...state.profile, chambers: state.profile.chambers.map(c => ({ ...c, gain_V_per_A: 1e11 })) } };
+    expect(s2.metrics({ state: loud, truth, acquisitions: [] }).score).toBe(s2.metrics({ state, truth, acquisitions: [] }).score);
+  });
+
+  it('S3 rewards fluorescence at the dead-time limit over transmission or a swamped detector', () => {
+    const s3 = scenarioOf('s3-dilute')!;
+    const { state, truth } = s3.setup(DEFAULT_STATE, seededRandom(4));
+    const score = (s: typeof state) => s3.metrics({ state: s, truth, acquisitions: [] });
+    const sdd = (patch: object) => ({ ...state, mode: 'fluorescence' as const, profile: { ...state.profile, sdd: { ...state.profile.sdd, ...patch } } });
+    expect(truth.best).toBeGreaterThan(5 * truth.transmission);
+    expect(score(state).score).toBeLessThan(25);
+    // Close up, the detector is swamped: past 25 % dead time the task scores nothing.
+    expect(score(sdd({ distance_mm: 10 }))).toMatchObject({ score: 0, success: false });
+    expect(score(sdd({ distance_mm: truth.distance_mm, peaking_us: truth.peaking_us }))).toMatchObject({ score: 100, success: true });
+    expect(score(sdd({ distance_mm: 4 * truth.distance_mm, peaking_us: truth.peaking_us })).score).toBeLessThan(60);
+    expect(s3.reveal(truth)).toContain(truth.best.toFixed(0));
+  });
+
+  it('S4 loses most of the white line to self absorption and gets it back by every honest route', () => {
+    const s4 = scenarioOf('s4-self-absorption')!;
+    const { state, truth } = s4.setup(DEFAULT_STATE, seededRandom(6));
+    const score = (s: typeof state) => s4.metrics({ state: s, truth, acquisitions: [] });
+    expect(truth.start).toBeGreaterThan(0.5);
+    expect(score(state).score).toBe(0);
+    const thin = (thickness_um: number) => ({ ...state.sample, thickness_um });
+    const grazing = { ...state, profile: { ...state.profile, sdd: { ...state.profile.sdd, exitAngle_deg: 3 } } };
+    // Grazing exit and a thin film each help, partly; electron yield and a thin transmission sample fix it.
+    expect(score(grazing).score).toBeGreaterThan(score(state).score);
+    expect(score({ ...state, sample: thin(1) }).score).toBeGreaterThan(score(grazing).score);
+    expect(score({ ...state, mode: 'electron-yield' })).toMatchObject({ success: true });
+    expect(score({ ...state, mode: 'transmission', sample: thin(5) })).toMatchObject({ success: true });
+    // Transmission through the thick pellet is no answer: almost nothing gets through.
+    expect(score({ ...state, mode: 'transmission' }).success).toBe(false);
+    expect(score({ ...state, mode: 'mono' }).score).toBe(0);
+  });
+
+  it('every scenario text typesets', async () => {
+    const katex = (await import('katex')).default;
+    const check = (text: string) => text.split('$').forEach((part, i) => { if (i % 2) expect(() => katex.renderToString(part, { throwOnError: true, strict: 'error' }), part).not.toThrow(); });
+    for (const scenario of SCENARIOS) {
+      const { state, truth } = scenario.setup(DEFAULT_STATE, seededRandom(3));
+      for (const text of [scenario.brief, scenario.reveal(truth), ...scenario.cues, ...scenario.metrics({ state, truth, acquisitions: [] }).details.map(d => d.value)]) {
+        expect(text.split('$').length % 2, text).toBe(1);
+        check(text);
+      }
+    }
   });
 });
 

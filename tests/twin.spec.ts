@@ -300,6 +300,29 @@ test('training: S0 with a fixed seed runs from the task to the reveal, replay an
   expect(errors).toEqual([]);
 });
 
+test('training: S4 self absorption is fixed by switching to electron yield', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=6');
+  await page.keyboard.press('t');
+  const dialog = page.getByRole('dialog', { name: 'Training scenarios' });
+  await expect(dialog.getByRole('listitem')).toHaveCount(5);
+  await dialog.getByRole('button', { name: 'Start self absorption' }).click();
+  const task = page.getByRole('region', { name: 'Task: Self absorption' });
+  await expect(task).toBeVisible();
+  await expect(mode(page, 'Fluorescence')).toHaveAttribute('aria-pressed', 'true');
+  // The sample is locked, so the presets cannot swap the pellet away.
+  await expect(page.getByRole('group', { name: 'Preset' }).getByRole('button').first()).toBeDisabled();
+  await page.keyboard.press('3');
+  await expect(mode(page, 'Electron yield')).toHaveAttribute('aria-pressed', 'true');
+  await task.getByRole('button', { name: 'Done' }).click();
+  await task.getByRole('radio', { name: 'Fairly' }).check();
+  await task.getByRole('button', { name: 'Show the truth' }).click();
+  await expect(task).toContainText('well done');
+  await expect(task).toContainText('White line lost now');
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('keyboard shortcuts dialog lists the keys, blocks them while open and returns focus', async ({ page }) => {
   await openTwin(page);
   const opener = page.getByRole('button', { name: 'Keyboard shortcuts' });
