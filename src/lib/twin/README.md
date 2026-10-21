@@ -23,3 +23,7 @@ parallel work consistent.
 `types.ts` contract · `tables.ts` data loading and interpolation · `source.ts` · `mono.ts` · `mirrors.ts` · `beam.ts` ·
 `chambers.ts` · `sdd.ts` · `sample.ts` · `damage.ts` · `exafs.ts` · `xanes.ts` · `scan.ts` · `acquire.ts` · `xdi.ts` ·
 `calibrate.ts` · `scenarios.ts` · `telemetry.ts` · `explain.ts` · `twin.ts` (facade) · `worker.ts`.
+
+`exafs-fit.ts` fits explicit FEFF shells in k or R space with bounded parameters,
+affine links and Larch-scaled covariance. See [EXAFS_FITTING.md](EXAFS_FITTING.md)
+for the API, units, independent-point conventions and reproducible checks.

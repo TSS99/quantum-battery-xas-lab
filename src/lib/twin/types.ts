@@ -356,3 +356,117 @@ export interface ExafsEnergyPoint {
   factor: number;
   provenance: Extract<Provenance, 'computed'>;
 }
+
+/** Named fit variable, fixed value (vary: false), or affine link to another named parameter.
+ * expr means offset + scale * parameter; links may chain, but may not cycle.
+ * Bounds apply to independent parameters only. Units follow the model field using the value.
+ */
+export interface ExafsFitParameter {
+  value?: number;
+  vary?: boolean;
+  min?: number;
+  max?: number;
+  expr?: { parameter: string; scale?: number; offset?: number };
+}
+
+/** A constant or the name of a parameter. No executable expression strings. */
+export type ExafsFitValue = number | string;
+
+export interface ExafsFitShell {
+  id: string;
+  paths: readonly FeffPath[];
+  /** Fixed multiplier in addition to FEFF degeneracy; use the absorber-site fraction for multi-site sums. */
+  weight?: number;
+  /** Choose deltar_A or dimensionless alpha (deltar = alpha * path.reff), never both. Default: zero. */
+  deltar_A?: ExafsFitValue;
+  alpha?: ExafsFitValue;
+  /** Choose sigma2_A2 or thetaE_K, never both. Default: zero. */
+  sigma2_A2?: ExafsFitValue;
+  thetaE_K?: ExafsFitValue;
+  /** Required with thetaE_K; fixed sample temperature, in kelvin. */
+  temperature_K?: number;
+}
+
+export interface ExafsFitModel {
+  s02: ExafsFitValue;
+  e0_eV: ExafsFitValue;
+  shells: readonly ExafsFitShell[];
+}
+
+export interface ExafsFitOptions {
+  space?: 'k' | 'r';
+  kmin_A_inv: number;
+  kmax_A_inv: number;
+  /** Also required for k-space statistics: the R span of the structural model being fitted. */
+  rmin_A: number;
+  rmax_A: number;
+  kweight?: 0 | 1 | 2 | 3;
+  /** Hanning taper widths; dk2 defaults to dk. */
+  dk_A_inv?: number;
+  dk2_A_inv?: number;
+  kstep_A_inv?: number;
+  nfft?: number;
+  /** Positive standard uncertainty in dimensionless chi, scalar or on the input k grid.
+   * Omitted: Larch's high-R (15 to 30 A) noise estimate. Does not include background uncertainty.
+   */
+  epsilonK?: number | readonly number[];
+  /** nyquist (default): 2*deltaK*deltaR/pi. larch: add 1, as in xraylarch 2026.3.1. */
+  independentPoints?: 'nyquist' | 'larch';
+  maxIterations?: number;
+  tolerance?: number;
+}
+
+export interface ExafsFitRequest {
+  /** Strictly increasing, finite and nonnegative. Interpolated linearly onto a uniform grid from zero. */
+  k_A_inv: readonly number[];
+  chi: readonly number[];
+  parameters: Record<string, ExafsFitParameter>;
+  model: ExafsFitModel;
+  options: ExafsFitOptions;
+}
+
+export interface ExafsFitComplexCurve {
+  real: number[];
+  imaginary: number[];
+  magnitude: number[];
+}
+
+export interface ExafsFitResult {
+  success: boolean;
+  message: string;
+  iterations: number;
+  evaluations: number;
+  parameters: Record<string, { value: number; stderr: number | null; varying: boolean; atBound: boolean }>;
+  /** Ordering of both scaled covariance and correlation matrices. */
+  variableNames: string[];
+  covariance: number[][] | null;
+  correlations: number[][] | null;
+  uncertaintyStatus: 'estimated' | 'fixed' | 'at-bound' | 'rank-deficient' | 'not-converged';
+  warnings: string[];
+  nIdp: number;
+  nVarys: number;
+  nResiduals: number;
+  degreesOfFreedom: number;
+  residualSumSquares: number;
+  chiSquare: number;
+  reducedChiSquare: number;
+  /** Ratio, not percent; null when the data norm is zero. */
+  rFactor: number | null;
+  epsilonK: number[];
+  epsilonR: number;
+  noiseSource: 'supplied' | 'high-r';
+  /** Resolved settings, including the independent-points convention. */
+  settings: Required<Omit<ExafsFitOptions, 'epsilonK'>>;
+  paths: { shellId: string; pathId: string; weight: number; parameters: Required<Pick<ExafsPathParameters, 's02' | 'e0_eV' | 'deltar_A' | 'sigma2_A2'>> }[];
+  curves: {
+    k_A_inv: number[];
+    dataChi: number[];
+    modelChi: number[];
+    residualChi: number[];
+    window: number[];
+    r_A: number[];
+    dataR: ExafsFitComplexCurve;
+    modelR: ExafsFitComplexCurve;
+  };
+  provenance: Extract<Provenance, 'computed'>;
+}
