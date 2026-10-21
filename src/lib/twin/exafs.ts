@@ -329,11 +329,14 @@ function calculatePath(path: FeffPath, params: Required<ExafsPathParameters>, gr
   return result;
 }
 
-/** Calculate one FEFF path on an explicit k grid, including Larch's first-point extrapolation. */
+/**
+ * Calculate one FEFF path on an explicit k grid. A grid that starts at k = 0, like Larch's own, gets
+ * Larch's first-point extrapolation there; a grid that starts above zero is evaluated at every point.
+ */
 export function chiPath(path: FeffPath, params: ExafsPathParameters = {}, k: readonly number[]): number[] {
   if (k.length === 0) return [];
   const complete = completeParameters(path, params);
-  return calculatePath(path, complete, k as object, cachedShiftedK(k, complete.e0_eV), true);
+  return calculatePath(path, complete, k as object, cachedShiftedK(k, complete.e0_eV), k[0] === 0);
 }
 
 function siteWeights(set: FeffMaterial, overrides?: Record<string, number>): Map<string, number> {
@@ -384,10 +387,13 @@ function chiSumInternal(set: FeffMaterial, params: ExafsParameters, kGrid: reado
   return { k_A_inv: k, chi, contributions, provenance: 'computed' };
 }
 
-/** Sum every retained path, using crystallographic or caller-supplied absorber-site weights. */
+/**
+ * Sum every retained path, using crystallographic or caller-supplied absorber-site weights. As in
+ * `chiPath`, only a grid that starts at k = 0 gets Larch's first-point extrapolation.
+ */
 export function chiSum(set: FeffMaterial, params: ExafsParameters = {}, kGrid: readonly number[],
                        options: ExafsSumOptions = {}): ExafsResult {
-  return chiSumInternal(set, params, kGrid, options, true);
+  return chiSumInternal(set, params, kGrid, options, kGrid.length > 0 && kGrid[0] === 0);
 }
 
 /** Larch's Einstein mean-square displacement, including every vertex in the path geometry. */

@@ -193,6 +193,8 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   await expect(page.getByRole('tabpanel').locator('svg path').first()).toBeVisible();
   const gallery = page.getByRole('heading', { name: 'Acquisitions' }).locator('..');
   await expect(gallery.getByRole('listitem')).toHaveCount(1);
+  // The Cu foil is in the FEFF library, so the scan's EXAFS is its path sum.
+  await expect(page.getByRole('tabpanel')).toContainText('Fine structure: FEFF paths of Cu');
   const [download] = await Promise.all([page.waitForEvent('download'), gallery.getByRole('button', { name: 'Download acquisition 1 as XDI' }).click()]);
   expect(download.suggestedFilename()).toBe('twin-1-CuK.xdi');
   const text = await readFile(await download.path(), 'utf8');

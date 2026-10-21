@@ -21,8 +21,10 @@ import {
   type Composition, type XrayEdge,
 } from '../xraydata';
 import { defaultEdgeWidth, defaultNearEdgeFeatures, type NearEdgeFeatures } from '../xas-general';
+import FEFF_INDEX from '../../data/twin/feff/index.json';
+import { ETOK, chiSum, loadPaths, sigma2Einstein } from './exafs';
 import { emissionLines } from './tables';
-import type { EnvironmentConfig, Provenance, SampleConfig } from './types';
+import type { EnvironmentConfig, ExafsPathParameters, FeffMaterial, Provenance, SampleConfig } from './types';
 
 /** k^2 in inverse square angstrom per eV above the edge, as in src/lib/xas-general.ts. */
 const K_PER_EV = 0.2624684;
@@ -69,7 +71,8 @@ export type FineStructure = (energy_eV: number) => number;
 
 export interface FineStructureModel {
   factor: FineStructure;
-  provenance: Provenance;
+  /** Where the shape comes from; a list when parts of it come from different places. */
+  provenance: Provenance | readonly Provenance[];
   /** Short label for the provenance badge. */
   label: string;
 }
@@ -114,11 +117,98 @@ export function teachingFineStructure(
   };
 }
 
+// ---------------------------------------------------------------- FEFF fine structure
+
+/** The sample temperature when no environment gives one, K (the twin's ambient setting). */
+export const ROOM_TEMPERATURE_K = 295;
+
+/** S0^2 for every library material: the usual 0.9, a teaching choice (fits give 0.7 to 1). */
+export const LIBRARY_S02 = 0.9;
+
+/**
+ * Einstein temperatures for sigma^2(T), K. Teaching values, one per material: 250 K for the metals
+ * (the value of the Larch Einstein fixtures) and 500 K for the oxides and the phosphate, whose
+ * metal-oxygen bonds are stiffer. The reduced mass still comes from each path's own atoms.
+ */
+const LIBRARY_METALS = new Set(['cu', 'fe-bcc', 'ni', 'pt']);
+export const einsteinTemperature_K = (id: string) => LIBRARY_METALS.has(id) ? 250 : 500;
+
+/** The path sum fades in between these k (1/angstrom), above the near-edge region, and stops at the top of the grid. */
+const FEFF_FROM_K = 2, FEFF_FULL_K = 3.5, FEFF_K_STEP = 0.0025, FEFF_K_MAX = 18;
+const MODEL_CACHE_SIZE = 32;
+
+const libraryMaterials = new Map<string, FeffMaterial>();
+const libraryModels = new Map<string, FineStructureModel>();
+
+/** The FEFF library material for a sample: the same formula, absorber and edge, or null. */
+export function libraryMaterialId(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge'>): string | null {
+  const formula = sample.formula.replace(/\s+/g, '');
+  return FEFF_INDEX.find(m => m.formula === formula && m.absorber === sample.absorber && m.edge === sample.edge)?.id ?? null;
+}
+
+/** From now on, samples of this material use its FEFF paths by default. */
+export function useLibraryMaterial(material: FeffMaterial): void {
+  libraryMaterials.set(material.id, material);
+}
+
+/** Loads the FEFF paths of a sample's material when the library has it; resolves true once they are in use. */
+export async function loadLibraryFineStructure(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge'>): Promise<boolean> {
+  const id = libraryMaterialId(sample);
+  if (!id) return false;
+  if (!libraryMaterials.has(id)) useLibraryMaterial(await loadPaths(id));
+  return true;
+}
+
+/**
+ * The library's FEFF path sum on the teaching near edge: the edge onset, pre-edge peak and white
+ * line of `teachingFineStructure` without its oscillation, plus chi(k) from every path of the
+ * material, faded in between k = 2 and 3.5 per angstrom, where the path expansion takes over from
+ * the near-edge region. Each path's sigma^2 comes from the Einstein model at the sample temperature.
+ * chi(k) is summed once per material and temperature on a 0.0025 per angstrom grid and interpolated.
+ */
+export function libraryFineStructure(edgeEnergy_eV: number, material: FeffMaterial, temperature_K = ROOM_TEMPERATURE_K): FineStructureModel {
+  const key = `${material.id} ${edgeEnergy_eV} ${temperature_K}`;
+  const cached = libraryModels.get(key);
+  if (cached) return cached;
+  const thetaE_K = einsteinTemperature_K(material.id);
+  const paths: Record<string, ExafsPathParameters> = {};
+  for (const site of material.sites) for (const path of site.paths) paths[`${site.id}/${path.id}`] = { sigma2_A2: sigma2Einstein(path, thetaE_K, temperature_K) };
+  const k = Array.from({ length: Math.round(FEFF_K_MAX / FEFF_K_STEP) + 1 }, (_, i) => i * FEFF_K_STEP);
+  const chi = chiSum(material, { s02: LIBRARY_S02, paths }, k).chi;
+  const near = teachingFineStructure(edgeEnergy_eV, { oscillation: 0 });
+  const width = defaultEdgeWidth(edgeEnergy_eV);
+  const model: FineStructureModel = {
+    factor: energy_eV => {
+      const base = near.factor(energy_eV);
+      if (energy_eV <= edgeEnergy_eV) return base;
+      const kk = Math.sqrt(ETOK * (energy_eV - edgeEnergy_eV));
+      if (kk <= FEFF_FROM_K || kk >= FEFF_K_MAX) return base;
+      const fade = kk >= FEFF_FULL_K ? 1 : 0.5 - 0.5 * Math.cos(Math.PI * (kk - FEFF_FROM_K) / (FEFF_FULL_K - FEFF_FROM_K));
+      const x = kk / FEFF_K_STEP, i = Math.floor(x), f = x - i;
+      const step = 0.5 + Math.atan((energy_eV - edgeEnergy_eV) / width) / Math.PI;
+      return base + step * fade * (chi[i] * (1 - f) + chi[i + 1] * f);
+    },
+    provenance: ['computed', 'teaching-model'],
+    label: `FEFF paths of ${material.formula}; sigma^2 from an Einstein model at ${temperature_K} K with theta_E ${thetaE_K} K (a teaching value); teaching near edge`,
+  };
+  if (libraryModels.size >= MODEL_CACHE_SIZE) libraryModels.delete(libraryModels.keys().next().value!);
+  libraryModels.set(key, model);
+  return model;
+}
+
+/** The fine structure `muComponents` uses unless told otherwise: the library's FEFF paths once loaded, else the teaching model. */
+export function defaultFineStructure(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge'>, edgeEnergy_eV: number, temperature_K = ROOM_TEMPERATURE_K): FineStructureModel {
+  const id = libraryMaterialId(sample), material = id ? libraryMaterials.get(id) : undefined;
+  return material ? libraryFineStructure(edgeEnergy_eV, material, temperature_K) : teachingFineStructure(edgeEnergy_eV);
+}
+
 // ---------------------------------------------------------------- mu components
 
 export interface MuOptions {
-  /** Default: `teachingFineStructure` for this sample's edge. */
+  /** Default: `defaultFineStructure`, the FEFF paths of a loaded library material or the teaching model. */
   fineStructure?: FineStructureModel;
+  /** Sample temperature for the EXAFS Debye-Waller factors, K. Default `ROOM_TEMPERATURE_K`. */
+  temperature_K?: number;
 }
 
 export interface MuComponents {
@@ -161,7 +251,7 @@ export function muComponents(sample: SampleConfig, energy_eV: number, options: M
   }
   requirePositive(sample.density, 'Sample density');
   const edge = findEdge(sample.absorber, sample.edge);
-  const model = options.fineStructure ?? teachingFineStructure(edge.energy_eV);
+  const model = options.fineStructure ?? defaultFineStructure(sample, edge.energy_eV, options.temperature_K);
 
   const tabulated_cm_inv = mu(composition, sample.density, energy_eV).total;
   const above = elementMuOverRhoSide(sample.absorber, edge.edge, energy_eV, 'above').photo;
@@ -187,7 +277,7 @@ export function muComponents(sample: SampleConfig, energy_eV: number, options: M
     fineStructureFactor,
     absorber_cm_inv,
     total_cm_inv: rest_cm_inv + absorber_cm_inv,
-    provenance: model.provenance === 'tabulated' ? ['tabulated'] : ['tabulated', model.provenance],
+    provenance: ['tabulated', ...([] as Provenance[]).concat(model.provenance).filter(p => p !== 'tabulated')],
     fineStructureLabel: model.label,
   };
 }
@@ -356,7 +446,7 @@ function meanTransmission(muTotal_cm_inv: number, sample: SampleConfig, order: n
 export function transmission(sample: SampleConfig, environment: EnvironmentConfig, energy_eV: number,
                              options: TransmissionOptions = {}): TransmissionResult {
   const order = options.quadratureOrder ?? THICKNESS_QUADRATURE_ORDER;
-  const components = muComponents(sample, energy_eV, options);
+  const components = muComponents(sample, energy_eV, { ...options, temperature_K: options.temperature_K ?? environment.temperature_K });
   const muTotal = components.total_cm_inv;
   const sampleTransmission = meanTransmission(muTotal, sample, order);
   const windows = windowTransmission(environment, energy_eV);
@@ -580,7 +670,7 @@ export const DEFAULT_EXIT_ANGLE_DEG = 45;
  */
 export function fluorescence(sample: SampleConfig, environment: EnvironmentConfig, energy_eV: number,
                              geometry: FluorescenceGeometry, options: MuOptions = {}): SampleFluorescence {
-  const components = muComponents(sample, energy_eV, options);
+  const components = muComponents(sample, energy_eV, { ...options, temperature_K: options.temperature_K ?? environment.temperature_K });
   const line = fluorescenceLine(sample.absorber, sample.edge, geometry.line);
   const [minEnergy] = xrayDataInfo().energyRange_eV;
   if (line.energy_eV < minEnergy) {

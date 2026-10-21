@@ -6,7 +6,7 @@
  */
 import { COMPOUND_PRESETS } from '../../data/compound-presets';
 import { edgeEnergy } from './acquire';
-import { muComponents } from './sample';
+import { muComponents, teachingFineStructure } from './sample';
 import type { DamageClass } from './damage';
 import type { EnvironmentConfig, ReferenceFoil, SampleConfig, TwinProfile } from './types';
 
@@ -198,7 +198,8 @@ export function referenceFor(sample: Omit<SampleConfig, 'thickness_um'>): Refere
 
 /** Thickness, um, giving an edge step (or total mu x) of `target` 50 eV above the edge. Needs `loadXrayData()`. */
 export function thicknessFor(sample: Omit<SampleConfig, 'thickness_um'>, rule: { edgeStep: number } | { muX: number }): number {
-  const above = muComponents({ ...sample, thickness_um: 1 }, edgeEnergy(sample) + 50);
+  // The teaching shape, not a loaded FEFF library, so a preset's thickness never depends on what has loaded.
+  const above = muComponents({ ...sample, thickness_um: 1 }, edgeEnergy(sample) + 50, { fineStructure: teachingFineStructure(edgeEnergy(sample)) });
   const per_cm = 'edgeStep' in rule ? above.sharpStep_cm_inv : above.total_cm_inv;
   const target = 'edgeStep' in rule ? rule.edgeStep : rule.muX;
   return +(target / per_cm * 1e4).toPrecision(3);

@@ -92,6 +92,15 @@ function csv(acquisition: Acquisition) {
 }
 
 /** Bottom dock: result tabs, Acquire (one scan in the worker), the acquisition gallery and Enlarge. */
+/** Which fine structure the scan's sample used: the FEFF library's path sum or the teaching shape. */
+function FineStructureNote({ acquisition }: { acquisition: Acquisition }) {
+  const label = acquisition.metadata['Sample.fine_structure'];
+  if (!label) return null;
+  // The header keeps plain ASCII for XDI; on screen the symbols are typeset.
+  const tex = label.replace('sigma^2', String.raw`$\sigma^2$`).replace(/theta_E (\d+) K/, (_, t: string) => String.raw`$\theta_E = ${t}\ \mathrm{K}$`);
+  return <p className="twin-readout">Fine structure: <TexProse>{tex}</TexProse>.</p>;
+}
+
 export function ResultsDock() {
   const { store: { twin, view }, dispatch } = useTwin();
   const { progress, start, cancel } = useTwinScan();
@@ -186,10 +195,11 @@ export function ResultsDock() {
         return <>
           <Plot series={series.map(s => ({ ...s, y: s.y.map(v => Number.isFinite(v) ? v : NaN) }))} yLabel="μ(E) (arb.)" yTex={String.raw`\mu(E)\ (\mathrm{arb.})`} exportName="twin-mu" />
           <Badges provenance={latest?.provenance ?? ['tabulated', 'computed', 'teaching-model']} />
+          {latest && <FineStructureNote acquisition={latest} />}
         </>;
       }
       case 'normalized': case 'derivative': case 'chik': case 'chir':
-        return <><Reduced tab={view.tab} acquisition={latest} mode={stored.at(-1)?.mode ?? mode} />{latest && <Badges provenance={latest.provenance} />}</>;
+        return <><Reduced tab={view.tab} acquisition={latest} mode={stored.at(-1)?.mode ?? mode} />{latest && <><Badges provenance={latest.provenance} /><FineStructureNote acquisition={latest} /></>}</>;
       case 'xrf': {
         if (!tables) return <Empty>Loading the X-ray tables…</Empty>;
         const mca = xrfSpectrum(twin);

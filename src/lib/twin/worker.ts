@@ -6,6 +6,7 @@
 import { loadXrayData } from '../xraydata';
 import { seededRandom } from '../xas';
 import { runScan, type SimulatedPoint } from './acquire';
+import { loadLibraryFineStructure } from './sample';
 import { loadOptics } from './tables';
 import type { Acquisition, ScanPlan, TwinState } from './types';
 
@@ -29,6 +30,8 @@ export async function handleScanRequest(request: ScanRequest, post: (message: Sc
   try {
     if (request.type !== 'scan') throw new Error(`Unknown request "${String((request as { type: unknown }).type)}".`);
     await Promise.all([loadXrayData(), loadOptics()]);
+    // A sample the FEFF library knows gets its path sum; if the paths cannot load, the teaching shape stays.
+    await loadLibraryFineStructure(request.state.sample).catch(() => false);
     const acquisition = runScan(request.state, request.plan, seededRandom(request.seed >>> 0),
       (point, index, repeat) => post({ type: 'point', id: request.id, index, repeat, point }));
     post({ type: 'done', id: request.id, acquisition });

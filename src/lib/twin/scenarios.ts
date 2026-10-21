@@ -150,7 +150,7 @@ export function whiteLineEnergy(state: TwinState): number {
   const e0 = edgeEnergy(state.sample);
   let best = e0, peak = -Infinity;
   for (let e = e0 - 5; e <= e0 + 40; e += 0.25) {
-    const value = muComponents(state.sample, e).absorber_cm_inv;
+    const value = muComponents(state.sample, e, { temperature_K: state.environment.temperature_K }).absorber_cm_inv;
     if (value > peak) { peak = value; best = e; }
   }
   return best;
@@ -168,11 +168,11 @@ export function whiteLineError(state: TwinState, whiteLine_eV: number): number {
   const transmitted = mode === 'transmission' || mode === 'calibration' || mode === 'time-resolved' || mode === 'damage';
   const measure = (e: number): number => {
     if (mode === 'fluorescence' || mode === 'xrf') return fluorescence(sample, environment, e, { solidAngleFraction: 0.01, efficiency: 1, exit_deg: profile.sdd.exitAngle_deg }).ratio;
-    if (mode === 'electron-yield') return sampleElectronYield(sample, e).yield;
+    if (mode === 'electron-yield') return sampleElectronYield(sample, e, { temperature_K: environment.temperature_K }).yield;
     if (transmitted) return chamberMuX(state, e);
     return NaN;
   };
-  const reference = (e: number) => transmitted ? muComponents(sample, e).total_cm_inv : muComponents(sample, e).absorber_cm_inv;
+  const reference = (e: number) => { const c = muComponents(sample, e, { temperature_K: environment.temperature_K }); return transmitted ? c.total_cm_inv : c.absorber_cm_inv; };
   const normalized = (f: (e: number) => number) => { const lo = f(e0 + BELOW_eV), hi = f(e0 + ABOVE_eV); return (f(whiteLine_eV) - lo) / (hi - lo); };
   const lost = 1 - (normalized(measure) - 1) / (normalized(reference) - 1);
   return Number.isFinite(lost) ? Math.min(1, Math.max(0, lost)) : 1;

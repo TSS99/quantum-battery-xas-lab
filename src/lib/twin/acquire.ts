@@ -21,7 +21,7 @@ import { beamAtSample } from './beam';
 import { AMPLIFIER_NOISE_V, ELEMENTARY_CHARGE, READOUT_DEFAULTS, chamberReadout } from './chambers';
 import { sampleDoseRate } from './damage';
 import { dSpacing_A, monoTrueEnergy_eV } from './mono';
-import { fluorescence, fluorescenceLine, transmission, type FluorescenceLine, type SampleFluorescence } from './sample';
+import { fluorescence, fluorescenceLine, muComponents, transmission, type FluorescenceLine, type SampleFluorescence } from './sample';
 import { planPoints } from './scan';
 import { deadTime, deadTimeLoss, efficiency, filterTransmission, productionLines, solidAngle } from './sdd';
 import type { Acquisition, ChamberConfig, EnvironmentConfig, PointResult, Provenance, ReferenceFoil, SampleConfig, ScanPlan, TwinState } from './types';
@@ -275,6 +275,8 @@ export function runScan(state: TwinState, plan: ScanPlan, random: Random,
     'Scan.mode': plan.kind,
     'Sample.name': sample.formula,
     'Sample.thickness': sample.thickness_um + ' um',
+    'Sample.temperature': state.environment.temperature_K + ' K',
+    'Sample.fine_structure': muComponents(sample, e0_eV + 100, { temperature_K: state.environment.temperature_K }).fineStructureLabel,
     'Detector.I0': chamberGas(chamberOf(state, 'I0')),
     'Detector.I1': chamberGas(chamberOf(state, 'It')),
     'Detector.I2': chamberGas(chamberOf(state, 'Iref')),

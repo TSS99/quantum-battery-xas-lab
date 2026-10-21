@@ -158,4 +158,15 @@ describe('EXAFS performance', () => {
     // a loaded CI host from turning this benchmark into a flaky correctness test.
     expect(timings[5]).toBeLessThan(25);
   });
+
+  it('extrapolates only the k = 0 point: a grid starting above zero is evaluated at every point', async () => {
+    const cu = await loadPaths('cu');
+    const params: ExafsParameters = { s02: 0.9, sigma2_A2: 0.008 };
+    const ks = [4, 5.55, 7.3, 11.1];
+    const one = ks.map(k => chiSum(cu, params, [k]).chi[0]);
+    chiSum(cu, params, ks).chi.forEach((value, i) => expect(value).toBeCloseTo(one[i], 12));
+    chiSum(cu, params, [0, ...ks]).chi.slice(1).forEach((value, i) => expect(value).toBeCloseTo(one[i], 12));
+    const path = cu.sites[0].paths[0];
+    chiPath(path, params, ks).forEach((value, i) => expect(value).toBeCloseTo(chiPath(path, params, [ks[i]])[0], 12));
+  });
 });
