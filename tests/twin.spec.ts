@@ -450,6 +450,8 @@ test('calibration dialog loads a generated mystery file and applies its energy c
   await expect(dialog.getByRole('status')).toContainText('3 calibration fits completed', { timeout: 30_000 });
   await dialog.getByRole('button', { name: 'Apply to profile' }).click();
   await expect(dialog.getByRole('status')).toContainText('Applied energy correction and processor dead time');
+  // The twin models dead time as the peaking time, so the fitted value shows in the detector's list.
+  await expect(page.getByRole('complementary', { name: 'Controls' }).getByLabel('Peaking time').locator('option:checked')).toContainText('(fitted)');
   await dialog.getByRole('button', { name: 'Profile editor' }).click();
   await expect(dialog.getByLabel('Energy correction')).not.toHaveValue('0');
 });

@@ -106,9 +106,12 @@ function resultDigits(result: CalibrationResult) {
   return result.kind === 'harmonic-fraction' ? 3 : result.kind === 'dead-time' ? 4 : 3;
 }
 
+/** Two significant figures when the uncertainty is below the value's last shown digit, so it never reads as zero. */
+const uncertaintyText = (u: number, digits: number) => u === 0 || u >= 10 ** -digits ? u.toFixed(digits) : u.toPrecision(2);
+
 function ResultTable({ results }: { results: CalibrationResult[] }) {
   return <table className="twin-calibration-results"><thead><tr><th scope="col">Quantity</th><th scope="col">Fit</th><th scope="col">Verdict</th></tr></thead><tbody>
-    {results.map(result => <tr key={result.kind}><th scope="row">{result.kind === 'dead-time' ? <Tex plain>{'\\tau'}</Tex> : result.label}</th><td><Num>{result.value.toFixed(resultDigits(result))}</Num> <Tex plain>{'\\pm'}</Tex> <Num>{Number.isFinite(result.uncertainty) ? result.uncertainty.toFixed(resultDigits(result)) : 'not estimated'}</Num> <Unit>{result.unit === 'us' ? 'μs' : result.unit}</Unit></td><td><TexProse>{result.verdict}</TexProse><details><summary>Method</summary><p><TexProse>{result.method}</TexProse></p></details></td></tr>)}
+    {results.map(result => <tr key={result.kind}><th scope="row">{result.kind === 'dead-time' ? <Tex plain>{'\\tau'}</Tex> : result.label}</th><td><Num>{result.value.toFixed(resultDigits(result))}</Num> <Tex plain>{'\\pm'}</Tex> <Num>{Number.isFinite(result.uncertainty) ? uncertaintyText(result.uncertainty, resultDigits(result)) : 'not estimated'}</Num> <Unit>{result.unit === 'us' ? 'μs' : result.unit}</Unit></td><td><TexProse>{result.verdict}</TexProse><details><summary>Method</summary><p><TexProse>{result.method}</TexProse></p></details></td></tr>)}
   </tbody></table>;
 }
 
@@ -152,8 +155,17 @@ export function CalibrateDialog({ open, onClose }: { open: boolean; onClose: () 
     if (!report) return;
     const offset = report.results.find(result => result.kind === 'energy-offset');
     const tau = report.results.find(result => result.kind === 'dead-time');
-    if (offset) dispatch({ type: 'command', command: { type: 'monoOffset', offset_eV: offset.value } });
-    if (tau) dispatch({ type: 'command', command: { type: 'sdd', patch: { peaking_us: tau.value } } });
+    // Rounded to 1 meV and 0.1 ns, well inside the fit uncertainties, so the profile holds readable numbers.
+    const offset_eV = offset && Number(offset.value.toFixed(3)), peaking_us = tau && Number(tau.value.toFixed(4));
+    if (offset_eV !== undefined) dispatch({ type: 'command', command: { type: 'monoOffset', offset_eV } });
+    if (peaking_us !== undefined) dispatch({ type: 'command', command: { type: 'sdd', patch: { peaking_us } } });
+    // The profile editor shows a draft taken when the dialog opened; carry the applied values into it too.
+    setDraft(current => {
+      const next = cloneProfile(current);
+      if (offset_eV !== undefined) next.mono.offset_eV = offset_eV;
+      if (peaking_us !== undefined) next.sdd.peaking_us = peaking_us;
+      return next;
+    });
     setMessage(`Applied ${[offset && 'energy correction', tau && 'processor dead time'].filter(Boolean).join(' and ')} to the profile.`);
   };
   const loadProfile = async (event: ChangeEvent<HTMLInputElement>) => {

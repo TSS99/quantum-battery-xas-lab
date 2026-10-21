@@ -195,7 +195,8 @@ export function ControlRail() {
       <Range label="Distance from the sample" value={p.sdd.distance_mm} min={5} max={500} step={1} unit="mm" onChange={distance_mm => run({ type: 'sdd', patch: { distance_mm } })} />
       <label className="twin-field">Peaking time
         <select value={p.sdd.peaking_us} onChange={e => run({ type: 'sdd', patch: { peaking_us: Number(e.target.value) } })}>
-          {PEAKING.map(t => <option key={t} value={t}>{t} μs</option>)}
+          {/* A dead time applied from Calibrate from data can fall between the standard settings; it is listed too. */}
+          {[...new Set([...PEAKING, p.sdd.peaking_us])].sort((a, b) => a - b).map(t => <option key={t} value={t}>{PEAKING.includes(t) ? `${t} μs` : `${+t.toFixed(3)} μs (fitted)`}</option>)}
         </select>
       </label>
       <Range label="Exit angle" value={p.sdd.exitAngle_deg} min={1} max={90} step={1} unit="°" hint="between the sample surface and the detector" onChange={exitAngle_deg => run({ type: 'sdd', patch: { exitAngle_deg } })} />
