@@ -183,6 +183,8 @@ describe('commands', () => {
     expect(furnace.temperature_K).toBe(300);
     expect(furnace.windows).toEqual([]);
     expect(applyCommand(DEFAULT_STATE, { type: 'sdd', patch: { distance_mm: 1 } }).state.profile.sdd.distance_mm).toBe(5);
+    expect(applyCommand(DEFAULT_STATE, { type: 'sdd', patch: { exitAngle_deg: 0 } }).state.profile.sdd.exitAngle_deg).toBe(1);
+    expect(applyCommand(DEFAULT_STATE, { type: 'sdd', patch: { exitAngle_deg: 3 } }).state.profile.sdd.exitAngle_deg).toBe(3);
     expect(applyCommand(DEFAULT_STATE, { type: 'scan', plan: { ...DEFAULT_STATE.scan, repeats: 99 } }).state.scan.repeats).toBe(50);
     expect(() => applyCommand(DEFAULT_STATE, { type: 'scan', plan: { ...DEFAULT_STATE.scan, regions: [{ space: 'E', start: 10, end: 0, step: 1, dwell_s: 1 }] } })).toThrow();
     expect(applyCommand(DEFAULT_STATE, { type: 'source', current_mA: 900 }).state.profile.source.current_mA).toBe(500);

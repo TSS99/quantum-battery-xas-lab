@@ -12,6 +12,7 @@ export function unitTex(unit: string) {
     if (word === 'x') return 'x';
     if (word === '%') return '\\%';
     if (word === '°C') return '{}^\\circ\\mathrm{C}';
+    if (word === '°') return '{}^\\circ';
     if (word === 'Å') return '\\mathring{\\mathrm{A}}';
     return word.replace(/µ/g, 'μ').split('/').map(part => {
       const match = part.match(/^(.+?)(?:\^([+-]?\d+)|([⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+))?$/);

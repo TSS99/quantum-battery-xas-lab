@@ -190,7 +190,7 @@ export type TwinCommand =
   /** Any formula: a new material, absorber or edge also moves the energy, the window and the reference foil. */
   | { type: 'sample'; patch: Partial<Omit<SampleConfig, 'libraryId'>> }
   | { type: 'environment'; kind: EnvironmentConfig['kind'] }
-  | { type: 'sdd'; patch: Partial<Pick<SddConfig, 'distance_mm' | 'peaking_us' | 'soller' | 'elements'>> }
+  | { type: 'sdd'; patch: Partial<Pick<SddConfig, 'distance_mm' | 'peaking_us' | 'soller' | 'elements' | 'exitAngle_deg'>> }
   | { type: 'scan'; plan: ScanPlan }
   | { type: 'source'; current_mA: number };
 
@@ -331,6 +331,7 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
         distance_mm: clamp(p.distance_mm ?? sdd.distance_mm, [5, 5000]),
         peaking_us: clamp(p.peaking_us ?? sdd.peaking_us, [0.05, 32]),
         elements: Math.round(clamp(p.elements ?? sdd.elements, [1, 7])),
+        exitAngle_deg: clamp(p.exitAngle_deg ?? sdd.exitAngle_deg, [1, 90]),
       };
       return done({ ...state, profile: { ...state.profile, sdd: next } }, 'Fluorescence detector changed.');
     }

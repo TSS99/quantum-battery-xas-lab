@@ -70,10 +70,20 @@ describe('acquisition', () => {
     // A far detector keeps the input rate on the low-rate branch of the paralyzable model.
     const state = { ...DEFAULT_TWIN, mode: 'fluorescence' as const, profile: { ...DEFAULT_TWIN.profile, sdd: { ...DEFAULT_TWIN.profile.sdd, distance_mm: 3000 } } };
     const p = simulatePoint(state, 9000, noRandom);
+    // Each element has its own processor, so the correction runs on one element's share of the rates.
+    const tau = deadTime(state.profile.sdd.peaking_us), n = state.profile.sdd.elements;
     expect(p.deadFraction).toBeGreaterThan(0.05);
-    expect(p.icr * deadTime(state.profile.sdd.peaking_us)).toBeLessThan(1);
-    expect(Math.abs(inputRate(p.ocr, deadTime(state.profile.sdd.peaking_us)) / p.icr - 1)).toBeLessThan(0.005);
+    expect(p.icr / n * tau).toBeLessThan(1);
+    expect(Math.abs(inputRate(p.ocr / n, tau) * n / p.icr - 1)).toBeLessThan(0.005);
     expect(p.ifluor).toBeGreaterThan(0);
+  });
+
+  it('applies dead time per element: four elements lose what one element loses at a quarter of the rate', () => {
+    const state = { ...DEFAULT_TWIN, mode: 'fluorescence' as const, profile: { ...DEFAULT_TWIN.profile, sdd: { ...DEFAULT_TWIN.profile.sdd, distance_mm: 3000 } } };
+    const p = simulatePoint(state, 9000, noRandom), n = state.profile.sdd.elements;
+    expect(n).toBe(4);
+    expect(p.deadFraction).toBeCloseTo(1 - Math.exp(-p.icr / n * deadTime(state.profile.sdd.peaking_us)), 12);
+    expect(p.ocr).toBeCloseTo(p.icr * (1 - p.deadFraction), 6);
   });
 
   it('the default chambers read on scale across the Cu K scan', () => {

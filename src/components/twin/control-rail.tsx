@@ -196,6 +196,7 @@ export function ControlRail() {
           {PEAKING.map(t => <option key={t} value={t}>{t} μs</option>)}
         </select>
       </label>
+      <Range label="Exit angle" value={p.sdd.exitAngle_deg} min={1} max={90} step={1} unit="°" hint="between the sample surface and the detector" onChange={exitAngle_deg => run({ type: 'sdd', patch: { exitAngle_deg } })} />
       <label className="twin-check"><input type="checkbox" checked={p.sdd.soller} onChange={e => run({ type: 'sdd', patch: { soller: e.target.checked } })} />Soller slits</label>
       {now?.deadFraction != null && <p className={'twin-soon' + (now.deadFraction > 0.5 ? ' twin-alert' : '')}>Input rate {sci(now.icr!)} <Unit>s^-1</Unit>, dead time <Num>{(now.deadFraction * 100).toFixed(1) + '%'}</Num></p>}
       <Rows rows={[['Elements', String(p.sdd.elements)], ['Counting window', <><Num>{String(p.sdd.roi_eV[0])}</Num> to <Num>{String(p.sdd.roi_eV[1])}</Num> <Unit>eV</Unit></>]]} />

@@ -316,7 +316,11 @@ describe('MCA spectrum', () => {
     const bright = mcaSpectrum(input({ fluorescenceScale: 1e5 }));
     expect(bright.deadTime_s).toBe(1e-6);
     expect(bright.deadFraction).toBeGreaterThan(0.1);
-    expect(bright.ocr).toBeCloseTo(outputRate(bright.icr, bright.deadTime_s, 'paralyzable'), 6);
+    // Each element has its own processor: dead time acts on one element's share of the summed rate.
+    const elements = detector().elements;
+    expect(elements).toBeGreaterThan(1);
+    expect(bright.ocr).toBeCloseTo(outputRate(bright.icr / elements, bright.deadTime_s, 'paralyzable') * elements, 6);
+    expect(bright.deadFraction).toBeCloseTo(1 - Math.exp(-bright.icr / elements * bright.deadTime_s), 12);
     expect(bright.totalCounts).toBeLessThan(bright.icr);
 
     const dim = mcaSpectrum(input({ fluorescenceScale: 10 }));
@@ -351,6 +355,10 @@ describe('MCA spectrum', () => {
       spectrum.lines.filter(line => line.kind === 'pile-up').reduce((total, line) => total + line.rate_cps, 0);
     expect(sum(low)).toBeGreaterThan(0);
     expect(sum(high) / sum(low)).toBeCloseTo(4, 6);
+    // Pulses pile up within one element, so splitting the same light over twice the elements halves the pile-up.
+    const one = mcaSpectrum(input({ fluorescenceScale: 1e3, sdd: detector({ elements: 1 }) }));
+    const two = mcaSpectrum(input({ fluorescenceScale: 1e3, sdd: detector({ elements: 2 }) }));
+    expect(sum(two) / sum(one)).toBeCloseTo(0.5, 6);
     // A Ka1 + Ka1 sum peak sits at twice the Cu Ka1 energy, and the Ka1 + Ka2 cross term
     // next to it is the strongest of all, because the two Ka lines have similar rates.
     const ka1 = emissionLines('Cu').find(line => line.name === 'Ka1')!.energy_eV;

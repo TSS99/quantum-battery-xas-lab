@@ -435,8 +435,10 @@ export interface McaSpectrum {
   channelWidth_eV: number;
   /** The discrete lines the spectrum was rendered from, before dead-time loss. */
   lines: McaLine[];
+  /** Input and output rates summed over the elements, counts per second. */
   icr: number;
   ocr: number;
+  /** Share of events lost to dead time; each element has its own processor and loses the same share. */
   deadFraction: number;
   deadTime_s: number;
   /** Counts inside the detector's configured region of interest. */
@@ -569,11 +571,13 @@ export function mcaSpectrum(input: McaInput, options: McaOptions = {}): McaSpect
   // resolving time (dossier 6.9), so the whole pile-up rate is 0.5 * ICR^2 * tau. There is
   // no pulse shape and no rejection logic here, which is where a real processor differs
   // most. Being first order, it is only meaningful while ICR * tau stays well below one;
-  // past that it runs away and the detector is being misused anyway.
+  // past that it runs away and the detector is being misused anyway. Pulses pile up only
+  // within one element, so each element contributes the pair rate of its own share of the
+  // rates, which divides the summed pile-up by the number of elements.
   const primary = lines.filter(line => line.rate_cps > 0);
   for (let i = 0; i < primary.length; i++) {
     for (let j = i; j < primary.length; j++) {
-      const rate_cps = (i === j ? 0.5 : 1) * primary[i].rate_cps * primary[j].rate_cps * resolving_s;
+      const rate_cps = (i === j ? 0.5 : 1) * primary[i].rate_cps * primary[j].rate_cps * resolving_s / sdd.elements;
       const sum_eV = primary[i].energy_eV + primary[j].energy_eV;
       if (rate_cps <= 0 || sum_eV >= channels * channelWidth_eV) continue;
       lines.push({
@@ -583,9 +587,12 @@ export function mcaSpectrum(input: McaInput, options: McaOptions = {}): McaSpect
     }
   }
 
+  // Rates are summed over the elements; each element has its own pulse processor, so dead time
+  // acts on one element's share and the live fraction is the same for every element.
   const icr = lines.reduce((sum, line) => sum + line.rate_cps, 0);
-  const loss = deadTimeLoss(icr, deadTime_s, options.deadTimeModel ?? 'paralyzable');
-  const live = icr > 0 ? loss.ocr / icr : 1;
+  const loss = deadTimeLoss(icr / sdd.elements, deadTime_s, options.deadTimeModel ?? 'paralyzable');
+  const ocr = loss.ocr * sdd.elements;
+  const live = icr > 0 ? ocr / icr : 1;
 
   const energies_eV = new Float64Array(channels);
   const counts = new Float64Array(channels);
@@ -617,7 +624,7 @@ export function mcaSpectrum(input: McaInput, options: McaOptions = {}): McaSpect
     channelWidth_eV,
     lines,
     icr,
-    ocr: loss.ocr,
+    ocr,
     deadFraction: loss.deadFraction,
     deadTime_s,
     roiCounts: roi,

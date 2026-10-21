@@ -198,9 +198,12 @@ export function simulatePoint(state: TwinState, reading_eV: number, random: Rand
   const i0 = record(i0Config, sums.I0, dwell_s, noise);
   const it = record(itConfig, sums.It, dwell_s, noise);
   const iref = record(irefConfig, sums.Iref, dwell_s, noise);
+  // icr is summed over the elements; each element has its own pulse processor, so dead time acts
+  // on one element's share of the rate (the elements see nearly the same rate) and the outputs add up.
   const icr = roiRate + otherRate;
-  const loss = deadTimeLoss(icr, deadTime(sdd.peaking_us));
-  const live = icr > 0 ? loss.ocr / icr : 1;
+  const loss = deadTimeLoss(icr / sdd.elements, deadTime(sdd.peaking_us));
+  const ocr = loss.ocr * sdd.elements;
+  const live = icr > 0 ? ocr / icr : 1;
   const expectedFluor = roiRate * live * dwell_s;
   const saturated = ([['I0', i0], ['It', it], ['Iref', iref]] as const).filter(([, r]) => r.saturated).map(([id]) => id);
 
@@ -214,7 +217,7 @@ export function simulatePoint(state: TwinState, reading_eV: number, random: Rand
     iref: iref.counts,
     ifluor: noise ? poisson(expectedFluor, noise) : expectedFluor,
     icr,
-    ocr: loss.ocr,
+    ocr,
     deadFraction: loss.deadFraction,
     muTrue,
     dose_Gy: (options.priorDose_Gy ?? 0) + dose_Gy_per_s * dwell_s,
