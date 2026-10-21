@@ -1,75 +1,133 @@
-/* Beamline twin (/twin/). Every rule is scoped to twin classes, so other pages keep their look. */
+/* Beamline twin (/twin/): a full-screen instrument console with glass cards around the beamline on a dark stage.
+   Every rule is scoped to twin classes, so other pages keep their look. */
 
+.bare-main {display:block;min-height:100vh}
+body:has(.twin-app) {background:#050608}
 .preview-badge {display:inline-block;margin-left:10px;padding:0 8px;border:1px solid rgb(159 163 252/.45);border-radius:var(--r-pill);color:var(--accent-light);font-size:12px;line-height:20px;vertical-align:1px}
 
-/* ---------- Desktop: rails either side of the scene and results ---------- */
-/* The rails span the scene and dock rows; the last row is 1fr so a tall rail stretches it instead of opening a gap under the scene. */
-.twin-page {width:100%;max-width:1440px;margin:0 auto;padding:24px 32px 96px;display:grid;grid-template-columns:272px minmax(0,1fr) 304px;grid-template-rows:auto auto auto 1fr;grid-template-areas:"head head head" "modes modes modes" "left scene right" "left dock right";gap:16px 24px;align-items:start}
-.twin-page.left-hidden {grid-template-columns:minmax(0,1fr) 304px;grid-template-areas:"head head" "modes modes" "scene right" "dock right"}
-.twin-page.right-hidden {grid-template-columns:272px minmax(0,1fr);grid-template-areas:"head head" "modes modes" "left scene" "left dock"}
-.twin-page.left-hidden.right-hidden {grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "modes" "scene" "dock"}
-.twin-head {grid-area:head}
-.twin-modes {grid-area:modes}
-.twin-scene {grid-area:scene}
-.twin-dock {grid-area:dock}
-.twin-left {grid-area:left}
-.twin-right {grid-area:right}
-.twin-page.left-hidden .twin-left,.twin-page.right-hidden .twin-right {display:none}
-/* Enlarged results take the hidden scene's row too. */
-.twin-page.is-enlarged .twin-dock {grid-row-start:scene}
+.twin-app {
+  --tw-bg:#050608; --tw-card:rgb(11 14 19/.84); --tw-card-solid:#0b0e13; --tw-line:rgb(255 255 255/.08); --tw-line-2:rgb(255 255 255/.15);
+  --tw-text:#e9edf2; --tw-body:#c3cad3; --tw-muted:#8a94a3; --tw-accent:#6fd6ff; --tw-accent-soft:rgb(111 214 255/.12); --tw-accent-line:rgb(111 214 255/.38); --tw-warm:#ffc46b;
+  --tw-serif:var(--font-twin-serif),Georgia,serif; --tw-mono:var(--font-tex-digits),var(--font-twin-mono),ui-monospace,monospace;
+  --font-sans:var(--font-tex-digits),var(--font-twin-sans),system-ui,sans-serif; --font-display:var(--font-sans);
+  /* The site's tokens, remapped so shared parts (sliders, plots, buttons, dialogs) match the console. */
+  --text:var(--tw-text); --text-2:var(--tw-body); --muted:var(--tw-muted); --accent:var(--tw-accent); --hairline:var(--tw-line); --control-edge:var(--tw-line-2); --surface-1:var(--tw-card-solid); --surface-2:#10151c; --bg:var(--tw-bg);
+  position:relative;color:var(--tw-text);font:14px/1.5 var(--font-sans);
+  background:radial-gradient(ellipse 55% 45% at 50% 36%,rgb(111 214 255/.07),transparent 70%),radial-gradient(ellipse 70% 25% at 50% 100%,rgb(111 214 255/.035),transparent 70%),var(--tw-bg);
+}
+.twin-app :focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
 
-.twin-head {display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px 32px}
-.twin-head h1 {font-size:34px;font-weight:500;letter-spacing:-.02em}
-.twin-head > div:first-child {flex:1 1 560px;min-width:0}
-.twin-head p {margin:8px 0 0;max-width:92ch;font-size:15px}
-.twin-head-actions {display:flex;flex-wrap:wrap;gap:8px}
-.twin-page .button.secondary[aria-pressed] {color:var(--muted)}
-.twin-page .button.secondary[aria-pressed="true"] {background:rgb(159 163 252/.12);border-color:rgb(159 163 252/.5);color:var(--text)}
+/* ---------- Shared pieces: cards, kickers, chips, icon buttons ---------- */
+.twin-card {background:var(--tw-card);border:1px solid var(--tw-line);border-radius:14px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.twin-kicker {margin:0;font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
+.twin-chip {display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 13px;border:1px solid var(--tw-line-2);border-radius:999px;background:rgb(11 14 19/.6);color:var(--tw-text);font:500 13px/1.25 var(--font-sans);text-decoration:none;text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,color .2s}
+.twin-chip:hover {border-color:rgb(255 255 255/.32);color:#fff;text-decoration:none}
+.twin-chip[aria-pressed="true"],.twin-chip.is-current {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
+.twin-chip.is-accent {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-accent)}
+.twin-chip:disabled {opacity:.45;cursor:not-allowed}
+.twin-chipset {display:flex;flex-wrap:wrap;gap:7px}
+.twin-icon {display:inline-grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:1px solid var(--tw-line);border-radius:10px;background:rgb(11 14 19/.6);color:var(--tw-muted);cursor:pointer;transition:border-color .2s,color .2s,background-color .2s}
+.twin-icon:hover {border-color:var(--tw-line-2);color:var(--tw-text)}
+.twin-icon[aria-pressed="true"] {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-accent)}
+.twin-rail-toggle[aria-pressed="true"] {border-color:var(--tw-line-2);background:rgb(11 14 19/.6);color:var(--tw-text)}
+.twin-app .button {border-radius:999px;font-family:var(--font-sans)}
+.twin-app .button.cta {padding:6px 14px;border:1px solid var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-accent)}
+.twin-app .button.cta:hover {background:rgb(111 214 255/.2);color:#fff}
+.twin-app select,.twin-app textarea,.twin-app input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {min-height:38px;padding:7px 11px;border:1px solid var(--tw-line-2);border-radius:10px;background:rgb(255 255 255/.03);color:var(--tw-text);font-size:14px}
+.twin-app select option {background:#0b0e13}
 
-/* ---------- Mode bar ---------- */
-.twin-modes {display:flex;flex-wrap:wrap;gap:10px 0;padding:4px 0 2px}
-.twin-mode-group {display:flex;flex-direction:column;gap:6px;min-width:0;padding:0 16px;border-left:1px solid var(--hairline)}
-.twin-mode-group:first-child {padding-left:0;border-left:0}
-.twin-mode-group-name {font-size:12px;color:var(--muted);letter-spacing:.02em}
-.twin-mode-buttons {display:flex;flex-wrap:wrap;gap:6px}
-.twin-mode {display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px 6px 6px;border:1px solid var(--hairline);border-radius:var(--r-control);background:transparent;color:var(--text-2);font-size:14px;font-weight:400;white-space:nowrap;transition:background-color .3s var(--ease),border-color .3s var(--ease),color .3s var(--ease)}
-.twin-mode:hover {border-color:var(--control-edge);color:var(--text)}
-.twin-mode kbd {display:inline-grid;place-items:center;width:28px;height:28px;border-radius:4px;background:rgb(255 255 255/.06);color:var(--muted);font:400 14px/1 var(--font-sans)}
-.twin-mode[aria-pressed="true"] {background:rgb(255 255 255/.9);border-color:transparent;color:#000;font-weight:500}
-.twin-mode[aria-pressed="true"] kbd {background:var(--bg);color:var(--accent)}
+/* ---------- Hero: kicker, serif title, intro, links ---------- */
+.twin-hero {display:flex;flex-direction:column;gap:12px;padding:10px 14px 6px}
+.twin-crumbs ol {display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:0;padding:0;list-style:none;font:500 10.5px/1.6 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
+.twin-crumbs li {display:inline-flex;align-items:center}
+.twin-crumbs li + li::before {content:"·";margin-right:8px}
+.twin-crumbs a {color:inherit;text-decoration:none}
+.twin-crumbs a:hover {color:var(--tw-text)}
+.twin-crumbs a[aria-current="page"] {color:var(--tw-body)}
+.twin-crumbs .preview-badge {margin-left:8px;border-color:var(--tw-accent-line);color:var(--tw-accent);font:500 9.5px/18px var(--tw-mono);letter-spacing:.12em}
+.twin-hero h1 {margin:0;font:400 54px/.94 var(--tw-serif);letter-spacing:-.01em;color:var(--tw-text)}
+.twin-hero h1 em {display:block;font-style:italic;color:var(--tw-accent)}
+.twin-intro {margin:0;font-size:14px;line-height:1.5;color:var(--tw-body)}
+.twin-hint {margin:0;font-size:14px;line-height:1.45;color:var(--tw-accent)}
+.twin-chips {display:flex;flex-wrap:wrap;gap:8px}
 
-/* ---------- Scene and results ---------- */
-.twin-scene,.twin-dock {min-width:0;display:flex;flex-direction:column;gap:14px;padding:16px 20px 20px;background:var(--surface-1);border:1px solid var(--hairline);border-radius:var(--r-surface)}
+/* ---------- Explanation card: what you are looking at, a picked part, what just changed, readings ---------- */
+.twin-left {display:flex;flex-direction:column;gap:14px;padding:16px 18px 18px}
+.twin-left .twin-fold {border:0}
+.twin-fold-head {margin:0;font-size:15px;font-weight:400;letter-spacing:0}
+.twin-fold-head button {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:40px;padding:6px 0;border:0;background:none;color:var(--tw-muted);font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;text-align:left;cursor:pointer}
+.twin-fold-head button:hover,.twin-fold-head button[aria-expanded="true"] {color:var(--tw-text)}
+.twin-left .twin-fold-head button {min-height:28px;padding:0}
+.twin-fold-head svg {flex:none;color:var(--tw-muted);transition:transform .3s var(--ease)}
+.twin-fold-head button[aria-expanded="true"] svg {transform:rotate(180deg)}
+.twin-fold-body {display:flex;flex-direction:column;gap:12px;padding:4px 0 16px}
+.twin-left .twin-fold-body {padding:6px 0 0}
+.twin-fold[data-fold="closed"] > .twin-fold-body {display:none}
+.twin-title {margin:0;font:400 31px/1.04 var(--tw-serif);letter-spacing:-.005em;color:var(--tw-text)}
+.twin-title em {font-style:italic;color:var(--tw-accent)}
+.twin-body {margin:0;font-size:13.5px;line-height:1.58;color:var(--tw-body)}
+.twin-part {display:flex;flex-direction:column;gap:10px}
+.twin-part-live {margin:0;font-size:13.5px;color:var(--tw-accent)}
+.twin-part .twin-chip {align-self:flex-start}
+.twin-physics {display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(0 0 0/.25)}
+.twin-physics .tex-block {display:block;text-align:center;font-size:15px}
+.twin-part-notes {display:grid;gap:10px;margin:0}
+.twin-part-notes dd {margin:3px 0 0;font-size:13px;line-height:1.55;color:var(--tw-body)}
+.twin-source {margin:0;font-size:11.5px;line-height:1.45;color:var(--tw-muted)}
+.twin-changed {padding:11px 13px;border:1px solid rgb(111 214 255/.22);border-radius:10px;background:rgb(111 214 255/.035)}
+.twin-changed .twin-kicker {color:var(--tw-accent)}
+.twin-changed p {margin:4px 0 0;font-size:13.5px;line-height:1.5;color:var(--tw-text)}
+.twin-stats {display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin:0;padding-top:14px;border-top:1px solid var(--tw-line)}
+.twin-stats > div {min-width:0}
+.twin-stats dt {font-size:11.5px;line-height:1.3;color:var(--tw-muted)}
+.twin-stats dd {margin:3px 0 0;font-size:15.5px;font-weight:600;line-height:1.25;color:var(--tw-text);overflow-wrap:anywhere}
+.twin-stats .twin-stat-note {margin-top:2px;font-size:11.5px;font-weight:400;line-height:1.3;color:var(--tw-muted)}
+
+/* ---------- Mode bar: groups with small names, keys as superscripts ---------- */
+.twin-modes {display:flex;flex-wrap:wrap;justify-content:center;gap:4px 8px;padding:7px 10px 8px}
+.twin-mode-group {display:flex;flex-direction:column;gap:2px;min-width:0}
+.twin-mode-group-name {padding-left:10px;font:500 9.5px/1.4 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
+.twin-mode-buttons {display:flex;flex-wrap:wrap;gap:2px}
+.twin-mode {display:inline-flex;align-items:flex-start;gap:3px;min-height:32px;padding:6px 10px 6px 9px;border:0;border-radius:8px;background:transparent;color:var(--tw-muted);font:600 12.5px/1.4 var(--font-sans);white-space:nowrap;cursor:pointer;transition:background-color .2s,color .2s,box-shadow .2s}
+.twin-mode:hover {color:var(--tw-text)}
+.twin-mode kbd {padding:0;border:0;background:none;color:var(--tw-muted);font:500 9px/1 var(--tw-mono)}
+.twin-mode[aria-pressed="true"] {background:var(--tw-accent-soft);color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
+.twin-mode[aria-pressed="true"] kbd {color:var(--tw-accent)}
+
+/* ---------- Scene on the stage ---------- */
+.twin-scene {position:relative;display:flex;flex-direction:column;gap:6px;min-width:0}
 .twin-scene[hidden] {display:none}
-.twin-section-head {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.twin-section-head h2 {font-size:18px;font-weight:500;letter-spacing:-.01em}
-.twin-scene-wait {display:grid;place-items:center;aspect-ratio:4/1;padding:16px;border:1px solid var(--hairline);border-radius:var(--r-surface);color:var(--muted);font-size:14px;text-align:center}
-.twin-note {max-width:none;margin:0;font-size:13px;color:var(--muted)}
+.twin-scene-foot {display:flex;align-items:flex-start;gap:12px}
+.twin-scene-tools {display:flex;flex:none;gap:6px}
+.twin-scene-wait {display:grid;place-items:center;flex:1;min-height:180px;padding:16px;color:var(--tw-muted);font-size:14px;text-align:center}
+.twin-note {flex:1;min-width:0;padding:0 6px;font-size:11.5px;line-height:1.45;color:var(--tw-muted)}
+.twin-note summary {display:inline-flex;align-items:center;min-height:36px;color:var(--tw-body);cursor:pointer}
+.twin-note p {max-width:none;margin:0 0 4px}
 
-/* ---------- Hutch scene ---------- */
-/* Below its minimum width the drawing scrolls inside its own box, never the page; the part labels stay 24 px targets. */
-.hutch {display:flex;flex-direction:column;gap:12px;min-width:0}
-.hutch-scroll {overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;border-radius:12px;background:#0b1015}
-.hutch-scroll:focus-visible {outline:2px solid #7fd8cf;outline-offset:2px}
+/* ---------- Hutch drawing: the box fades at its edges; below its minimum width it scrolls inside the box, never the page ---------- */
+.hutch {display:flex;flex-direction:column;min-width:0}
+.hutch-scroll {overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:rgb(111 214 255/.25) transparent;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+.hutch-scroll[role="region"] {cursor:grab}
+.hutch-scroll.is-dragging {cursor:grabbing;user-select:none}
 .hutch-stage {position:relative;min-width:1140px}
 .hutch-stage svg {display:block;width:100%;height:auto}
-.hutch-part {position:absolute;left:var(--ax);top:var(--ay);transform:translate(-50%,-50%);display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border:1px solid #2b4644;border-radius:12px;background:#0b1117;color:#d3dbe3;font:600 11.5px/1.1 var(--font-sans);white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
-.hutch-part:hover {border-color:#7fd8cf;color:#fff}
-.hutch-part:focus-visible {outline:2px solid #7fd8cf;outline-offset:2px}
-.hutch-part.is-idle {color:#94a1ae;border-color:#222b34}
-.hutch-part.is-focus {border-color:#7fd8cf;background:#0f2a29;color:#fff;box-shadow:0 0 0 3px rgb(127 216 207/.18)}
-.hutch-part[aria-expanded="true"] {border-color:#7fd8cf;background:#7fd8cf;color:#06100f}
+.hutch-part {position:absolute;left:var(--ax);top:var(--ay);transform:translate(-50%,-50%);display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid rgb(111 214 255/.3);border-radius:4px;background:rgb(5 8 12/.9);color:#cfe9f5;font:500 11px/1.1 var(--tw-mono);white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
+.hutch-part:hover {border-color:var(--tw-accent);color:#fff}
+.hutch-part.is-idle {border-color:rgb(255 255 255/.1);color:#97a3b0}
+.hutch-part.is-focus {border-color:var(--tw-accent);background:#08202a;color:#fff;box-shadow:0 0 0 3px rgb(111 214 255/.16)}
+.hutch-part[aria-expanded="true"] {border-color:var(--tw-accent);background:var(--tw-accent);color:#031018}
 .hutch.no-labels .hutch-part {left:var(--tx);top:var(--ty);width:24px;height:24px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none}
-.hutch.no-labels .hutch-part::before {content:"";width:10px;height:10px;margin:auto;border-radius:50%;background:#7fd8cf;box-shadow:0 0 0 3px rgb(127 216 207/.28)}
+.hutch.no-labels .hutch-part::before {content:"";width:10px;height:10px;margin:auto;border-radius:50%;background:var(--tw-accent);box-shadow:0 0 0 3px rgb(111 214 255/.28)}
 .hutch.no-labels .hutch-part.is-idle::before {background:#6b7a8c;box-shadow:none}
 .hutch.no-labels .hutch-part[aria-expanded="true"]::before {background:#fff}
 .hutch.no-labels .hutch-part-text {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.hutch-leaders path {fill:none;stroke:#7fd8cf;stroke-opacity:.4;stroke-dasharray:2 3}
-.hutch-leaders circle {fill:#7fd8cf;fill-opacity:.7}
+.hutch-leaders path {fill:none;stroke:#6fd6ff;stroke-opacity:.5;stroke-width:1}
+.hutch-leaders circle {fill:#6fd6ff;fill-opacity:.85}
 .hutch.no-labels .hutch-leaders {display:none}
 .hutch [data-part] {transition:opacity .3s}
 .hutch [data-part].is-idle {opacity:.42}
-.hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(127 216 207/.7))}
+.hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(111 214 255/.7))}
 .hutch-leg {transition:opacity .3s}
 .hutch-leg:not(.is-lit) {opacity:.16}
 .hutch-leg:not(.is-lit) .bl-flow,.hutch-leg:not(.is-lit) .hutch-current {animation:none;stroke-opacity:0}
@@ -82,128 +140,184 @@
 .cue-spectrum .hutch-sdd-glow,.cue-focused .hutch-heat {opacity:1;animation:hutch-pulse 1.4s ease-in-out infinite alternate}
 @keyframes hutch-rock {from {transform:rotate(-2.5deg)} to {transform:rotate(2.5deg)}}
 @keyframes hutch-pulse {from {opacity:.45} to {opacity:1}}
-.hutch-card {display:grid;gap:6px;padding:14px 16px;border:1px solid #2b4644;border-radius:12px;background:var(--surface-2,#111820)}
-.hutch-card h3 {margin:0;font-size:16px;font-weight:600}
-.hutch-card p {margin:0;font-size:14px}
-.hutch-card .button {justify-self:start;margin-top:4px}
-.hutch-card-live {color:#7fd8cf}
-.hutch-readouts {display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 16px;margin:0}
-.hutch-readouts dt {font-size:12px;color:var(--muted)}
-.hutch-readouts dd {margin:2px 0 0;font-size:14px;font-variant-numeric:tabular-nums}
-.twin-dock-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
-.twin-tabs {display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--hairline)}
-.twin-tabs [role="tab"] {min-height:44px;padding:8px 12px;border:0;background:none;color:var(--muted);font-size:14px;font-weight:400;white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;transition:color .3s var(--ease),box-shadow .3s var(--ease)}
-.twin-tabs [role="tab"]:hover {color:var(--text)}
-.twin-tabs [role="tab"][aria-selected="true"] {color:var(--text);box-shadow:inset 0 -2px 0 var(--accent)}
-.twin-tabpanel {display:flex;flex-direction:column;justify-content:center;gap:8px;min-height:200px;padding:24px;border:1px dashed var(--control-edge);border-radius:10px}
-.twin-page.is-enlarged .twin-tabpanel {min-height:min(560px,60vh)}
-.twin-tabpanel p {margin:0;font-size:15px}
-.twin-tabpanel .twin-empty {font-size:14px;color:var(--muted)}
 
-/* ---------- Rails ---------- */
-.twin-rail {min-width:0;display:flex;flex-direction:column;gap:16px;position:sticky;top:84px;max-height:calc(100vh - 100px);overflow-y:auto;overscroll-behavior:contain;padding:4px 10px 16px;margin:0 -10px;scrollbar-width:thin}
-.twin-rail h2 {font-size:16px;font-weight:500;letter-spacing:0}
-.twin-left p {font-size:15px;line-height:1.65}
-.twin-left .twin-looking-mode {margin-bottom:6px;color:var(--text)}
-.twin-looking-mode span {color:var(--muted)}
-.twin-changed {padding:12px 14px;border-left:2px solid var(--accent);border-radius:0 8px 8px 0;background:rgb(159 163 252/.06)}
-.twin-changed p {margin:6px 0 0;font-size:14px;color:var(--text)}
-.twin-fold {border-top:1px solid var(--hairline)}
-.twin-left .twin-fold {border-top:0}
-.twin-fold-head {margin:0;font-size:15px;font-weight:400;letter-spacing:0}
-.twin-fold-head button {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:8px 0;border:0;background:none;color:var(--text);font:inherit;text-align:left}
-.twin-left .twin-fold-head button {font-size:16px;font-weight:500}
-.twin-fold-head svg {flex:none;color:var(--muted);transition:transform .3s var(--ease)}
-.twin-fold-head button[aria-expanded="true"] svg {transform:rotate(180deg)}
-.twin-fold-body {display:flex;flex-direction:column;gap:12px;padding:4px 0 16px}
-.twin-fold[data-fold="closed"] > .twin-fold-body {display:none}
-.twin-switch {display:grid;grid-template-columns:1fr 1fr;padding:3px;border:1px solid var(--hairline);border-radius:8px}
-.twin-switch button {min-height:40px;border:0;border-radius:var(--r-control);background:none;color:var(--muted);font-size:14px}
-.twin-switch button[aria-pressed="true"] {background:rgb(255 255 255/.9);color:#000;font-weight:500}
-.twin-field {display:grid;gap:6px;font-size:14px;color:var(--text-2)}
-.twin-rows {display:grid;gap:8px;margin:0}
-.twin-rows > div {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:12px;font-size:14px}
-.twin-rows dt {color:var(--muted)}
-.twin-rows dd {margin:0;color:var(--text);overflow-wrap:anywhere}
-.twin-soon {margin:0;font-size:13px;color:var(--muted)}
+/* ---------- Results card: a detector readout with Acquire ---------- */
+.twin-dock {display:flex;flex-direction:column;gap:10px;min-width:0;padding:10px 14px 14px}
+.twin-dock-head {display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
+.twin-dock-head h2 {display:inline-flex;align-items:center;gap:9px;color:var(--tw-text)}
+.twin-dock-sub {letter-spacing:.06em;text-transform:none}
+.twin-dock-actions {display:flex;align-items:center;gap:6px;margin-left:auto}
+.twin-dot {width:7px;height:7px;border-radius:50%;background:var(--tw-accent);box-shadow:0 0 8px var(--tw-accent)}
+.twin-dot.is-live {animation:hutch-pulse .8s ease-in-out infinite alternate}
+.twin-acquire {display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:4px 14px;border:1px solid var(--tw-accent-line);border-radius:8px;background:var(--tw-accent-soft);color:var(--tw-accent);font:600 13px/1 var(--font-sans);cursor:pointer;transition:background-color .2s}
+.twin-acquire:hover {background:rgb(111 214 255/.2)}
+.twin-acquire:disabled {opacity:.5;cursor:not-allowed}
+.twin-acquire.is-stop {border-color:rgb(255 196 107/.45);background:rgb(255 196 107/.1);color:var(--tw-warm)}
+.twin-tabs {display:flex;flex-wrap:wrap;gap:2px}
+.twin-tabs [role="tab"] {min-height:30px;padding:4px 10px;border:0;border-radius:8px;background:none;color:var(--tw-muted);font:600 12.5px/1.2 var(--font-sans);white-space:nowrap;cursor:pointer;transition:background-color .2s,color .2s}
+.twin-tabs [role="tab"]:hover {color:var(--tw-text)}
+.twin-tabs [role="tab"][aria-selected="true"] {background:var(--tw-accent-soft);color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
+.twin-tabpanel {display:flex;flex-direction:column;gap:8px;min-height:160px;padding:10px 12px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(0 0 0/.28)}
+.twin-tabpanel p {margin:0;font-size:13.5px}
+.twin-tabpanel > p:first-child {font-size:12.5px;color:var(--tw-muted)}
+.twin-tabpanel .twin-empty {font-size:13.5px;color:var(--tw-muted)}
+.twin-progress {display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;font-size:12.5px;color:var(--tw-muted)}
+.twin-progress [role="progressbar"] {flex:1 1 160px;height:4px;border-radius:2px;background:var(--tw-line);overflow:hidden}
+.twin-progress [role="progressbar"] span {display:block;height:100%;background:var(--tw-accent);box-shadow:0 0 8px var(--tw-accent);transition:width .1s linear}
+.twin-warning {margin:8px 0 0;padding:8px 12px;border-left:3px solid #ffb35c;background:rgb(255 179 92/.08);font-size:13px}
+.twin-readout {margin:8px 0 0;font-size:12.5px;color:var(--tw-muted)}
+.twin-badges {display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0}
+.twin-badge {padding:1px 8px;border:1px solid var(--tw-line-2);border-radius:999px;font:500 10.5px/1.6 var(--tw-mono);color:var(--tw-muted)}
+.twin-badge.is-teaching-model {border-color:#6b5a2e;color:#e8c27a}
+.twin-gallery h3 {margin:0 0 6px;font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
+.twin-gallery ol {display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.twin-gallery li {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:6px 10px;border:1px solid var(--tw-line);border-radius:10px;font-size:13px}
+.twin-gallery-actions {display:flex;flex-wrap:wrap;gap:6px}
+.twin-gallery .button.small {min-height:30px;padding:4px 10px;font-size:12px}
 
-/* ---------- Shortcuts dialog ---------- */
-.twin-dialog {width:min(560px,calc(100vw - 32px));max-height:min(720px,calc(100dvh - 48px));padding:0;overflow:auto;border:1px solid var(--control-edge);border-radius:var(--r-surface);background:var(--surface-1);color:var(--text);box-shadow:0 24px 80px rgb(0 0 0/.6)}
-.twin-dialog::backdrop {background:rgb(0 0 0/.55)}
+/* ---------- Controls card ---------- */
+.twin-toolbar {display:flex;flex-direction:column;gap:10px;padding:14px 16px 8px}
+.twin-toolbar-buttons {display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.twin-right {display:flex;flex-direction:column;gap:14px;min-width:0;padding:10px 16px 20px}
+.twin-clarity {display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.twin-clarity button {display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:56px;padding:10px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(11 14 19/.6);color:var(--tw-muted);text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,color .2s}
+.twin-clarity strong {font:600 13.5px/1.3 var(--font-sans);color:inherit}
+.twin-clarity span {font-size:11.5px;line-height:1.35;color:var(--tw-muted)}
+.twin-clarity button:hover {border-color:var(--tw-line-2);color:var(--tw-text)}
+.twin-clarity button[aria-pressed="true"] {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
+.twin-right .twin-fold {border-top:1px solid var(--tw-line)}
+.twin-field {display:grid;gap:6px;font-size:13.5px;font-weight:600;color:var(--tw-text)}
+.twin-field input,.twin-field select {min-width:0;max-width:100%;font-weight:400}
+.twin-rows {display:grid;gap:7px;margin:0}
+.twin-rows > div {display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:12px;font-size:13px}
+.twin-rows dt {color:var(--tw-muted)}
+.twin-rows dd {margin:0;color:var(--tw-text);overflow-wrap:anywhere}
+.twin-soon {margin:0;font-size:12.5px;line-height:1.45;color:var(--tw-muted)}
+.twin-switch {display:grid;grid-template-columns:1fr 1fr;padding:3px;border:1px solid var(--tw-line);border-radius:10px}
+.twin-switch button {min-height:34px;border:0;border-radius:8px;background:none;color:var(--tw-muted);font:600 13px/1.2 var(--font-sans);cursor:pointer}
+.twin-switch button[aria-pressed="true"] {background:var(--tw-accent-soft);color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
+.twin-check {display:flex;align-items:center;gap:8px;min-height:32px;font-size:13.5px;color:var(--tw-text)}
+.twin-check input {width:17px;height:17px;accent-color:var(--tw-accent)}
+.twin-mirror {display:grid;gap:2px}
+.twin-chamber {display:grid;gap:8px;min-width:0;margin:0;padding:10px 12px;border:1px solid var(--tw-line);border-radius:10px}
+.twin-chamber legend {padding:0 4px;font-size:13.5px;color:var(--tw-text)}
+.twin-alert {color:#ffb35c}
+.twin-details summary {display:flex;align-items:center;min-height:32px;font-size:13.5px;color:var(--tw-body);cursor:pointer}
+.twin-any {display:grid;gap:10px;padding-top:8px}
+/* Sliders: name on the left, the value in the accent mono on the right, a thin track. */
+.twin-app .range-control label {font-size:13.5px;font-weight:600;color:var(--tw-text)}
+.twin-app .range-control output {font:500 13.5px var(--tw-mono);color:var(--tw-accent)}
+.twin-app .range-control output > span {font-size:12px;color:var(--tw-accent)}
+.twin-app .range-control small {font-size:11.5px;color:var(--tw-muted)}
+.twin-app input[type="range"] {height:30px}
+.twin-app input[type="range"]::-webkit-slider-runnable-track {height:3px;border-radius:2px;background:rgb(255 255 255/.16)}
+.twin-app input[type="range"]::-moz-range-track {height:3px;border-radius:2px;background:rgb(255 255 255/.16)}
+.twin-app input[type="range"]::-webkit-slider-thumb {width:16px;height:16px;margin-top:-6.5px;border:2px solid var(--tw-accent);background:var(--tw-bg);box-shadow:0 0 0 3px rgb(111 214 255/.16)}
+.twin-app input[type="range"]::-moz-range-thumb {width:13px;height:13px;border:2px solid var(--tw-accent);background:var(--tw-bg)}
+
+/* ---------- Dialogs ---------- */
+.twin-dialog {width:min(560px,calc(100vw - 32px));max-height:min(720px,calc(100dvh - 48px));padding:0;overflow:auto;border:1px solid var(--tw-line-2);border-radius:14px;background:var(--tw-card-solid);color:var(--tw-text);box-shadow:0 24px 80px rgb(0 0 0/.7)}
+.twin-dialog::backdrop {background:rgb(0 0 0/.6);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .twin-dialog-body {display:flex;flex-direction:column;gap:12px;padding:20px 24px 24px}
-.twin-dialog-body h2 {font-size:20px;font-weight:500}
+.twin-dialog-body h2 {font:400 28px/1.1 var(--tw-serif)}
+.twin-section-head {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.twin-section-head h2 {font-size:18px;font-weight:500;letter-spacing:-.01em}
 .twin-keys th:first-child {width:96px}
 .twin-keys td,.twin-keys th {padding:8px}
-.twin-keys kbd {display:inline-block;min-width:28px;padding:1px 8px;border:1px solid var(--control-edge);border-radius:4px;background:var(--bg);color:var(--text);font:400 14px/1.5 var(--font-sans);text-align:center}
-
-/* ---------- Phones and narrow windows: one scrolling column ---------- */
-@media (max-width:1149.98px) {
-  .twin-page {display:flex;flex-direction:column;align-items:stretch;gap:16px;padding:16px 24px 64px}
-  .twin-page.left-hidden .twin-left,.twin-page.right-hidden .twin-right {display:flex}
-  .twin-rail-toggle {display:none}
-  .twin-rail {position:static;max-height:none;overflow:visible;padding:0;margin:0}
-  .twin-fold[data-fold="auto"] > .twin-fold-body {display:none}
-  /* scroll-padding matches the side padding, so snapping never pushes the first group name out of view. */
-  .twin-modes {position:sticky;top:70px;z-index:10;flex-wrap:nowrap;gap:0;margin:0 -24px;padding:8px 24px;scroll-padding-inline:24px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;background:rgb(18 18 18/.96);border-bottom:1px solid var(--hairline)}
-  .twin-modes::-webkit-scrollbar {display:none}
-  .twin-mode-group {flex:none;flex-direction:row;align-items:center;gap:8px;padding:0 12px}
-  .twin-mode-buttons {flex-wrap:nowrap}
-  .twin-mode-group-name,.twin-mode {scroll-snap-align:start}
-  .twin-tabs {flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
-  .twin-tabs::-webkit-scrollbar {display:none}
-  .twin-left,.twin-right {padding:4px 16px;background:var(--surface-1);border:1px solid var(--hairline);border-radius:var(--r-surface)}
-  .twin-left {padding-bottom:16px}
-  .twin-right {gap:12px;padding-top:16px}
-}
-@media (max-width:900px) {
-  .twin-page {padding:12px 16px 56px}
-  .twin-modes {top:73px;margin:0 -16px;padding:8px 16px;scroll-padding-inline:16px}
-  .twin-head h1 {font-size:28px}
-  .twin-scene,.twin-dock {padding:14px 14px 16px}
-  .twin-tabpanel {padding:16px}
-}
-
-/* ---------- Results: scan progress, warnings, provenance badges, acquisition gallery ---------- */
-.twin-progress {display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;font-size:13px;color:var(--muted)}
-.twin-progress [role="progressbar"] {flex:1 1 160px;height:6px;border-radius:3px;background:var(--hairline);overflow:hidden}
-.twin-progress [role="progressbar"] span {display:block;height:100%;background:#7fd8cf;transition:width .1s linear}
-.twin-warning {margin:8px 0 0;padding:8px 12px;border-left:3px solid #ffb35c;background:rgb(255 179 92/.08);font-size:13px}
-.twin-readout {margin:8px 0 0;font-size:13px;color:var(--muted)}
-.twin-badges {display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
-.twin-badge {padding:2px 8px;border:1px solid var(--hairline);border-radius:999px;font-size:11.5px;color:var(--muted)}
-.twin-badge.is-teaching-model {border-color:#6b5a2e;color:#e8c27a}
-.twin-gallery h3 {margin:0 0 8px;font-size:15px;font-weight:600}
-.twin-gallery ol {display:grid;gap:8px;margin:0;padding:0;list-style:none}
-.twin-gallery li {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px 12px;border:1px solid var(--hairline);border-radius:10px;font-size:14px}
-.twin-gallery-actions {display:flex;flex-wrap:wrap;gap:6px}
-
-/* ---------- Controls rail: checkboxes, per-chamber groups, any-formula form ---------- */
-.twin-check {display:flex;align-items:center;gap:8px;min-height:32px;font-size:14px;color:var(--text)}
-.twin-check input {width:18px;height:18px;accent-color:#7fd8cf}
-.twin-mirror {display:grid;gap:2px}
-.twin-chamber {display:grid;gap:8px;margin:0;padding:10px 12px;border:1px solid var(--hairline);border-radius:10px;min-width:0}
-.twin-chamber legend {padding:0 4px;font-size:14px;color:var(--text)}
-.twin-alert {color:#ffb35c}
-.twin-details summary {cursor:pointer;font-size:14px;color:var(--text-2);min-height:32px;display:flex;align-items:center}
-.twin-any {display:grid;gap:10px;padding-top:8px}
-.twin-field input,.twin-field select {min-width:0;max-width:100%}
+.twin-keys kbd {display:inline-block;min-width:28px;padding:1px 8px;border:1px solid var(--tw-line-2);border-radius:4px;background:var(--tw-bg);color:var(--tw-text);font:500 13px/1.5 var(--tw-mono);text-align:center}
 
 /* ---------- Training: scenario list, task card, judgement, reveal ---------- */
 .twin-scenarios {display:grid;gap:12px;margin:0;padding:0;list-style:none}
-.twin-scenarios li {display:grid;gap:8px;padding:12px 14px;border:1px solid var(--hairline);border-radius:10px}
-.twin-scenarios h3 {margin:0;font-size:16px;font-weight:600}
-.twin-scenarios p {margin:0;font-size:14px;color:var(--text-2)}
+.twin-scenarios li {display:grid;gap:8px;padding:12px 14px;border:1px solid var(--tw-line);border-radius:10px}
+.twin-scenarios h3 {margin:0;font:400 22px/1.15 var(--tw-serif)}
+.twin-scenarios p {margin:0;font-size:13.5px;color:var(--tw-body)}
 .twin-scenarios .button {justify-self:start}
-.twin-task {flex:1 1 100%;display:grid;gap:10px;margin-top:12px;padding:14px 16px;border:1px solid #2b4644;border-radius:var(--r-surface);background:#0d1716}
-.twin-task h2 {font-size:17px;font-weight:600}
-.twin-task p {margin:0;font-size:14px}
+.twin-task {display:grid;gap:10px;padding:14px 16px;border:1px solid var(--tw-accent-line);border-radius:14px;background:rgb(8 26 34/.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.twin-task h2 {font:400 24px/1.1 var(--tw-serif)}
+.twin-task p {margin:0;font-size:13.5px}
 .twin-task-actions {display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px}
 .twin-judge {display:grid;gap:10px}
-.twin-judge fieldset {display:grid;gap:4px;margin:0;padding:8px 12px;border:1px solid var(--hairline);border-radius:10px}
-.twin-judge legend {padding:0 4px;font-size:14px}
+.twin-judge fieldset {display:grid;gap:4px;margin:0;padding:8px 12px;border:1px solid var(--tw-line);border-radius:10px}
+.twin-judge legend {padding:0 4px;font-size:13.5px}
 .twin-judge textarea {width:100%;resize:vertical}
 .twin-judge .button {justify-self:start}
-.twin-score {font-size:15px}
-.twin-score strong {font-size:28px;color:#7fd8cf}
+.twin-score {font-size:14px}
+.twin-score strong {font:400 40px/1 var(--tw-serif);color:var(--tw-accent)}
 .twin-reveal {display:grid;gap:10px}
-.twin-replay h3 {margin:0 0 6px;font-size:15px;font-weight:600}
+.twin-replay h3 {margin:0 0 6px;font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
+
+/* ---------- Wide screens: one screen, three columns, nothing scrolls but the cards ---------- */
+@media (min-width:1150px) {
+  .twin-app {display:grid;grid-template-columns:minmax(290px,330px) minmax(0,1fr) minmax(320px,350px);grid-template-areas:"left centre right";gap:14px;height:100vh;height:100dvh;padding:14px;overflow:hidden}
+  .twin-col {display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
+  .twin-col-left {grid-area:left;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .twin-col-centre {grid-area:centre}
+  .twin-col-right {grid-area:right;gap:0}
+  .twin-left {flex:1 0 auto}
+  .twin-modes {flex:none;align-self:center;max-width:100%}
+  .twin-scene {flex:1 1 0;min-height:180px}
+  .twin-scene .hutch {flex:1;min-height:0}
+  .twin-scene .hutch-scroll {flex:1;min-height:0;display:flex;align-items:center}
+  .twin-scene .hutch-stage {flex:none}
+  .twin-dock {flex:none;height:clamp(220px,38vh,440px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .twin-app.is-enlarged .twin-dock {flex:1;height:auto}
+  .twin-col-right .twin-toolbar {border-bottom:0;border-radius:14px 14px 0 0}
+  .twin-right {flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;border-top:0;border-radius:0 0 14px 14px}
+  /* [ hides the explanation column (the title stays for screen readers); ] hides the controls but keeps the tools. */
+  .twin-app.left-hidden {grid-template-columns:minmax(0,1fr) minmax(320px,350px);grid-template-areas:"centre right"}
+  .twin-app.left-hidden .twin-col-left {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .twin-app.left-hidden .twin-col-left > :not(.twin-hero) {display:none}
+  .twin-app.right-hidden {grid-template-columns:minmax(290px,330px) minmax(0,1fr) auto}
+  .twin-app.left-hidden.right-hidden {grid-template-columns:minmax(0,1fr) auto}
+  .twin-app.right-hidden .twin-right {display:none}
+  .twin-app.right-hidden .twin-toolbar {border-bottom:1px solid var(--tw-line);border-radius:14px}
+}
+
+/* Mid widths: each mode group on one line with its name in front, so the bar stays three short rows at most. */
+@media (min-width:1150px) and (max-width:1399.98px) {
+  .twin-modes {flex-direction:column;align-items:stretch;gap:2px;padding:6px 8px}
+  .twin-mode-group {flex-direction:row;align-items:center;gap:4px}
+  .twin-mode-group-name {flex:none;width:64px;padding-left:6px}
+  .twin-mode {min-height:30px;padding:5px 8px 5px 7px}
+}
+
+/* ---------- Phones and narrow windows: one scrolling column ---------- */
+@media (max-width:1149.98px) {
+  .twin-app {display:flex;flex-direction:column;gap:12px;min-height:100vh;padding:14px 16px 56px}
+  .twin-col {display:contents}
+  .twin-hero {order:0;gap:10px;padding:4px 2px 0}
+  .twin-toolbar {order:1;flex-direction:row;align-items:center;padding:8px 10px}
+  .twin-task {order:2}
+  .twin-modes {order:3}
+  .twin-scene {order:4}
+  .twin-dock {order:5}
+  .twin-left {order:6}
+  .twin-right {order:7;padding-top:6px}
+  .twin-hero h1 {font-size:40px}
+  .twin-hero h1 em {display:inline}
+  .twin-toolbar .twin-kicker,.twin-rail-toggle,.twin-whole {display:none}
+  .twin-app.left-hidden .twin-left,.twin-app.right-hidden .twin-right {display:flex}
+  .twin-fold[data-fold="auto"] > .twin-fold-body {display:none}
+  .twin-left .twin-fold-head button {min-height:40px}
+  .twin-icon {width:40px;height:40px}
+  /* scroll-padding matches the side padding, so snapping never pushes the first group name out of view. */
+  .twin-modes {position:sticky;top:0;z-index:10;flex-wrap:nowrap;justify-content:flex-start;gap:0;margin:0 -16px;padding:6px 16px;scroll-padding-inline:16px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;border-width:0 0 1px;border-radius:0;background:rgb(8 10 14/.95)}
+  .twin-modes::-webkit-scrollbar {display:none}
+  .twin-mode-group {flex:none;flex-direction:row;align-items:center;gap:4px;padding:0 6px}
+  .twin-mode-group:first-child {padding-left:0}
+  .twin-mode-group-name {padding:0 2px 0 0}
+  .twin-mode-buttons {flex-wrap:nowrap}
+  .twin-mode-group-name,.twin-mode {scroll-snap-align:start}
+  .twin-mode {min-height:40px;align-items:center}
+  .twin-tabs {flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .twin-tabs::-webkit-scrollbar {display:none}
+  .twin-tabs [role="tab"] {min-height:36px}
+  .twin-app select,.twin-app textarea,.twin-app input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {min-height:44px;font-size:16px}
+}
+@media (max-width:600px) {
+  .twin-hero h1 {font-size:34px}
+  .twin-dock {padding:10px 10px 12px}
+  .twin-tabpanel {padding:8px}
+  .twin-clarity span {display:none}
+  .twin-clarity button {min-height:44px}
+}

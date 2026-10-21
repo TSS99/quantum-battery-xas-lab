@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type Dispatch } from 'react';
-import { GraduationCap, Keyboard } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, GraduationCap, Keyboard, PanelLeft, PanelRight, SquareTerminal } from 'lucide-react';
 import { energyChange, shortcutAction, type TwinAction } from './twin-state';
 import { TwinProvider, useTwin } from './twin-store';
 import { ModeBar } from './mode-bar';
@@ -55,25 +56,42 @@ function TwinLayout() {
   useShortcuts(dispatch);
   useEnergyNote(twin.energy_eV, dispatch);
   const closeKeys = () => { setKeysOpen(false); keysButton.current?.focus(); };
-  return <div className={'twin-page' + (view.enlarged ? ' is-enlarged' : '') + (view.leftHidden ? ' left-hidden' : '') + (view.rightHidden ? ' right-hidden' : '')}>
-    <header className="twin-head">
-      <div>
-        <h1>Beamline twin</h1>
-        <p>Run a simulated XAS beamline in the browser: pick a measurement mode, set the energy, press Acquire and watch the spectrum build from what each detector records. In this preview the instrument, scans, downloads and the first training tasks work; the physics cards and more tasks come next.</p>
-      </div>
-      <div className="twin-head-actions">
-        <button type="button" className="button secondary small" aria-haspopup="dialog" aria-keyshortcuts="T" onClick={() => dispatch({ type: 'training', open: true })}><GraduationCap size={16} aria-hidden="true" />Training</button>
-        <button type="button" className="button secondary small twin-rail-toggle" aria-pressed={!view.leftHidden} aria-keyshortcuts="[" onClick={() => dispatch({ type: 'rail', side: 'left' })}>Explanation</button>
-        <button type="button" className="button secondary small twin-rail-toggle" aria-pressed={!view.rightHidden} aria-keyshortcuts="]" onClick={() => dispatch({ type: 'rail', side: 'right' })}>Controls</button>
-        <button type="button" className="button secondary small" ref={keysButton} aria-haspopup="dialog" onClick={() => setKeysOpen(true)}><Keyboard size={16} aria-hidden="true" />Keyboard shortcuts</button>
-      </div>
+  return <div className={'twin-app' + (view.enlarged ? ' is-enlarged' : '') + (view.leftHidden ? ' left-hidden' : '') + (view.rightHidden ? ' right-hidden' : '')}>
+    <div className="twin-col twin-col-left">
+      <header className="twin-hero">
+        <nav aria-label="Breadcrumb" className="twin-crumbs"><ol>
+          <li><Link href="/">XAS Lab</Link></li>
+          <li><Link href="/twin/" aria-current="page">Beamline twin</Link><span className="preview-badge">Preview</span></li>
+        </ol></nav>
+        <h1>Beamline <em>twin</em></h1>
+        <p className="twin-intro">A working X-ray absorption beamline. Every reading comes from tabulated cross sections and optics: the beam crosses the mirrors, the monochromator, the sample and the detectors as it would at a synchrotron.</p>
+        <p className="twin-hint">Pick any label on the beamline for the physics of that part.</p>
+        <div className="twin-chips">
+          <Link className="twin-chip" href="/"><ArrowLeft size={14} aria-hidden="true" />XAS Lab</Link>
+          <Link className="twin-chip" href="/validation/">Methods</Link>
+        </div>
+      </header>
       <Training />
-    </header>
-    <ModeBar />
-    <TwinScene />
-    <ResultsDock />
-    <ExplainRail />
-    <ControlRail />
+      <ExplainRail />
+    </div>
+    <div className="twin-col twin-col-centre">
+      <ModeBar />
+      <TwinScene />
+      <ResultsDock />
+    </div>
+    <div className="twin-col twin-col-right">
+      <div className="twin-toolbar twin-card" role="group" aria-label="Page tools">
+        <p className="twin-kicker" aria-hidden="true">Controls</p>
+        <div className="twin-toolbar-buttons">
+          <button type="button" className="twin-chip is-accent" aria-haspopup="dialog" aria-keyshortcuts="T" onClick={() => dispatch({ type: 'training', open: true })}><GraduationCap size={15} aria-hidden="true" />Training</button>
+          <button type="button" className="twin-icon" aria-haspopup="dialog" aria-keyshortcuts="`" title="Console (`)" onClick={() => window.dispatchEvent(new Event('xaslab:console'))}><SquareTerminal size={16} aria-hidden="true" /><span className="sr-only">Console</span></button>
+          <button type="button" className="twin-icon" ref={keysButton} aria-haspopup="dialog" title="Keyboard shortcuts" onClick={() => setKeysOpen(true)}><Keyboard size={16} aria-hidden="true" /><span className="sr-only">Keyboard shortcuts</span></button>
+          <button type="button" className="twin-icon twin-rail-toggle" aria-pressed={!view.leftHidden} aria-keyshortcuts="[" title="Explanation ([)" onClick={() => dispatch({ type: 'rail', side: 'left' })}><PanelLeft size={16} aria-hidden="true" /><span className="sr-only">Explanation</span></button>
+          <button type="button" className="twin-icon twin-rail-toggle" aria-pressed={!view.rightHidden} aria-keyshortcuts="]" title="Controls (])" onClick={() => dispatch({ type: 'rail', side: 'right' })}><PanelRight size={16} aria-hidden="true" /><span className="sr-only">Controls</span></button>
+        </div>
+      </div>
+      <ControlRail />
+    </div>
     <ShortcutsDialog open={keysOpen} onClose={closeKeys} />
   </div>;
 }

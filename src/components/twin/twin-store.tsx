@@ -1,12 +1,26 @@
 'use client';
-import { createContext, useContext, useEffect, useReducer, type Dispatch, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useReducer, type Dispatch, type ReactNode } from 'react';
 import { INITIAL_STORE, formatHash, parseHash, twinReducer, type TwinAction, type TwinStore } from './twin-state';
+import { hutchLive, type HutchLive } from './hutch-live';
+import { useTables } from './use-tables';
 
-const TwinContext = createContext<{ store: TwinStore; dispatch: Dispatch<TwinAction> } | null>(null);
+interface TwinContextValue {
+  store: TwinStore;
+  dispatch: Dispatch<TwinAction>;
+  tables: ReturnType<typeof useTables>;
+  /** The live readings once the tables are in; a message if the models fail; null while loading. */
+  live: HutchLive | string | null;
+}
+const TwinContext = createContext<TwinContextValue | null>(null);
 
 /** Holds the twin state for the /twin/ page. Mode and seed round-trip through the URL hash, e.g. #mode=xrf&seed=7. */
 export function TwinProvider({ children }: { children: ReactNode }) {
   const [store, dispatch] = useReducer(twinReducer, INITIAL_STORE);
+  const tables = useTables();
+  const live = useMemo(() => {
+    if (tables !== 'ready') return null;
+    try { return hutchLive(store.twin); } catch (error) { return error instanceof Error ? error.message : String(error); }
+  }, [tables, store.twin]);
   const { mode, seed } = store.twin, { hashRead } = store.view;
   // The static HTML carries the defaults, so the hash is read after hydration and again when the user edits it.
   useEffect(() => {
@@ -21,7 +35,7 @@ export function TwinProvider({ children }: { children: ReactNode }) {
     // replaceState keeps the router's history entry and does not fire hashchange.
     if (window.location.hash !== hash) history.replaceState(history.state, '', hash);
   }, [hashRead, mode, seed]);
-  return <TwinContext.Provider value={{ store, dispatch }}>{children}</TwinContext.Provider>;
+  return <TwinContext.Provider value={{ store, dispatch, tables, live }}>{children}</TwinContext.Provider>;
 }
 
 export function useTwin() {

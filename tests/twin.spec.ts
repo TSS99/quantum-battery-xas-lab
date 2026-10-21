@@ -48,9 +48,9 @@ test('twin page loads with one h1, a preview breadcrumb, noindex and no console 
   await expect(crumbs.getByRole('link', { name: 'Beamline twin' })).toHaveAttribute('aria-current', 'page');
   await expect(crumbs).toContainText('Preview');
   await expect(crumbs).not.toContainText('Page not found');
-  const modules = page.getByRole('navigation', { name: 'Laboratory modules' }).getByRole('link');
-  await expect(modules).toHaveCount(8);
-  await expect(modules.filter({ hasText: 'Beamline twin' })).toHaveCount(0);
+  // The twin runs full screen: no site header or module bar, and the breadcrumb leads back to the lab.
+  await expect(page.getByRole('navigation', { name: 'Laboratory modules' })).toHaveCount(0);
+  await expect(crumbs.getByRole('link', { name: 'XAS Lab' })).toHaveAttribute('href', /\/quantum-battery-xas-lab\/?$|^\/$/);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
   await expect(page.locator('.katex-error')).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -87,7 +87,7 @@ test('shortcut keys are ignored while typing in a field', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue('7112');
   await expect(changed(page)).toContainText('Energy set to');
-  await expect(page.locator('.hutch-readouts')).toContainText('Bragg angle');
+  await expect(page.getByRole('complementary', { name: 'Explanation' }).locator('.twin-stats')).toContainText('Bragg angle');
   // Out of the field the same keys act again.
   await mode(page, 'Transmission').focus();
   await page.keyboard.press('7');
@@ -146,7 +146,8 @@ test('hutch scene: every part is a button that opens its card, labels toggle, an
   await expect(part('I0 chamber')).toHaveAttribute('aria-expanded', 'true');
   const card = page.getByRole('region', { name: 'I0 chamber' });
   await expect(card).toContainText('ion chamber');
-  await expect(card).toContainText('Current');
+  await expect(card).toContainText('absorbs');
+  await expect(card).toContainText('What goes wrong');
   await page.keyboard.press('Escape');
   await expect(card).toBeHidden();
   await expect(part('I0 chamber')).toBeFocused();
@@ -155,7 +156,7 @@ test('hutch scene: every part is a button that opens its card, labels toggle, an
   await expect(scene).toHaveClass(/no-labels/);
   await expect(scene.locator('.hutch-parts').getByRole('button')).toHaveCount(19);
   await part('Monochromator').click();
-  await expect(page.getByRole('region', { name: 'Monochromator' })).toContainText('Bragg angle');
+  await expect(page.getByRole('region', { name: 'Monochromator' })).toContainText('it passes');
   expect(await axeViolations(page)).toEqual([]);
   await page.keyboard.press('l');
   await expect(scene).not.toHaveClass(/no-labels/);
@@ -234,12 +235,13 @@ test('every controls section changes the instrument and says what changed', asyn
   await controls.getByRole('button', { name: 'Auto gain' }).click();
   await expect(it).not.toContainText('OVER');
   await expect(changed(page)).toContainText('Amplifier gains set');
-  await controls.getByLabel('Preset').selectOption('fe-2mm-water');
+  await controls.getByRole('group', { name: 'Preset' }).getByRole('button', { name: 'Fe, 2 mM in water' }).click();
   await expect(changed(page)).toContainText('Fe, 2 mM in water');
   await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue(/^71/);
   await open('Environment');
-  await expect(controls.getByLabel('Setting')).toHaveValue('liquid-cell');
-  await controls.getByLabel('Setting').selectOption('cryostat');
+  const setting = controls.getByRole('group', { name: 'Setting' });
+  await expect(setting.getByRole('button', { name: 'Liquid cell' })).toHaveAttribute('aria-pressed', 'true');
+  await setting.getByRole('button', { name: 'Cryostat' }).click();
   await expect(changed(page)).toContainText('cryostat');
   await open('Fluorescence detector');
   await controls.getByRole('checkbox', { name: 'Soller slits' }).check();

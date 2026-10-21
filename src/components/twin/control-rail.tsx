@@ -100,11 +100,13 @@ export function ControlRail() {
   const presetId = SAMPLE_PRESETS.find(x => x.sample.formula === s.formula && x.sample.absorber === s.absorber && x.sample.edge === s.edge)?.id ?? 'custom';
   const tRange = TEMPERATURE_RANGE[env.kind];
 
-  return <aside className="twin-rail twin-right" aria-label="Controls">
+  const preset = SAMPLE_PRESETS.find(x => x.id === presetId);
+
+  return <aside className="twin-card twin-rail twin-right" aria-label="Controls">
     <h2 className="sr-only">Controls</h2>
-    <div className="twin-switch" role="group" aria-label="Detectors">
-      <button type="button" aria-pressed={!twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: false })}>Educational</button>
-      <button type="button" aria-pressed={twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: true })}>Realistic</button>
+    <div className="twin-clarity" role="group" aria-label="Detectors">
+      <button type="button" aria-label="Educational" aria-pressed={!twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: false })}><strong>Educational</strong><span>Expected values, clean curves</span></button>
+      <button type="button" aria-label="Realistic" aria-pressed={twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: true })}><strong>Realistic</strong><span>Counting noise, drift, glitches</span></button>
     </div>
     <label className="twin-field">Beamline profile
       <select value={p.preset} onChange={e => run({ type: 'profile', id: e.target.value })} disabled={locked('profile')}>
@@ -166,12 +168,11 @@ export function ControlRail() {
     </Fold>
 
     <Fold id="twin-c-sample" title="Sample" desktopOpen>
-      <label className="twin-field">Preset
-        <select value={presetId} onChange={e => { if (e.target.value !== 'custom') run({ type: 'samplePreset', id: e.target.value }); }} disabled={tables !== 'ready' || locked('sample')}>
-          {presetId === 'custom' && <option value="custom">Your sample</option>}
-          {SAMPLE_PRESETS.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-      </label>
+      <div className="twin-chipset" role="group" aria-label="Preset">
+        {SAMPLE_PRESETS.map(x => <button key={x.id} type="button" className="twin-chip" aria-pressed={presetId === x.id} disabled={tables !== 'ready' || locked('sample')} onClick={() => run({ type: 'samplePreset', id: x.id })}>{x.name}</button>)}
+        {presetId === 'custom' && <span className="twin-chip is-current">Your sample</span>}
+      </div>
+      {preset && <p className="twin-soon">{preset.story}</p>}
       <Rows rows={[['Material', <><Tex plain>{formulaTex(s.formula)}</Tex>, {s.form}</>], ['Edge', <>{s.absorber} <Tex plain>{formulaTex(s.edge)}</Tex>{e0 !== null && <>, {q(e0.toFixed(1), 'eV')}</>}</>]]} />
       <Range label="Thickness" value={s.thickness_um} min={0.1} max={Math.max(2000, s.thickness_um)} step={0.1} digits={1} unit="μm" onChange={thickness_um => run({ type: 'thickness', thickness_um })} />
       {now?.edgeStep != null && <Rows rows={[['Edge step', <Num>{now.edgeStep.toFixed(2)}</Num>], [<>Total <Tex plain>{'\\mu x'}</Tex> here</>, <Num>{now.muX!.toFixed(2)}</Num>]]} />}
@@ -181,11 +182,9 @@ export function ControlRail() {
     </Fold>
 
     <Fold id="twin-c-environment" title="Environment">
-      <label className="twin-field">Setting
-        <select value={env.kind} onChange={e => run({ type: 'environment', kind: e.target.value as EnvironmentConfig['kind'] })}>
-          {ENVIRONMENTS.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
-        </select>
-      </label>
+      <div className="twin-chipset" role="group" aria-label="Setting">
+        {ENVIRONMENTS.map(x => <button key={x.id} type="button" className="twin-chip" aria-pressed={env.kind === x.id} onClick={() => run({ type: 'environment', kind: x.id })}>{x.label}</button>)}
+      </div>
       <Range label="Temperature" value={env.temperature_K} min={tRange[0]} max={tRange[1]} step={1} unit="K" onChange={temperature_K => run({ type: 'temperature', temperature_K })} />
       {env.windows.length > 0 && <p className="twin-soon">Beam passes {env.windows.length} windows of {q(env.windows[0].thickness_um, 'μm')} <Tex plain>{formulaTex(env.windows[0].formula)}</Tex> (Kapton).</p>}
     </Fold>

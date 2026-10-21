@@ -15,12 +15,12 @@ export function ModeBar() {
     if (!row || !button || row.scrollWidth <= row.clientWidth) return;
     if (button.offsetLeft < row.scrollLeft || button.offsetLeft + button.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollTo({ left: button.offsetLeft - 16 });
   }, [twin.mode]);
-  return <div className="twin-modes" ref={bar} role="group" aria-label="Modes">
+  return <div className="twin-modes twin-card" ref={bar} role="group" aria-label="Modes">
     {GROUPS.map(group => <div key={group} className="twin-mode-group" role="group" aria-labelledby={`twin-group-${group}`}>
       <span id={`twin-group-${group}`} className="twin-mode-group-name">{group}</span>
       <div className="twin-mode-buttons">{MODES.filter(m => m.group === group).map(m =>
         <button key={m.id} type="button" className="twin-mode" aria-pressed={twin.mode === m.id} aria-keyshortcuts={m.key} onClick={() => dispatch({ type: 'mode', mode: m.id })}>
-          <kbd aria-hidden="true">{m.key}</kbd>{m.name}
+          {m.name}<kbd aria-hidden="true">{m.key}</kbd>
         </button>)}
       </div>
     </div>)}

@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Num, Tex, Unit } from '../tex';
+import { Tex } from '../tex';
 import { B, Beam, Box, Breadboard, CylY, CylZ, Disc, IonChamber, K, P, Q, SceneDefs, Shadow, YB, circleYZ, line, pts, type V3 } from '../scene-kit';
 import type { TwinState } from '@/lib/twin/types';
-import { PARTS, VIEW, beamGlow, drawnBraggDeg, hasCue, legLit, lcdVolts, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
+import { PARTS, VIEW, beamGlow, drawnBraggDeg, hasCue, legLit, lcdVolts, partActive, partOf, sceneFor, type Leg, type PartId } from './hutch-parts';
+import { NARROW_QUERY } from './fold';
 import type { HutchLive } from './hutch-live';
 import { modeInfo } from './twin-state';
 
@@ -17,7 +18,6 @@ const SOURCE_X = 96; // tangent point of the electron orbit inside the bending m
 /** The electron orbit: a 300 unit radius arc that curves away from the viewer through the magnet. */
 const ORBIT = line(...Array.from({ length: 24 }, (_, i): V3 => { const t = i * 0.5 / 23; return [-20 + 300 * Math.sin(t), YB0, 300 * (1 - Math.cos(t))]; }));
 
-const sci = (value: number, digits = 2) => <Num>{value.toExponential(digits)}</Num>;
 const percent = (fraction: number) => fraction >= 0.9995 ? '100' : fraction < 0.001 ? (fraction * 100).toExponential(1) : (fraction * 100).toFixed(1);
 const short = (value: number) => value.toExponential(1).replace('e+', 'e');
 
@@ -114,39 +114,52 @@ function Environment({ kind }: { kind: TwinState['environment']['kind'] }) {
   }
 }
 
-/** The text of a live reading for a part's card, when the models give one. */
-function partReading(id: PartId, live: HutchLive): ReactNode {
-  switch (id) {
-    case 'source': return live.flux !== null && <>Flux reaching the <Tex plain>{'I_0'}</Tex> chamber: {sci(live.flux)} photons per second.</>;
-    case 'monochromator': case 'first-crystal': case 'second-crystal':
-      return live.theta_deg !== null && <>Bragg angle <Tex plain>{`\\theta = ${live.theta_deg.toFixed(3)}^\\circ`}</Tex> at <Num>{live.energy_eV.toFixed(1)}</Num> <Unit>eV</Unit>.</>;
-    case 'i0': return live.i0 && <>Current {sci(live.i0.current_A)} <Unit>A</Unit>; it absorbs <Num>{percent(live.i0.absorbedFraction) + '%'}</Num> of the beam.</>;
-    case 'it': return live.it && <>Current {sci(live.it.current_A)} <Unit>A</Unit>.</>;
-    case 'iref': return live.iref && <>Current {sci(live.iref.current_A)} <Unit>A</Unit>.</>;
-    case 'reference-foil': return live.foilTransmission !== null && <>The foil passes <Num>{percent(live.foilTransmission) + '%'}</Num> of what leaves the <Tex plain>{'I_t'}</Tex> chamber.</>;
-    case 'sample-stage': case 'sample-environment':
-      return live.sampleTransmission !== null && <>The sample and its windows pass <Num>{percent(live.sampleTransmission) + '%'}</Num> of the beam.</>;
-    case 'fluorescence-detector': return live.fluorescence_per_s !== null && <>About {sci(live.fluorescence_per_s)} line photons per second reach it, before dead time.</>;
-    default: return null;
-  }
+export interface HutchSceneProps {
+  twin: TwinState; live: HutchLive; labels: boolean;
+  /** The part whose card is open, and how to open or close one. */
+  part: PartId | null; onPart: (id: PartId | null) => void;
+  /** Fit the whole beamline in the box instead of a close-up on the mode's parts (wide screens). */
+  whole: boolean;
 }
 
-export interface HutchSceneProps { twin: TwinState; live: HutchLive; labels: boolean }
+/** Where a mode's camera points: the mean x of the parts the mode is about. */
+const focusX = (mode: TwinState['mode']) => { const xs = sceneFor(mode).emphasis.map(id => partOf(id).tip[0]); return xs.reduce((a, b) => a + b, 0) / xs.length; };
 
-export function HutchScene({ twin, live, labels }: HutchSceneProps) {
+export function HutchScene({ twin, live, labels, part: open, onPart, whole }: HutchSceneProps) {
   const { mode, environment, profile } = twin;
-  const scroller = useRef<HTMLDivElement>(null), [scrolls, setScrolls] = useState(false);
-  const [open, setOpen] = useState<PartId | null>(null);
-  const buttons = useRef(new Map<PartId, HTMLButtonElement>());
+  const scroller = useRef<HTMLDivElement>(null), stage = useRef<HTMLDivElement>(null), [scrolls, setScrolls] = useState(false);
+  // Wide screens size the drawing to the box: a close-up as tall as the box, or the whole beamline. Phones keep the CSS minimum width.
+  const [stageW, setStageW] = useState<number | null>(null);
+  useEffect(() => {
+    const el = scroller.current, inner = stage.current; if (!el || !inner) return;
+    const narrow = matchMedia(NARROW_QUERY);
+    const check = () => {
+      setStageW(narrow.matches ? null : whole ? el.clientWidth : Math.round(Math.max(el.clientWidth, Math.min(el.clientHeight * VIEW.width / VIEW.height, el.clientWidth * 3))));
+      setScrolls(el.scrollWidth > el.clientWidth + 1);
+    };
+    const observer = new ResizeObserver(check); observer.observe(el); observer.observe(inner);
+    narrow.addEventListener('change', check);
+    return () => { observer.disconnect(); narrow.removeEventListener('change', check); };
+  }, [whole]);
+  // Point the camera at the mode's parts: at once when the size changes, smoothly when the mode does.
+  const framed = useRef<TwinState['mode'] | null>(null);
   useEffect(() => {
     const el = scroller.current; if (!el) return;
-    let centred = false;
-    const check = () => {
-      const s = el.scrollWidth > el.clientWidth + 1; setScrolls(s);
-      if (s && !centred) { el.scrollLeft = (XS - VIEW.x) / VIEW.width * el.scrollWidth - el.clientWidth / 2; centred = true; }
+    const smooth = framed.current !== null && framed.current !== mode && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    framed.current = mode;
+    el.scrollTo({ left: (focusX(mode) - VIEW.x) / VIEW.width * el.scrollWidth - el.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
+  }, [mode, stageW]);
+  // On wide screens the wheel pans along the beamline; a mouse drag on the drawing does too.
+  useEffect(() => {
+    const el = scroller.current; if (!el || stageW === null) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY) || el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault(); el.scrollLeft += e.deltaY;
     };
-    const observer = new ResizeObserver(check); observer.observe(el); return () => observer.disconnect();
-  }, []);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [stageW]);
+  const drag = useRef<{ x: number; left: number } | null>(null), [dragging, setDragging] = useState(false);
 
   const scene = sceneFor(mode);
   const partClass = (id: PartId) => (partActive(mode, id) ? '' : 'is-idle') + (scene.emphasis.includes(id) ? ' is-focus' : '');
@@ -171,15 +184,19 @@ export function HutchScene({ twin, live, labels }: HutchSceneProps) {
   const at = (v: readonly [number, number]) => ({ x: (v[0] - VIEW.x) / VIEW.width * 100 + '%', y: (v[1] - VIEW.y) / VIEW.height * 100 + '%' });
   const g = (id: PartId, children: ReactNode) => <g data-part={id} className={partClass(id)}>{children}</g>;
 
-  const close = () => { const id = open; setOpen(null); if (id) buttons.current.get(id)?.focus(); };
-  const openPart = open && PARTS.find(p => p.id === open);
-  const reading = openPart && partReading(openPart.id, live);
   const label = `Beamline drawing, ${modeInfo(mode).name.toLowerCase()} mode. The monochromator passes ${live.energy_eV.toFixed(1)} eV` +
     (live.sampleTransmission === null ? '.' : ` and the sample passes ${percent(live.sampleTransmission)}% of the beam.`);
 
-  return <div className={'hutch mode-' + mode + cues + (labels ? '' : ' no-labels')}>
-    <div className="hutch-scroll" ref={scroller} tabIndex={scrolls ? 0 : undefined} role={scrolls ? 'region' : undefined} aria-label={scrolls ? 'Beamline drawing, scrolls sideways' : undefined}>
-      <div className="hutch-stage">
+  const endDrag = () => { drag.current = null; setDragging(false); };
+  return <div className={'hutch mode-' + mode + cues + (labels && !whole ? '' : ' no-labels')}>
+    <div className={'hutch-scroll' + (dragging ? ' is-dragging' : '')} ref={scroller} tabIndex={scrolls ? 0 : undefined} role={scrolls ? 'region' : undefined} aria-label={scrolls ? 'Beamline drawing, scrolls sideways' : undefined}
+      onPointerDown={e => {
+        if (e.pointerType !== 'mouse' || e.button !== 0 || !scrolls || (e.target as Element).closest('button')) return;
+        drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft }; e.currentTarget.setPointerCapture(e.pointerId); setDragging(true);
+      }}
+      onPointerMove={e => { if (drag.current) e.currentTarget.scrollLeft = drag.current.left - (e.clientX - drag.current.x); }}
+      onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <div className="hutch-stage" ref={stage} style={stageW === null ? undefined : { width: stageW, minWidth: 0 }}>
         <svg viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.width} ${VIEW.height}`} role="img" aria-label={label}>
           <SceneDefs />
           <defs>
@@ -341,32 +358,15 @@ export function HutchScene({ twin, live, labels }: HutchSceneProps) {
         <div className="hutch-parts">
           {PARTS.map(part => {
             const a = at(part.at), t = at(tips[part.id] ?? part.tip), cls = partClass(part.id);
-            return <button key={part.id} type="button" ref={el => { if (el) buttons.current.set(part.id, el); else buttons.current.delete(part.id); }}
+            return <button key={part.id} type="button" data-part-button={part.id}
               className={'hutch-part ' + cls} style={{ '--ax': a.x, '--ay': a.y, '--tx': t.x, '--ty': t.y } as CSSProperties}
-              aria-label={part.name} aria-expanded={open === part.id} aria-controls={open === part.id ? 'hutch-card' : undefined}
-              onClick={() => setOpen(open === part.id ? null : part.id)} onKeyDown={e => { if (e.key === 'Escape' && open) { e.stopPropagation(); close(); } }}>
+              aria-label={part.name} title={labels && !whole ? undefined : part.name} aria-expanded={open === part.id} aria-controls={open === part.id ? 'hutch-card' : undefined}
+              onClick={() => onPart(open === part.id ? null : part.id)} onKeyDown={e => { if (e.key === 'Escape' && open) { e.stopPropagation(); onPart(null); } }}>
               <span className="hutch-part-text" aria-hidden="true">{part.tex ? <Tex plain>{part.tex}</Tex> : part.name}{part.tex ? ' chamber' : ''}</span>
             </button>;
           })}
         </div>
       </div>
     </div>
-    {openPart && <section id="hutch-card" className="hutch-card" aria-labelledby="hutch-card-title" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
-      <h3 id="hutch-card-title">{openPart.name}</h3>
-      <p>{openPart.role}</p>
-      {reading && <p className="hutch-card-live">{reading}</p>}
-      <button type="button" className="button secondary small" onClick={close}>Close</button>
-    </section>}
-    <dl className="hutch-readouts" aria-label="Live readings">
-      <div><dt>Photon energy</dt><dd><Tex plain>{`E = ${live.energy_eV.toFixed(1)}\\ \\mathrm{eV}`}</Tex></dd></div>
-      <div><dt>Bragg angle</dt><dd>{live.theta_deg === null ? 'out of range' : <Tex plain>{`\\theta = ${live.theta_deg.toFixed(3)}^\\circ`}</Tex>}</dd></div>
-      <div><dt>Flux at <Tex plain>{'I_0'}</Tex></dt><dd>{live.flux === null ? '—' : <>{sci(live.flux)} <Unit>s^-1</Unit></>}</dd></div>
-      <div><dt><Tex plain>{'I_0'}</Tex> current</dt><dd>{live.i0 ? <>{sci(live.i0.current_A)} <Unit>A</Unit></> : '—'}</dd></div>
-      <div><dt>Sample transmission</dt><dd>{live.sampleTransmission === null ? '—' : <Num>{percent(live.sampleTransmission) + '%'}</Num>}</dd></div>
-      <div><dt><Tex plain>{'I_t'}</Tex> current</dt><dd>{live.it ? <>{sci(live.it.current_A)} <Unit>A</Unit></> : '—'}</dd></div>
-      <div><dt><Tex plain>{'I_\\mathrm{ref}'}</Tex> current</dt><dd>{live.iref ? <>{sci(live.iref.current_A)} <Unit>A</Unit></> : '—'}</dd></div>
-      <div><dt>Fluorescence line</dt><dd>{live.fluorescence_per_s === null ? '—' : <>{sci(live.fluorescence_per_s)} <Unit>s^-1</Unit></>}</dd></div>
-      <div><dt>Surface dose rate</dt><dd>{live.doseRate_Gy_per_s === null ? '—' : <>{sci(live.doseRate_Gy_per_s)} <Unit>Gy/s</Unit></>}</dd></div>
-    </dl>
   </div>;
 }

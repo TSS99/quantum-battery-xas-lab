@@ -1,9 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
-import { Download, Square } from 'lucide-react';
+import { Aperture, Download, Maximize2, Minimize2, Square } from 'lucide-react';
 import { Num, Tex, Unit } from '../tex';
-import { Chevron } from '../chevron';
 import { Plot, type Series } from '../plot';
 import { download } from '../ui';
 import { loadXrayData } from '@/lib/xraydata';
@@ -217,14 +216,15 @@ export function ResultsDock() {
     }
   })();
 
-  return <section className="twin-dock" aria-labelledby="twin-results-title">
-    <div className="twin-section-head">
-      <h2 id="twin-results-title">Results</h2>
+  return <section className="twin-dock twin-card" aria-labelledby="twin-results-title">
+    <div className="twin-dock-head">
+      <h2 id="twin-results-title" className="twin-kicker"><span className={'twin-dot' + (replaying ? ' is-live' : '')} aria-hidden="true" />Results</h2>
+      <span className="twin-kicker twin-dock-sub" aria-hidden="true">{TABS[view.tab].name}{replaying ? ' · scanning' : stored.length ? ` · ${stored.length} stored` : ''}</span>
       <div className="twin-dock-actions">
-        <button type="button" className="button secondary small" aria-pressed={view.enlarged} aria-keyshortcuts="X" onClick={() => dispatch({ type: 'enlarge' })}>Enlarge</button>
         {replaying
-          ? <button type="button" className="button secondary" onClick={() => { cancel(); setScanState(null); dispatch({ type: 'note', text: 'Scan stopped; nothing was stored.' }); }}><Square size={14} aria-hidden="true" />Stop</button>
-          : <button type="button" className="button cta" aria-keyshortcuts="I" disabled={!tables} onClick={() => dispatch({ type: 'acquire' })}>Acquire<Chevron /></button>}
+          ? <button type="button" className="twin-acquire is-stop" onClick={() => { cancel(); setScanState(null); dispatch({ type: 'note', text: 'Scan stopped; nothing was stored.' }); }}><Square size={14} aria-hidden="true" />Stop</button>
+          : <button type="button" className="twin-acquire" aria-keyshortcuts="I" disabled={!tables} onClick={() => dispatch({ type: 'acquire' })}><Aperture size={15} aria-hidden="true" />Acquire</button>}
+        <button type="button" className="twin-icon" aria-pressed={view.enlarged} aria-keyshortcuts="X" title="Enlarge (X)" onClick={() => dispatch({ type: 'enlarge' })}>{view.enlarged ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}<span className="sr-only">Enlarge</span></button>
       </div>
     </div>
     {replaying && <div className="twin-progress">

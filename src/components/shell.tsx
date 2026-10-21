@@ -63,6 +63,11 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
     return () => document.removeEventListener('pointerdown', away);
   }, [labMenu]);
   useEffect(() => { document.body.style.overflow = mobileMenu ? 'hidden' : ''; }, [mobileMenu]);
+  // Full-screen pages have no top bar, so they open the console with this event.
+  useEffect(() => {
+    window.addEventListener('xaslab:console', openConsole);
+    return () => window.removeEventListener('xaslab:console', openConsole);
+  }, [openConsole]);
 
   // Unknown paths (the 404 page) match no route, so nothing is marked as the current page.
   const matches = ([href]: readonly string[]) => pathname.replace(/\/$/, '') === href.replace(/\/$/, '');
@@ -74,6 +79,11 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
   const inElements = !!elementPath && (!elementSlug || !!elementName);
   const home = current[0] === '/';
   const expanded = home && !scrolled;
+
+  const overlays = <>{consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}{notice && <div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</>;
+  // Preview pages run full screen, like an instrument console: no site header, module bar or footer.
+  if (preview) return <MotionConfig reducedMotion="user"><a className="skip-link" href="#main">Skip to laboratory</a>
+    <main id="main" tabIndex={-1} className="bare-main">{children}</main>{overlays}</MotionConfig>;
 
   return <MotionConfig reducedMotion="user"><a className="skip-link" href="#main">Skip to laboratory</a>
     <header className={'site-header' + (expanded ? ' is-expanded' : ' is-pill')}>
@@ -121,5 +131,5 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
         <div className="footer-wordmark" aria-hidden="true">XAS Lab</div>
       </footer>
     </div>
-    {consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}{notice && <div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</MotionConfig>;
+    {overlays}</MotionConfig>;
 }
