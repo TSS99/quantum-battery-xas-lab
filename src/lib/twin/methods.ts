@@ -171,7 +171,16 @@ export const TWIN_METHODS: readonly TwinMethod[] = [
     checked: 'NIST for water; a reference dose table',
     tolerance: String.raw`$1.2\%$`,
     provenance: 'teaching-model',
-    tests: [twin('damage', 'matches the tabulated mu_en/rho proxy within 1.2 % of NIST for water'), twin('damage', 'reproduces the dose table of dossier 11.1')],
+    tests: [twin('damage', 'matches the tabulated mu_en/rho proxy within 1.2 % of NIST for water'), twin('damage', 'reproduces the dose table of dossier 11.1'), twin('scenarios-s5-s8', 'divides the dose per spot by the scan spots, and clamps the beam size and the spots')],
+  },
+  {
+    quantity: 'Glitches on uneven samples',
+    model: String.raw`A glitch removes the fraction $d$ of the beam from part of the footprint; on an uneven sample $\ln(I_0/I_t)$ shifts by $d\,(\mu x - \mu x_\mathrm{app})$, and on a uniform one by nothing`,
+    data: 'The seeded glitch map of the crystal set',
+    checked: 'Analytic limits',
+    tolerance: 'exact',
+    provenance: 'teaching-model',
+    tests: [twin('scenarios-s5-s8', 'lets a glitch cancel on a uniform sample and leaves the dip times the mu x gap on an uneven one'), twin('scenarios-s5-s8', 'hides a non-uniform foil whose glitches spike ln(I0/It), and a uniform foil removes the spikes')],
   },
   {
     quantity: 'XDI files',

@@ -331,3 +331,10 @@ export function suggestGas(energy_eV: number, role: ChamberRole, length_cm: numb
   }
   return best as GasSuggestion;
 }
+
+/** Chamber fills on offer: the pure gases and the usual nitrogen mixes. */
+export const CHAMBER_FILLS: readonly { id: string; label: string; gas: ChamberConfig['gas'] }[] = [
+  { id: 'He', label: 'He', gas: { He: 1 } }, { id: 'N2', label: 'N₂', gas: { N2: 1 } }, { id: 'Ar', label: 'Ar', gas: { Ar: 1 } }, { id: 'Kr', label: 'Kr', gas: { Kr: 1 } },
+  { id: 'He-N2', label: 'He 50 %, N₂ 50 %', gas: { He: 0.5, N2: 0.5 } }, { id: 'N2-Ar20', label: 'N₂ 80 %, Ar 20 %', gas: { N2: 0.8, Ar: 0.2 } },
+  { id: 'N2-Ar', label: 'N₂ 50 %, Ar 50 %', gas: { N2: 0.5, Ar: 0.5 } },
+];

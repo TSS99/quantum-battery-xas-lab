@@ -426,7 +426,7 @@ test('training: S4 self absorption is fixed by switching to electron yield', asy
   await openTwin(page, '#mode=transmission&seed=6');
   await page.keyboard.press('t');
   const dialog = page.getByRole('dialog', { name: 'Training scenarios' });
-  await expect(dialog.getByRole('listitem')).toHaveCount(5);
+  await expect(dialog.getByRole('listitem')).toHaveCount(9);
   await dialog.getByRole('button', { name: 'Start self absorption' }).click();
   const task = page.getByRole('region', { name: 'Task: Self absorption' });
   await expect(task).toBeVisible();
@@ -440,6 +440,56 @@ test('training: S4 self absorption is fixed by switching to electron yield', asy
   await task.getByRole('button', { name: 'Show the truth' }).click();
   await expect(task).toContainText('well done');
   await expect(task).toContainText('White line lost now');
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('training: S8 glitch spikes go away once the foil is uniform', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=3');
+  await page.keyboard.press('t');
+  await page.getByRole('dialog', { name: 'Training scenarios' }).getByRole('button', { name: 'Start glitch hunt' }).click();
+  const task = page.getByRole('region', { name: 'Task: Glitch hunt' });
+  await expect(task).toBeVisible();
+  // Glitches only appear with realistic detectors, and the crystal is locked so they cannot be moved away.
+  await expect(page.getByRole('button', { name: /^Realistic/ })).toHaveAttribute('aria-pressed', 'true');
+  const controls = page.getByRole('complementary', { name: 'Controls' });
+  const fold = controls.getByRole('button', { name: 'Sample', exact: true });
+  if (await fold.getAttribute('aria-expanded') === 'false') await fold.click();
+  await controls.getByRole('slider', { name: 'Pinholes' }).fill('0');
+  await controls.getByRole('slider', { name: 'Thickness spread' }).fill('0');
+  await task.getByRole('button', { name: 'Done' }).click();
+  await task.getByRole('radio', { name: 'Quite' }).check();
+  await task.getByRole('button', { name: 'Show the truth' }).click();
+  await expect(task).toContainText('100 out of 100, well done');
+  await expect(page.locator('.katex-error')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('classroom: a class link opens the assigned task, the result downloads, and the instructor view tabulates it', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./twin/#train=s6-gases&seed=42');
+  await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
+  const dialog = page.getByRole('dialog', { name: 'Training scenarios' });
+  const assigned = dialog.getByRole('region', { name: "Your instructor's task" });
+  await expect(assigned).toContainText('Ion chamber gases');
+  await expect(assigned).toContainText('42');
+  await assigned.getByRole('button', { name: 'Start the assigned task' }).click();
+  const task = page.getByRole('region', { name: 'Task: Ion chamber gases' });
+  await expect(task).toBeVisible();
+  await task.getByRole('button', { name: 'Done' }).click();
+  await task.getByRole('radio', { name: 'Fairly' }).check();
+  await task.getByRole('button', { name: 'Show the truth' }).click();
+  await expect(task).toContainText('out of');
+  await task.getByLabel('Your name for the class result (optional)').fill('Asha K');
+  const [file] = await Promise.all([page.waitForEvent('download'), task.getByRole('button', { name: 'Download the result' }).click()]);
+  expect(file.suggestedFilename()).toBe('twin-result-s6-gases-seed42-asha-k.json');
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  await dialog.getByText('For instructors: class links and results').click();
+  await dialog.getByLabel('Student result files').setInputFiles((await file.path())!);
+  await expect(dialog.getByRole('status')).toContainText('1 result loaded');
+  await expect(dialog.getByRole('table', { name: 'Results by student' })).toContainText('Asha K');
+  await expect(dialog.getByRole('table', { name: 'Results by task' })).toContainText('Ion chamber gases');
   await expect(page.locator('.katex-error')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

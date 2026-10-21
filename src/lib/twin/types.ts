@@ -110,6 +110,8 @@ export interface ScanPlan {
   repeats: number;
   /** Motor settling and readout overhead per point (step scans). */
   settle_s: number;
+  /** Fresh sample spots the scan is spread over, which divides the dose per spot; 1 when absent. */
+  spots?: number;
 }
 
 export interface TwinProfile {

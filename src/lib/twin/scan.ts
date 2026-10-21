@@ -40,6 +40,12 @@ export function defaultPlan(e0_eV: number): ScanPlan {
   };
 }
 
+/** A XANES plan: pre edge from -100 to -30 eV in 5 eV steps, then -30 to +70 eV at the Larch step. */
+export function xanesPlan(e0_eV: number): ScanPlan {
+  return { kind: 'step', repeats: 1, settle_s: 0.2, regions: [
+    { space: 'E', start: -100, end: -30, step: 5, dwell_s: 1 }, { space: 'E', start: -30, end: 70, step: xanesStep_eV(e0_eV), dwell_s: 1 }] };
+}
+
 export interface PlanPoints {
   /** Mono reading of every point, eV. */
   energy_eV: Float64Array;

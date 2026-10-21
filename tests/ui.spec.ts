@@ -424,7 +424,7 @@ test('the beamline twin is linked from the header and landing page, and the Meth
   await expect(menu.getByRole('link', { name: /^Beamline twin/ }).first()).toHaveAttribute('href', /\/twin\/$/);
   await page.keyboard.press('Escape');
   const table = page.getByRole('table', { name: 'Beamline twin models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(18);
+  await expect(table.getByRole('row')).toHaveCount(19);
   await expect(table).toContainText('Larch sigma2_eins');
   await table.getByText('3 tests').first().click();
   await expect(table.locator('details[open] li').first()).toContainText('.test.ts');

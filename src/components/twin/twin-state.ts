@@ -226,6 +226,7 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
 const FORMS = ['pellet', 'foil', 'film', 'solution', 'capillary'] as const;
 const scanPlan = (value: unknown): ScanPlan | undefined => {
   if (!isRecord(value) || !['step', 'continuous'].includes(String(value.kind)) || !finite(value.repeats) || value.repeats < 1 || value.repeats > 50 || !finite(value.settle_s) || value.settle_s < 0 || !Array.isArray(value.regions)) return undefined;
+  if (value.spots !== undefined && (!Number.isInteger(value.spots) || (value.spots as number) < 1 || (value.spots as number) > 50)) return undefined;
   const regions = value.regions.filter(isRecord);
   if (regions.length !== value.regions.length || !regions.length || regions.some(region => !['E', 'k'].includes(String(region.space)) || !finite(region.start) || !finite(region.end) || region.end <= region.start || !finite(region.step) || region.step <= 0 || !finite(region.dwell_s) || region.dwell_s <= 0 || region.kWeight !== undefined && (!finite(region.kWeight) || region.kWeight < 0 || region.kWeight > 3))) return undefined;
   return value as unknown as ScanPlan;

@@ -179,6 +179,8 @@ export type TwinCommand =
   | { type: 'mode'; mode: TwinMode }
   | { type: 'realistic'; value: boolean }
   | { type: 'monoOffset'; offset_eV: number }
+  /** Beam size at the sample, FWHM horizontal and vertical in micrometres: focusing or defocusing. */
+  | { type: 'beam'; beam_um: [number, number] }
   | { type: 'detune'; detune: number }
   | { type: 'crystal'; crystal: Crystal }
   | { type: 'mirror'; id: string; inserted: boolean }
@@ -349,8 +351,13 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
       return done({ ...state, profile: { ...state.profile, sdd: next } }, p.roi_eV
         ? String.raw`Counting window set to $${next.roi_eV[0]}$ to $${next.roi_eV[1]}\ \mathrm{eV}$.` : 'Fluorescence detector changed.');
     }
+    case 'beam': {
+      const beam_um: [number, number] = [Math.round(clamp(command.beam_um[0], [1, 5000])), Math.round(clamp(command.beam_um[1], [1, 5000]))];
+      return done({ ...state, profile: { ...state.profile, beam_um } }, String.raw`Beam size $${beam_um[0]} 	imes ${beam_um[1]}\ \mu\mathrm{m}$: the same photons over a different area, so the dose rate scales with $1/\mathrm{area}$.`);
+    }
     case 'scan': {
       const plan = { ...command.plan, repeats: Math.round(clamp(command.plan.repeats, [1, 50])) };
+      if (plan.spots !== undefined) plan.spots = Math.round(clamp(plan.spots, [1, 50]));
       planPoints(plan, edgeEnergy(state.sample));  // throws on an impossible plan
       return done({ ...state, scan: plan }, 'Scan plan changed.');
     }
@@ -430,6 +437,8 @@ export function fromSession(text: string): TwinSession {
   for (const window of environment.windows) if (!isObject(window) || typeof window.formula !== 'string' || !finite(window.density) || !finite(window.thickness_um)) throw new Error('The session environment has an invalid window.');
   if (state.reference !== undefined && (!isObject(state.reference) || typeof state.reference.formula !== 'string' || !finite(state.reference.density) || !finite(state.reference.thickness_um))) throw new Error('The session reference foil is invalid.');
   if (!isObject(state.scan) || !Array.isArray(state.scan.regions) || !state.scan.regions.length || typeof state.scan.kind !== 'string' || !['step', 'continuous'].includes(state.scan.kind) || !finite(state.scan.repeats) || !finite(state.scan.settle_s)) throw new Error('The session scan has no valid regions.');
+  const spots = state.scan.spots;
+  if (spots !== undefined && (typeof spots !== 'number' || !Number.isInteger(spots) || spots < 1 || spots > 50)) throw new Error('The session scan spots must be a whole number from 1 to 50.');
   for (const region of state.scan.regions) if (!isObject(region) || !['E', 'k'].includes(String(region.space)) || !finite(region.start) || !finite(region.end) || !finite(region.step) || !finite(region.dwell_s)) throw new Error('The session scan has an invalid region.');
   if (typeof state.realistic !== 'boolean') throw new Error('The session realistic setting must be true or false.');
   const acquisitions = raw.acquisitions ?? [];

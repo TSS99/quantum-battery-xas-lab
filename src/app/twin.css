@@ -370,3 +370,12 @@ body:has(.twin-app) {background:#050608}
 .twin-fit-table {width:100%;margin-top:8px;border-collapse:collapse;font-size:13px}
 .twin-fit-table th,.twin-fit-table td {padding:6px 8px;border-bottom:1px solid var(--tw-line);text-align:left;font-weight:400}
 .twin-fit-table thead th {font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-muted)}
+
+/* ---------- Training: the assigned task from a class link, and the instructor's tables ---------- */
+.twin-assigned {display:grid;gap:8px;padding:12px 14px;border:1px solid var(--tw-accent-line);border-radius:10px;background:var(--tw-accent-soft)}
+.twin-assigned h3 {margin:0;font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-accent)}
+.twin-assigned p {margin:0;font-size:13.5px;color:var(--tw-text)}
+.twin-assigned .button {justify-self:start}
+.twin-class {display:grid;gap:10px}
+.twin-class-table {margin-top:6px}
+.twin-class-table td:nth-child(2) {color:var(--tw-body);font-family:var(--font-sans)}

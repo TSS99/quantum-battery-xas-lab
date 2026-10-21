@@ -4,10 +4,11 @@ import { Num, Tex, Unit, formulaTex } from '../tex';
 import { Range } from '../ui';
 import { elementInfo, parseFormula } from '@/lib/xraydata';
 import { edgeEnergy } from '@/lib/twin/acquire';
+import { CHAMBER_FILLS } from '@/lib/twin/chambers';
 import { cutoffEnergy_eV } from '@/lib/twin/mirrors';
 import { braggAngle_rad } from '@/lib/twin/mono';
 import { SAMPLE_PRESETS } from '@/lib/twin/presets';
-import { defaultPlan, planDuration, xanesStep_eV, kOf } from '@/lib/twin/scan';
+import { defaultPlan, planDuration, xanesPlan, kOf } from '@/lib/twin/scan';
 import { TEMPERATURE_RANGE, energyRange, status, type TwinCommand } from '@/lib/twin/twin';
 import type { ChamberConfig, Crystal, EnvironmentConfig, ScanPlan, TwinState } from '@/lib/twin/types';
 import { PROFILE_PRESETS } from './twin-state';
@@ -25,12 +26,8 @@ const q = (value: number | string, unit: string) => <><Num>{String(value)}</Num>
 const sci = (value: number) => <Num>{value.toExponential(2)}</Num>;
 const chamberTex = (id: ChamberConfig['id']) => id === 'I0' ? 'I_0' : id === 'It' ? 'I_t' : 'I_\\mathrm{ref}';
 
-/** Chamber fills on offer: the pure gases and the usual nitrogen mixes. */
-const FILLS: { id: string; label: string; gas: ChamberConfig['gas'] }[] = [
-  { id: 'He', label: 'He', gas: { He: 1 } }, { id: 'N2', label: 'N₂', gas: { N2: 1 } }, { id: 'Ar', label: 'Ar', gas: { Ar: 1 } }, { id: 'Kr', label: 'Kr', gas: { Kr: 1 } },
-  { id: 'He-N2', label: 'He 50 %, N₂ 50 %', gas: { He: 0.5, N2: 0.5 } }, { id: 'N2-Ar20', label: 'N₂ 80 %, Ar 20 %', gas: { N2: 0.8, Ar: 0.2 } },
-  { id: 'N2-Ar', label: 'N₂ 50 %, Ar 50 %', gas: { N2: 0.5, Ar: 0.5 } },
-];
+/** Chamber fills on offer: the pure gases and the usual nitrogen mixes (src/lib/twin/chambers.ts). */
+const FILLS = CHAMBER_FILLS;
 const fillOf = (gas: ChamberConfig['gas']) => FILLS.find(f => Object.entries(f.gas).every(([g, x]) => Math.abs((gas[g as keyof typeof gas] ?? 0) - (x ?? 0)) < 1e-9) && Object.keys(gas).filter(g => (gas[g as keyof typeof gas] ?? 0) > 0).length === Object.keys(f.gas).length)?.id ?? 'custom';
 const GAINS = [3, 4, 5, 6, 7, 8, 9, 10, 11];
 /** Option text cannot hold typeset maths, so powers of ten use Unicode superscripts. */
@@ -42,12 +39,10 @@ const PEAKING = [0.25, 0.5, 1, 2, 4, 8];
 
 /** Scan plans on offer, relative to the edge; the current plan shows as "Custom" when it matches none. */
 function scanPresets(e0: number): { id: string; label: string; plan: ScanPlan }[] {
-  const step = xanesStep_eV(e0);
   return [
     { id: 'exafs', label: 'EXAFS to k = 12', plan: defaultPlan(e0) },
     { id: 'long', label: 'EXAFS to k = 15', plan: { ...defaultPlan(e0), regions: defaultPlan(e0).regions.map(r => r.space === 'k' ? { ...r, end: 15 } : r) } },
-    { id: 'xanes', label: 'XANES, −30 to +70 eV', plan: { kind: 'step', repeats: 1, settle_s: 0.2, regions: [
-      { space: 'E', start: -100, end: -30, step: 5, dwell_s: 1 }, { space: 'E', start: -30, end: 70, step, dwell_s: 1 }] } },
+    { id: 'xanes', label: 'XANES, −30 to +70 eV', plan: xanesPlan(e0) },
   ];
 }
 
@@ -189,6 +184,16 @@ export function ControlRail() {
       </div>
       <Range label="Temperature" value={env.temperature_K} min={tRange[0]} max={tRange[1]} step={1} unit="K" onChange={temperature_K => run({ type: 'temperature', temperature_K })} />
       {env.windows.length > 0 && <p className="twin-soon">Beam passes {env.windows.length} windows of {q(env.windows[0].thickness_um, 'μm')} <Tex plain>{formulaTex(env.windows[0].formula)}</Tex> (Kapton).</p>}
+    </Fold>
+
+    <Fold id="twin-c-dose" title="Beam size and dose">
+      <Range label="Beam width" value={p.beam_um[0]} min={5} max={2000} step={5} unit="μm" hint="FWHM at the sample" onChange={w => run({ type: 'beam', beam_um: [w, p.beam_um[1]] })} />
+      <Range label="Beam height" value={p.beam_um[1]} min={5} max={2000} step={5} unit="μm" hint="FWHM at the sample" onChange={h => run({ type: 'beam', beam_um: [p.beam_um[0], h] })} />
+      <Range label="Fresh spots per scan" value={scan.spots ?? 1} min={1} max={50} step={1} hint="move the sample between points, or use a flow cell" onChange={spots => run({ type: 'scan', plan: { ...scan, spots } })} />
+      {now?.doseRate_Gy_per_s != null && <Rows rows={[
+        ['Surface dose rate', <>{sci(now.doseRate_Gy_per_s)} <Unit>Gy/s</Unit></>],
+        ...(duration ? [['Dose per spot, whole scan', <>{sci(now.doseRate_Gy_per_s * duration.total_s / (scan.spots ?? 1))} <Unit>Gy</Unit></>]] as [ReactNode, ReactNode][] : []),
+      ]} />}
     </Fold>
 
     <Fold id="twin-c-sdd" title="Fluorescence detector">

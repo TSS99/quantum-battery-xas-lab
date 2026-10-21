@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { Copy, Download, Upload, X } from 'lucide-react';
 import { Num } from '../tex';
 import { Plot } from '../plot';
 import { download } from '../ui';
 import { seededRandom } from '@/lib/xas';
-import { SCENARIOS, type Scenario, type ScenarioMetrics } from '@/lib/twin/scenarios';
+import { SCENARIOS, scenarioOf, type Scenario, type ScenarioMetrics } from '@/lib/twin/scenarios';
+import { RESULT_FORMAT, classCsv, classLink, parseClassHash, parseResult, resultToJson, summarize, type TrainingResult } from '@/lib/twin/classroom';
 import { Recorder, SNAP_INTERVAL_S, type TelemetryLog } from '@/lib/twin/telemetry';
 import type { TwinState } from '@/lib/twin/types';
 import { useTwin } from './twin-store';
@@ -16,6 +17,10 @@ interface Run {
   truth: Record<string, number>;
   seed: number;
   started: number;
+  /** Wall-clock start, ISO 8601, for the class result file. */
+  startedAt: string;
+  /** Seconds from the start to the judgement. */
+  seconds?: number;
   recorder: Recorder | null;
   phase: 'working' | 'judging' | 'revealed';
   metrics?: ScenarioMetrics;
@@ -39,8 +44,18 @@ export function Training() {
   const [run, setRun] = useState<Run | null>(null);
   const [answer, setAnswer] = useState(''), [rating, setRating] = useState(-1), [cues, setCues] = useState<string[]>([]), [note, setNote] = useState('');
   const [frame, setFrame] = useState(0);
+  // Classroom: the task a class link names, the student's name, and the results an instructor loads.
+  const [assigned, setAssigned] = useState<Scenario | null>(null), [student, setStudent] = useState('');
+  const [classResults, setClassResults] = useState<TrainingResult[]>([]), [classNote, setClassNote] = useState('');
+  const resultFiles = useRef<HTMLInputElement>(null);
   const previous = useRef<TwinState | null>(null), acquires = useRef(view.acquireRequest);
   const now = () => run ? (performance.now() - run.started) / 1000 : 0;
+
+  // A class link (#train=<task>&seed=<n>) opens the training dialog on that task; the page reads the seed.
+  useEffect(() => {
+    const id = parseClassHash(window.location.hash), scenario = id ? scenarioOf(id) : undefined;
+    if (scenario) { setAssigned(scenario); dispatch({ type: 'training', open: true }); }
+  }, [dispatch]);
 
   useEffect(() => {
     const d = dialog.current;
@@ -82,7 +97,7 @@ export function Training() {
     const seed = twin.seed;
     const { state, truth } = scenario.setup(twin, seededRandom(seed >>> 0));
     const recorder = record ? new Recorder(sessionId(), { id: scenario.id, seed }, experience, new Date()) : null;
-    setRun({ scenario, truth, seed, started: performance.now(), recorder, phase: 'working' });
+    setRun({ scenario, truth, seed, started: performance.now(), startedAt: new Date().toISOString(), recorder, phase: 'working' });
     setAnswer(''); setRating(-1); setCues([]); setNote(''); setFrame(0);
     previous.current = state;
     dispatch({ type: 'load', twin: state, locked: scenario.locked, note: `Training: ${scenario.title}. Seed ${seed}.` });
@@ -94,8 +109,37 @@ export function Training() {
     const metrics = run.scenario.metrics({ state: twin, truth: run.truth, acquisitions: [], answer: answer === '' ? undefined : Number(answer) });
     run.recorder?.add({ t: now(), type: 'judge', rating: rating + 1, cues, note });
     run.recorder?.add({ t: now(), type: 'end', score: metrics.score, success: metrics.success });
-    setRun({ ...run, phase: 'revealed', metrics });
+    setRun({ ...run, phase: 'revealed', metrics, seconds: now() });
     dispatch({ type: 'note', text: `Training result: ${metrics.score} out of 100.` });
+  }
+
+  async function copyLink(scenario: Scenario) {
+    const link = classLink(window.location.href, scenario.id, twin.seed);
+    try { await navigator.clipboard.writeText(link); setClassNote(`Class link for ${scenario.title.toLowerCase()} copied. Everyone who opens it gets this task with seed ${twin.seed}.`); }
+    catch { setClassNote(`The browser could not copy the link. Share this address: ${link}`); }
+  }
+
+  function downloadResult() {
+    if (!run?.metrics) return;
+    const value = answer === '' ? null : Number(answer);
+    const result: TrainingResult = {
+      format: RESULT_FORMAT, student: student.trim().slice(0, 80), scenario: { id: run.scenario.id, title: run.scenario.title }, seed: run.seed,
+      score: run.metrics.score, success: run.metrics.success, confidence: Math.max(1, rating + 1), cues, answer: value !== null && Number.isFinite(value) ? value : null,
+      details: run.metrics.details, started: run.startedAt, seconds: run.seconds ?? now(),
+    };
+    const who = result.student.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    download(`twin-result-${run.scenario.id}-seed${run.seed}${who ? '-' + who : ''}.json`, resultToJson(result), 'application/json');
+  }
+
+  async function loadResults(files: FileList | null) {
+    if (!files?.length) return;
+    const loaded: TrainingResult[] = [], rejected: string[] = [];
+    for (const file of Array.from(files)) {
+      try { loaded.push(parseResult(await file.text())); } catch (error) { rejected.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    setClassResults(list => [...list, ...loaded]);
+    setClassNote(`${loaded.length} result${loaded.length === 1 ? '' : 's'} loaded.${rejected.length ? ' Not loaded: ' + rejected.join('; ') : ''}`);
+    if (resultFiles.current) resultFiles.current.value = '';
   }
 
   function close() {
@@ -113,6 +157,11 @@ export function Training() {
           <button type="button" className="icon-button" aria-label="Close" onClick={() => dispatch({ type: 'training', open: false })}><X size={18} aria-hidden="true" /></button>
         </div>
         <p className="twin-note">Each task hides one thing about the instrument, seeded from the link (seed <Num>{String(twin.seed)}</Num>). Work with the normal controls, judge your result, then see the truth.</p>
+        {assigned && <section className="twin-assigned" aria-labelledby="twin-assigned-title">
+          <h3 id="twin-assigned-title">Your instructor&apos;s task</h3>
+          <p>{assigned.title}, seed <Num>{String(twin.seed)}</Num>. After the reveal, download your result and send it to your instructor.</p>
+          <button type="button" className="button cta small" onClick={() => start(assigned)}>Start the assigned task</button>
+        </section>}
         <fieldset className="twin-chamber">
           <legend>Recording</legend>
           <label className="twin-check"><input type="radio" name="twin-record" checked={!record} onChange={() => setRecord(false)} />Do not record</label>
@@ -126,8 +175,23 @@ export function Training() {
         <ul className="twin-scenarios">{SCENARIOS.map(s => <li key={s.id}>
           <h3>{s.title}</h3>
           <p><TexProse>{s.brief}</TexProse></p>
-          <button type="button" className="button cta small" onClick={() => start(s)}>Start {s.title.toLowerCase()}</button>
+          <div className="twin-task-actions">
+            <button type="button" className="button cta small" onClick={() => start(s)}>Start {s.title.toLowerCase()}</button>
+            <button type="button" className="button secondary small" aria-label={`Copy class link for ${s.title.toLowerCase()}`} onClick={() => copyLink(s)}><Copy size={14} aria-hidden="true" />Class link</button>
+          </div>
         </li>)}</ul>
+        <details className="twin-details twin-class">
+          <summary>For instructors: class links and results</summary>
+          <p className="twin-note">A class link opens one task with one seed for everyone, so the whole class meets the same hidden fault. After the reveal each student downloads a result file; load the files here to see the class together. The files stay in this browser.</p>
+          <input ref={resultFiles} className="sr-only" type="file" multiple accept=".json,application/json" aria-label="Student result files" onChange={e => loadResults(e.target.files)} />
+          <div className="twin-task-actions">
+            <button type="button" className="button secondary small" onClick={() => resultFiles.current?.click()}><Upload size={14} aria-hidden="true" />Load result files</button>
+            {classResults.length > 0 && <button type="button" className="button secondary small" onClick={() => download('twin-class-results.csv', classCsv(classResults), 'text/csv')}><Download size={14} aria-hidden="true" />Download CSV</button>}
+            {classResults.length > 0 && <button type="button" className="button secondary small" onClick={() => { setClassResults([]); setClassNote('Results cleared.'); }}>Clear</button>}
+          </div>
+          {classResults.length > 0 && <ClassTables results={classResults} />}
+        </details>
+        <p className="twin-dialog-status" role="status">{classNote}</p>
       </div>
     </dialog>
 
@@ -163,11 +227,30 @@ export function Training() {
           </label>
           {shown && <p className="twin-readout">At <Num>{shown.t.toFixed(1)}</Num> s: {shown.mode} mode, energy <Num>{shown.energy_eV.toFixed(1)}</Num> eV, score <Num>{String(shown.score)}</Num>.</p>}
         </div>}
+        <label className="twin-field">Your name for the class result (optional)<input value={student} maxLength={80} autoComplete="name" onChange={e => setStudent(e.target.value)} /></label>
         <div className="twin-task-actions">
+          <button type="button" className="button cta small" onClick={downloadResult}><Download size={14} aria-hidden="true" />Download the result</button>
           {run.recorder && <button type="button" className="button secondary small" onClick={() => download(`twin-training-${run.scenario.id}-seed${run.seed}.json`, run.recorder!.toJSON())}><Download size={14} aria-hidden="true" />Download the recording</button>}
           <button type="button" className="button secondary small" onClick={() => start(run.scenario)}>Try again</button>
         </div>
       </div>}
     </section>}
+  </>;
+}
+
+/** The instructor's view: one row per task, then one per result. */
+function ClassTables({ results }: { results: TrainingResult[] }) {
+  const { rows, tasks } = summarize(results);
+  return <>
+    <table className="twin-calibration-results twin-class-table">
+      <caption className="sr-only">Results by task</caption>
+      <thead><tr><th scope="col">Task</th><th scope="col">Results</th><th scope="col">Mean score</th><th scope="col">Succeeded</th><th scope="col">Mean confidence</th></tr></thead>
+      <tbody>{tasks.map(t => <tr key={t.id}><th scope="row">{t.title}</th><td><Num>{String(t.count)}</Num></td><td><Num>{t.meanScore.toFixed(0)}</Num></td><td><Num>{String(t.successes)}</Num> of <Num>{String(t.count)}</Num></td><td><Num>{t.meanConfidence.toFixed(1)}</Num> of <Num>5</Num></td></tr>)}</tbody>
+    </table>
+    <table className="twin-calibration-results twin-class-table">
+      <caption className="sr-only">Results by student</caption>
+      <thead><tr><th scope="col">Student</th><th scope="col">Task</th><th scope="col">Score</th><th scope="col">Confidence</th><th scope="col">Time</th></tr></thead>
+      <tbody>{rows.map((r, i) => <tr key={i}><th scope="row">{r.student || 'Unnamed'}</th><td>{r.scenario.title}, seed <Num>{String(r.seed)}</Num></td><td><Num>{String(r.score)}</Num>{r.success ? ', succeeded' : ''}</td><td><Num>{String(r.confidence)}</Num> of <Num>5</Num></td><td><Num>{(r.seconds / 60).toFixed(1)}</Num> min</td></tr>)}</tbody>
+    </table>
   </>;
 }

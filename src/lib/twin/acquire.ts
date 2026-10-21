@@ -175,7 +175,10 @@ export function simulatePoint(state: TwinState, reading_eV: number, random: Rand
     const energy_eV = order.energy_eV;
     const onSample = add(sums.I0, i0Config, order.flux * intensity, energy_eV);
     const through = transmission(sample, environment, energy_eV);
-    const afterIt = add(sums.It, itConfig, onSample * through.transmission, energy_eV);
+    // A glitch takes photons from part of the beam; on an uneven sample that part does not see the average
+    // thickness, so the dip no longer cancels in ln(I0/It) (teaching model, see glitchResidual).
+    const glitch = order.order === 1 && beam ? glitchResidual(1 - beam.glitchThroughput, through) : 0;
+    const afterIt = add(sums.It, itConfig, onSample * through.transmission * Math.exp(-glitch), energy_eV);
     // Harmonics sit far above the edge, where the foil is just its tabulated attenuation.
     const foil = !state.reference ? 1 : order.order === 1 ? foilTransmission(state.reference, sample, energy_eV)
       : Math.exp(-mu(state.reference.formula, state.reference.density, energy_eV).total * state.reference.thickness_um * 1e-4);
@@ -220,9 +223,20 @@ export function simulatePoint(state: TwinState, reading_eV: number, random: Rand
     ocr,
     deadFraction: loss.deadFraction,
     muTrue,
-    dose_Gy: (options.priorDose_Gy ?? 0) + dose_Gy_per_s * dwell_s,
+    // Spreading the scan over fresh spots divides the dose each spot receives.
+    dose_Gy: (options.priorDose_Gy ?? 0) + dose_Gy_per_s * dwell_s / (state.scan.spots ?? 1),
     saturated,
   };
+}
+
+/**
+ * Extra apparent mu x a glitch adds on an uneven sample (teaching model). The glitch removes the fraction
+ * `dip` of the beam from one part of the footprint; on a sample with pinholes or uneven thickness that part
+ * transmits differently from the average, so ln(I0/It) shifts by about dip times the gap between the
+ * true mu x and the apparent one. A uniform sample has no gap, and the glitch cancels in the ratio.
+ */
+export function glitchResidual(dip: number, through: { muX: number; apparentMuX: number }): number {
+  return dip > 0 ? dip * Math.max(0, through.muX - through.apparentMuX) : 0;
 }
 
 /** Column names in XDI dictionary order; icr and ocr are rates per second, the others counts. */
