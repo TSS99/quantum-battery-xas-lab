@@ -191,7 +191,7 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible();
   await expect(changed(page)).toContainText('Acquisition 1 stored', { timeout: 30_000 });
   await expect(page.getByRole('tabpanel').locator('svg path').first()).toBeVisible();
-  const gallery = page.getByRole('heading', { name: 'Acquisitions' }).locator('..');
+  const gallery = page.getByRole('region', { name: 'Acquisitions' });
   await expect(gallery.getByRole('listitem')).toHaveCount(1);
   // The Cu foil is in the FEFF library, so the scan's EXAFS is its path sum.
   await expect(page.getByRole('tabpanel')).toContainText('Fine structure: FEFF paths of Cu');
@@ -225,13 +225,13 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   await sessionDialog.getByRole('button', { name: 'Close' }).click();
   await page.reload();
   await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Acquisitions' }).locator('..').getByRole('listitem')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Acquisitions' }).getByRole('listitem')).toHaveCount(0);
   await page.getByRole('button', { name: 'Session', exact: true }).click();
   sessionDialog = page.getByRole('dialog', { name: 'Session' });
   await sessionDialog.getByLabel('Session file').setInputFiles((await sessionDownload.path())!);
   await expect(sessionDialog.getByRole('status')).toContainText('restored its acquisitions');
   await sessionDialog.getByRole('button', { name: 'Close' }).click();
-  const restoredGallery = page.getByRole('heading', { name: 'Acquisitions' }).locator('..');
+  const restoredGallery = page.getByRole('region', { name: 'Acquisitions' });
   await expect(restoredGallery.getByRole('listitem')).toHaveCount(1);
   await restoredGallery.getByLabel('Acquisition data file').setInputFiles((await download.path())!);
   await expect(restoredGallery.getByRole('status')).toContainText('imported as measured data');

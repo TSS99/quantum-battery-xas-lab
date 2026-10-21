@@ -392,8 +392,8 @@ export function ResultsDock() {
       <p><TexProse>{TABS[view.tab].shows}</TexProse></p>
       {panel}
     </div>
-    <div className="twin-gallery">
-      <div className="twin-gallery-head"><h3>Acquisitions</h3>
+    <section className="twin-gallery" aria-labelledby="twin-gallery-title">
+      <div className="twin-gallery-head"><h3 id="twin-gallery-title">Acquisitions</h3>
         <input ref={importInput} className="sr-only" type="file" accept=".xdi,.txt,.dat,.csv,text/plain" aria-label="Acquisition data file" onChange={loadData} />
         <button type="button" className="button secondary small" onClick={() => importInput.current?.click()}><Upload size={14} aria-hidden="true" />Import data</button>
       </div>
@@ -416,7 +416,7 @@ export function ResultsDock() {
         </span>
       </li>)}</ol> : <p className="twin-empty">No acquisitions stored.</p>}
       <p className="twin-dialog-status" role="status">{importStatus}</p>
-    </div>
+    </section>
     {popUp && createPortal(<>
       <header className="twin-popout-head">
         <h1 className="twin-kicker"><span className={'twin-dot' + (replaying ? ' is-live' : '')} aria-hidden="true" />Results · Beamline twin</h1>
