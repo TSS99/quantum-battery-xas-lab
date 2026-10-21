@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type Dispatch } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, GraduationCap, Keyboard, PanelLeft, PanelRight, SquareTerminal } from 'lucide-react';
+import { ArrowLeft, FlaskConical, GraduationCap, Keyboard, PanelLeft, PanelRight, SquareTerminal } from 'lucide-react';
 import { energyChange, shortcutAction, type TwinAction } from './twin-state';
 import { TwinProvider, useTwin } from './twin-store';
 import { ModeBar } from './mode-bar';
@@ -10,6 +10,7 @@ import { ResultsDock } from './results-dock';
 import { ExplainRail } from './explain-rail';
 import { ControlRail } from './control-rail';
 import { ShortcutsDialog } from './shortcuts-dialog';
+import { CalibrateDialog } from './calibrate-dialog';
 import { Training } from './training';
 import { NARROW_QUERY } from './fold';
 
@@ -52,10 +53,13 @@ function useEnergyNote(energy_eV: number, dispatch: Dispatch<TwinAction>) {
 function TwinLayout() {
   const { store: { twin, view }, dispatch } = useTwin();
   const [keysOpen, setKeysOpen] = useState(false);
+  const [calibrateOpen, setCalibrateOpen] = useState(false);
   const keysButton = useRef<HTMLButtonElement>(null);
+  const calibrateButton = useRef<HTMLButtonElement>(null);
   useShortcuts(dispatch);
   useEnergyNote(twin.energy_eV, dispatch);
   const closeKeys = () => { setKeysOpen(false); keysButton.current?.focus(); };
+  const closeCalibrate = () => { setCalibrateOpen(false); calibrateButton.current?.focus(); };
   return <div className={'twin-app' + (view.enlarged ? ' is-enlarged' : '') + (view.leftHidden ? ' left-hidden' : '') + (view.rightHidden ? ' right-hidden' : '')}>
     <div className="twin-col twin-col-left">
       <header className="twin-hero">
@@ -84,6 +88,7 @@ function TwinLayout() {
         <p className="twin-kicker" aria-hidden="true">Controls</p>
         <div className="twin-toolbar-buttons">
           <button type="button" className="twin-chip is-accent" aria-haspopup="dialog" aria-keyshortcuts="T" onClick={() => dispatch({ type: 'training', open: true })}><GraduationCap size={15} aria-hidden="true" />Training</button>
+          <button type="button" className="twin-icon" ref={calibrateButton} aria-haspopup="dialog" title="Calibrate from data" onClick={() => setCalibrateOpen(true)}><FlaskConical size={16} aria-hidden="true" /><span className="sr-only">Calibrate from data</span></button>
           <button type="button" className="twin-icon" aria-haspopup="dialog" aria-keyshortcuts="`" title="Console (`)" onClick={() => window.dispatchEvent(new Event('xaslab:console'))}><SquareTerminal size={16} aria-hidden="true" /><span className="sr-only">Console</span></button>
           <button type="button" className="twin-icon" ref={keysButton} aria-haspopup="dialog" title="Keyboard shortcuts" onClick={() => setKeysOpen(true)}><Keyboard size={16} aria-hidden="true" /><span className="sr-only">Keyboard shortcuts</span></button>
           <button type="button" className="twin-icon twin-rail-toggle" aria-pressed={!view.leftHidden} aria-keyshortcuts="[" title="Explanation ([)" onClick={() => dispatch({ type: 'rail', side: 'left' })}><PanelLeft size={16} aria-hidden="true" /><span className="sr-only">Explanation</span></button>
@@ -93,6 +98,7 @@ function TwinLayout() {
       <ControlRail />
     </div>
     <ShortcutsDialog open={keysOpen} onClose={closeKeys} />
+    <CalibrateDialog open={calibrateOpen} onClose={closeCalibrate} />
   </div>;
 }
 

@@ -339,6 +339,29 @@ test('keyboard shortcuts dialog lists the keys, blocks them while open and retur
   await expect(opener).toBeFocused();
 });
 
+test('calibration dialog loads a generated mystery file and applies its energy correction', async ({ page }) => {
+  await openTwin(page);
+  await page.getByRole('button', { name: 'Calibrate from data' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Calibrate from data' });
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'Try mystery instrument' }).click();
+  await expect(dialog.getByRole('status')).toContainText('3 calibration fits completed', { timeout: 30_000 });
+  const [mysteryDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Download mystery XDI' }).click(),
+  ]);
+  const mysteryPath = await mysteryDownload.path();
+  expect(mysteryPath).not.toBeNull();
+
+  await dialog.getByLabel('Calibration data file').setInputFiles(mysteryPath!);
+  await expect(dialog.getByRole('status')).toContainText('3 calibration fits completed', { timeout: 30_000 });
+  await dialog.getByRole('button', { name: 'Apply to profile' }).click();
+  await expect(dialog.getByRole('status')).toContainText('Applied energy correction and processor dead time');
+  await dialog.getByRole('button', { name: 'Profile editor' }).click();
+  await expect(dialog.getByLabel('Energy correction')).not.toHaveValue('0');
+});
+
 test('phone layout: one column, sticky mode bar, folded explanation and controls, no horizontal scroll at 390 px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openTwin(page);

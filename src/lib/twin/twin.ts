@@ -177,6 +177,7 @@ export type TwinCommand =
   | { type: 'energy'; energy_eV: number }
   | { type: 'mode'; mode: TwinMode }
   | { type: 'realistic'; value: boolean }
+  | { type: 'monoOffset'; offset_eV: number }
   | { type: 'detune'; detune: number }
   | { type: 'crystal'; crystal: Crystal }
   | { type: 'mirror'; id: string; inserted: boolean }
@@ -246,6 +247,10 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
     }
     case 'mode': return done({ ...state, mode: command.mode }, `Mode: ${command.mode.replace('-', ' ')}.`);
     case 'realistic': return done({ ...state, realistic: command.value }, command.value ? 'Realistic detectors: counting noise, drift, glitches and dead time.' : 'Educational view: expected values, without detector noise.');
+    case 'monoOffset': {
+      const offset_eV = clamp(command.offset_eV, [-100, 100]);
+      return done({ ...state, profile: { ...state.profile, mono: { ...state.profile.mono, offset_eV } } }, String.raw`Monochromator energy correction $${offset_eV >= 0 ? '+' : ''}${fmt(offset_eV, 3)}\ \mathrm{eV}$.`);
+    }
     case 'detune': {
       const detune = clamp(command.detune, [0, 1]);
       return done({ ...state, profile: { ...state.profile, mono: { ...state.profile.mono, detune } } }, `Second crystal detuned by ${Math.round(detune * 100)} % of the rocking curve width.`);
