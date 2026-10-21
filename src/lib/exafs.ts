@@ -381,7 +381,8 @@ function interpolateLinear(x: number[], y: number[], targets: number[]) {
   });
 }
 
-function xftfFast(values: number[], nfft: number, kstep: number) {
+/** Larch xftf_fast: already weighted/windowed uniform samples, zero padded, negative FFT sign. */
+export function xftfFast(values: number[], nfft: number, kstep: number) {
   const output = fftForward(values, nfft), scale = kstep / Math.sqrt(Math.PI);
   return {
     real: Array.from(output.real.slice(0, nfft / 2), value => value * scale),
