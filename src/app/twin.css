@@ -54,6 +54,9 @@ body:has(.twin-app) {background:#050608}
 /* ---------- Explanation card: what you are looking at, a picked part, what just changed, readings ---------- */
 .twin-left {display:flex;flex-direction:column;gap:14px;padding:16px 18px 18px}
 .twin-left .twin-fold {border:0}
+.twin-left {position:relative}
+.twin-speak {position:absolute;top:13px;right:46px;width:30px;height:30px;border-radius:8px}
+.twin-speak.is-part {right:14px}
 .twin-fold-head {margin:0;font-size:15px;font-weight:400;letter-spacing:0}
 .twin-fold-head button {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:40px;padding:6px 0;border:0;background:none;color:var(--tw-muted);font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;text-align:left;cursor:pointer}
 .twin-fold-head button:hover,.twin-fold-head button[aria-expanded="true"] {color:var(--tw-text)}

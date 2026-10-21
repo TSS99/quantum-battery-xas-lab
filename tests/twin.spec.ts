@@ -25,10 +25,11 @@ async function openTwin(page: Page, hash = '') {
 }
 
 async function axeViolations(page: Page) {
-  // The CDN occasionally drops a request; try three times before giving up on the check.
+  // The CDN occasionally drops or stalls a request; give each try 15 s and try three times before giving up on the check.
   let loaded = false;
   for (let attempt = 0; attempt < 3 && !loaded; attempt++) {
-    try { await page.addScriptTag({ url: AXE_URL }); loaded = true; } catch { await page.waitForTimeout(1000); }
+    const stalled = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('stalled')), 15_000));
+    try { await Promise.race([page.addScriptTag({ url: AXE_URL }), stalled]); loaded = true; } catch { await page.waitForTimeout(1000); }
   }
   if (!loaded) test.skip(true, `axe-core could not be loaded from ${AXE_URL}`);
   return page.evaluate(async () => {
@@ -51,6 +52,8 @@ test('twin page loads with one h1, a preview breadcrumb, noindex and no console 
   // The twin runs full screen: no site header or module bar, and the breadcrumb leads back to the lab.
   await expect(page.getByRole('navigation', { name: 'Laboratory modules' })).toHaveCount(0);
   await expect(crumbs.getByRole('link', { name: 'XAS Lab' })).toHaveAttribute('href', /\/quantum-battery-xas-lab\/?$|^\/$/);
+  // Chromium has speech synthesis, so the explanation offers to read itself aloud.
+  await expect(page.getByRole('complementary', { name: 'Explanation' }).getByRole('button', { name: 'Read aloud' })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
   await expect(page.locator('.katex-error')).toHaveCount(0);
   expect(errors).toEqual([]);

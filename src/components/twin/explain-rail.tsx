@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Square, Volume2 } from 'lucide-react';
 import { Num, Tex, Unit } from '../tex';
 import type { TwinMode } from '@/lib/twin/types';
 import { modeInfo } from './twin-state';
@@ -49,13 +50,49 @@ function stat(id: StatId, live: HutchLive): [ReactNode, ReactNode, ReactNode] {
   }
 }
 
+/** Text a speech engine can read: each formula as the characters of its MathML, not its TeX source or its drawn glyphs. */
+function speechText(root: HTMLElement) {
+  const copy = root.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll('button, .twin-source').forEach(el => el.remove());
+  copy.querySelectorAll('.katex').forEach(k => {
+    const math = k.querySelector('.katex-mathml math');
+    math?.querySelector('annotation')?.remove();
+    k.replaceWith(' ' + ((math ?? k.querySelector('.katex-html') ?? k).textContent ?? '') + ' ');
+  });
+  return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/** Reads the card aloud with the browser's own speech synthesis; nothing leaves the device. Hidden where unsupported. */
+function ReadAloud({ target, topic, className }: { target: () => HTMLElement | null; topic: string; className: string }) {
+  const [supported, setSupported] = useState(false), [speaking, setSpeaking] = useState(false);
+  useEffect(() => { setSupported('speechSynthesis' in window); }, []);
+  // A new mode or part stops the old reading.
+  useEffect(() => { if ('speechSynthesis' in window) speechSynthesis.cancel(); setSpeaking(false); }, [topic]);
+  useEffect(() => () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); }, []);
+  if (!supported) return null;
+  const toggle = () => {
+    speechSynthesis.cancel();
+    const el = target();
+    if (speaking || !el) { setSpeaking(false); return; }
+    const utterance = new SpeechSynthesisUtterance(speechText(el));
+    utterance.lang = 'en';
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    speechSynthesis.speak(utterance);
+    setSpeaking(true);
+  };
+  return <button type="button" className={'twin-icon twin-speak ' + className} aria-pressed={speaking} title={speaking ? 'Stop reading' : 'Read aloud'} onClick={toggle}>
+    {speaking ? <Square size={14} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}<span className="sr-only">Read aloud</span>
+  </button>;
+}
+
 /** Left card: what the mode shows (or the part picked in the scene), the last change, and the mode's key readings. */
 export function ExplainRail() {
   const { store: { twin, view }, dispatch, live } = useTwin();
   const info = modeInfo(twin.mode);
   const readings = live && typeof live === 'object' ? live : null;
   const part = view.part ? partOf(view.part) : null;
-  const card = useRef<HTMLElement>(null);
+  const card = useRef<HTMLElement>(null), main = useRef<HTMLDivElement>(null);
   // On phones the card sits below the scene, so bring it into view when a part is picked.
   useEffect(() => {
     if (part && matchMedia(NARROW_QUERY).matches) card.current?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -69,7 +106,8 @@ export function ExplainRail() {
   const physicsLive = part && readings && physics?.live ? physics.live(twin, readings) : null;
 
   return <aside className="twin-card twin-left" aria-label="Explanation">
-    {part
+    <ReadAloud target={() => main.current} topic={view.part ?? twin.mode} className={part ? 'is-part' : ''} />
+    <div ref={main}>{part
       ? <section id="hutch-card" ref={card} className="twin-part" aria-labelledby="hutch-card-title" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); closePart(); } }}>
         <p className="twin-kicker">The instrument</p>
         <h2 id="hutch-card-title" className="twin-title">{part.name}</h2>
@@ -88,7 +126,7 @@ export function ExplainRail() {
       : <Fold id="twin-looking" title="What you are looking at" level={2} desktopOpen className="twin-looking">
         <p className="twin-title">{info.headline[0]} <em>{info.headline[1]}</em></p>
         <p className="twin-body"><TexProse>{info.looking}</TexProse></p>
-      </Fold>}
+      </Fold>}</div>
     <div className="twin-changed">
       <h2 className="twin-kicker">What just changed</h2>
       <p aria-live="polite">{view.change ? <TexProse>{view.change}</TexProse> : 'Nothing yet. Choose a mode or change a control and the effect is described here.'}</p>
