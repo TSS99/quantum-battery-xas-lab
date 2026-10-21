@@ -217,11 +217,13 @@ describe('validateState', () => {
 describe('session files', () => {
   it('round-trip the state and acquisitions, NaN values included', () => {
     const acquisition = runScan(DEFAULT_STATE, SHORT, seededRandom(1));
+    acquisition.name = 'Copper check';
     acquisition.columns.mutrans[0] = NaN;
     const back = fromSession(toSession(DEFAULT_STATE, [acquisition]));
     expect(back.state).toEqual(DEFAULT_STATE);
     expect(back.acquisitions[0].columns.energy).toEqual(acquisition.columns.energy);
     expect(back.acquisitions[0].columns.mutrans[0]).toBeNull();
+    expect(back.acquisitions[0].name).toBe('Copper check');
   });
 
   it('reject malformed files with a plain message', () => {
@@ -232,6 +234,9 @@ describe('session files', () => {
     expect(() => fromSession(JSON.stringify(state))).toThrow(/teleport/);
     const columns = JSON.parse(toSession(DEFAULT_STATE, [{ id: 'a', kind: 'transmission', columns: { energy: [1, 2], i0: [1] }, metadata: {}, provenance: [] }]));
     expect(() => fromSession(JSON.stringify(columns))).toThrow(/i0/);
+    const metadata = JSON.parse(toSession(DEFAULT_STATE, [runScan(DEFAULT_STATE, SHORT, seededRandom(1))]));
+    metadata.acquisitions[0].metadata['Element.symbol'] = 29;
+    expect(() => fromSession(JSON.stringify(metadata))).toThrow(/metadata/);
   });
 });
 

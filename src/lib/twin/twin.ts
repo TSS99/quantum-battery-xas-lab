@@ -17,6 +17,7 @@ import { massFractions } from '../xraydata';
 import { fluorescence, fluorescenceLine, muComponents, transmission } from './sample';
 import { efficiency, filterTransmission, mcaSpectrum, solidAngle, type McaSpectrum } from './sdd';
 import { TWIN_MODES, type Acquisition, type ChamberConfig, type Crystal, type EnvironmentConfig, type SampleConfig, type ScanPlan, type SddConfig, type TwinMode, type TwinState } from './types';
+import { validateTwinProfile } from './calibrate';
 
 export { runScan, simulatePoint };
 
@@ -409,7 +410,7 @@ export function toSession(state: TwinState, acquisitions: Acquisition[] = []): s
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-const finite = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
 /** Reads a session file. Throws with a plain message on anything malformed; clamps values into range. */
 export function fromSession(text: string): TwinSession {
@@ -419,26 +420,36 @@ export function fromSession(text: string): TwinSession {
   const state = raw.state;
   if (!isObject(state)) throw new Error('The session has no state.');
   if (!TWIN_MODES.includes(state.mode as TwinMode)) throw new Error(`Unknown mode "${String(state.mode)}".`);
-  if (!finite(state.energy_eV) || !finite(state.seed)) throw new Error('The session state needs a numeric energy and seed.');
+  if (!finite(state.energy_eV) || !finite(state.seed) || !Number.isInteger(state.seed) || state.seed < 0 || state.seed > 4294967295) throw new Error('The session state needs a numeric energy and seed.');
   const profile = state.profile, sample = state.sample, environment = state.environment;
-  if (!isObject(profile) || profile.format !== 'xaslab-twin-profile/1') throw new Error('The session profile is not xaslab-twin-profile/1.');
-  if (!isObject(sample) || typeof sample.formula !== 'string' || typeof sample.absorber !== 'string' || !finite(sample.density) || !finite(sample.thickness_um)) {
+  try { validateTwinProfile(profile); } catch (error) { throw new Error(error instanceof Error ? error.message : 'The session profile is invalid.'); }
+  if (!isObject(sample) || typeof sample.formula !== 'string' || !sample.formula || typeof sample.absorber !== 'string' || !/^[A-Z][a-z]?$/.test(sample.absorber) || typeof sample.edge !== 'string' || !finite(sample.density) || !finite(sample.thickness_um) || !['pellet', 'foil', 'film', 'solution', 'capillary'].includes(String(sample.form)) || !finite(sample.pinholeFraction) || !finite(sample.thicknessSpread) || !finite(sample.particle_um) || !finite(sample.incidence_deg)) {
     throw new Error('The session sample needs a formula, absorber, density and thickness.');
   }
-  if (!isObject(environment) || !(environment.kind as string in TEMPERATURE_RANGE)) throw new Error('The session environment is not recognised.');
-  if (!isObject(state.scan) || !Array.isArray(state.scan.regions)) throw new Error('The session scan has no regions.');
+  if (!isObject(environment) || !(environment.kind as string in TEMPERATURE_RANGE) || !finite(environment.temperature_K) || !Array.isArray(environment.windows)) throw new Error('The session environment is not recognised.');
+  for (const window of environment.windows) if (!isObject(window) || typeof window.formula !== 'string' || !finite(window.density) || !finite(window.thickness_um)) throw new Error('The session environment has an invalid window.');
+  if (state.reference !== undefined && (!isObject(state.reference) || typeof state.reference.formula !== 'string' || !finite(state.reference.density) || !finite(state.reference.thickness_um))) throw new Error('The session reference foil is invalid.');
+  if (!isObject(state.scan) || !Array.isArray(state.scan.regions) || !state.scan.regions.length || typeof state.scan.kind !== 'string' || !['step', 'continuous'].includes(state.scan.kind) || !finite(state.scan.repeats) || !finite(state.scan.settle_s)) throw new Error('The session scan has no valid regions.');
+  for (const region of state.scan.regions) if (!isObject(region) || !['E', 'k'].includes(String(region.space)) || !finite(region.start) || !finite(region.end) || !finite(region.step) || !finite(region.dwell_s)) throw new Error('The session scan has an invalid region.');
+  if (typeof state.realistic !== 'boolean') throw new Error('The session realistic setting must be true or false.');
   const acquisitions = raw.acquisitions ?? [];
   if (!Array.isArray(acquisitions)) throw new Error('Acquisitions must be a list.');
   for (const acquisition of acquisitions) {
-    if (!isObject(acquisition) || !isObject(acquisition.columns) || !Array.isArray(acquisition.columns.energy)) {
+    if (!isObject(acquisition) || typeof acquisition.id !== 'string' || acquisition.name !== undefined && typeof acquisition.name !== 'string' || !TWIN_MODES.includes(acquisition.kind as TwinMode) || !isObject(acquisition.columns) || !Array.isArray(acquisition.columns.energy) || !isObject(acquisition.metadata) || !Array.isArray(acquisition.provenance)) {
       throw new Error('Every acquisition needs columns with an energy column.');
     }
+    if (Object.values(acquisition.metadata).some(value => typeof value !== 'string')) throw new Error('Every acquisition metadata value must be text.');
+    if (acquisition.provenance.some(value => !['tabulated', 'computed', 'measured', 'teaching-model'].includes(String(value)))) throw new Error('An acquisition has unknown provenance.');
     const rows = (acquisition.columns.energy as unknown[]).length;
+    if (rows < 1) throw new Error('An acquisition cannot be empty.');
     for (const [name, column] of Object.entries(acquisition.columns)) {
       if (!Array.isArray(column) || column.length !== rows || column.some(v => typeof v !== 'number' && v !== null)) {
         throw new Error(`Acquisition column ${name} is not a list of ${rows} numbers.`);
       }
     }
+    const energies = acquisition.columns.energy as unknown[];
+    if (energies.some((value, index) => !finite(value) || index > 0 && (value as number) <= (energies[index - 1] as number))) throw new Error('Acquisition energies must be finite and strictly increasing.');
+    if (acquisition.truth !== undefined && (!isObject(acquisition.truth) || Object.values(acquisition.truth).some(value => !finite(value)))) throw new Error('Acquisition truth values must be finite numbers.');
   }
   return { format: SESSION_FORMAT, state: validateState(state as unknown as TwinState).state, acquisitions: acquisitions as Acquisition[] };
 }

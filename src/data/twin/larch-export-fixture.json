@@ -1,0 +1,11 @@
+{
+  "format": "xaslab-twin-larch-export/1",
+  "larchVersion": "2026.3.1",
+  "xdi": "scripts/twin/fixtures/larch-acquisition.xdi",
+  "script": "scripts/twin/fixtures/larch-acquisition.py",
+  "result": {
+    "e0_eV": 8979.1,
+    "edgeStep": 1.436062094,
+    "peakR_A": 1.994175024
+  }
+}

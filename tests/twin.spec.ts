@@ -66,7 +66,7 @@ test('modes switch by click and by keys 1 to 8, and the mode and seed round-trip
   await mode(page, 'Fluorescence').click();
   await expect(mode(page, 'Fluorescence')).toHaveAttribute('aria-pressed', 'true');
   await expect(mode(page, 'Transmission')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page).toHaveURL(/#mode=fluorescence&seed=1$/);
+  await expect(page).toHaveURL(/#v=1&mode=fluorescence&seed=1&s=/);
   await expect(changed(page)).toContainText('Fluorescence');
   await expect(page.getByRole('complementary', { name: 'Explanation' })).toContainText('self-absorption');
   for (const [i, name] of MODES.entries()) {
@@ -74,11 +74,11 @@ test('modes switch by click and by keys 1 to 8, and the mode and seed round-trip
     await expect(mode(page, name)).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('group', { name: 'Modes' }).locator('[aria-pressed="true"]')).toHaveCount(1);
   }
-  await expect(page).toHaveURL(/#mode=damage&seed=1$/);
+  await expect(page).toHaveURL(/#v=1&mode=damage&seed=1&s=/);
   await page.goto('./twin/#mode=xrf&seed=7');
   await expect(mode(page, 'XRF spectrum')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('2');
-  await expect(page).toHaveURL(/#mode=fluorescence&seed=7$/);
+  await expect(page).toHaveURL(/#v=1&mode=fluorescence&seed=7&s=/);
 });
 
 test('shortcut keys are ignored while typing in a field', async ({ page }) => {
@@ -193,7 +193,7 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible();
   await expect(changed(page)).toContainText('Acquisition 1 stored', { timeout: 30_000 });
   await expect(page.getByRole('tabpanel').locator('svg path').first()).toBeVisible();
-  const gallery = page.getByRole('heading', { name: 'Acquisitions' }).locator('..');
+  const gallery = page.getByRole('region', { name: 'Acquisitions' });
   await expect(gallery.getByRole('listitem')).toHaveCount(1);
   // The Cu foil is in the FEFF library, so the scan's EXAFS is its path sum.
   await expect(page.getByRole('tabpanel')).toContainText('Fine structure: FEFF paths of Cu');
@@ -218,6 +218,31 @@ test('Acquire runs a scan in the worker: points build up, the acquisition is sto
   await expect(page.getByRole('tabpanel')).toContainText('saturated');
   await page.getByRole('tab', { name: 'Rocking curve', exact: true }).click();
   await expect(page.getByRole('tabpanel')).toContainText('third harmonic');
+
+  // Sessions restore the gallery after a reload; importing the exported XDI adds measured data.
+  await page.getByRole('button', { name: 'Session', exact: true }).click();
+  let sessionDialog = page.getByRole('dialog', { name: 'Session' });
+  const [sessionDownload] = await Promise.all([page.waitForEvent('download'), sessionDialog.getByRole('button', { name: 'Save session' }).click()]);
+  expect(sessionDownload.suggestedFilename()).toBe('xaslab-twin-session.json');
+  await sessionDialog.getByRole('button', { name: 'Close' }).click();
+  await page.reload();
+  await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Acquisitions' }).getByRole('listitem')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Session', exact: true }).click();
+  sessionDialog = page.getByRole('dialog', { name: 'Session' });
+  await sessionDialog.getByLabel('Session file').setInputFiles((await sessionDownload.path())!);
+  await expect(sessionDialog.getByRole('status')).toContainText('restored its acquisitions');
+  await sessionDialog.getByRole('button', { name: 'Close' }).click();
+  const restoredGallery = page.getByRole('region', { name: 'Acquisitions' });
+  await expect(restoredGallery.getByRole('listitem')).toHaveCount(1);
+  await restoredGallery.getByLabel('Acquisition data file').setInputFiles((await download.path())!);
+  await expect(restoredGallery.getByRole('status')).toContainText('imported as measured data');
+  await expect(restoredGallery.getByRole('listitem')).toHaveCount(2);
+  await expect(restoredGallery.getByRole('listitem').nth(1)).toContainText('Measured');
+  const [larchDownload] = await Promise.all([page.waitForEvent('download'), restoredGallery.getByRole('button', { name: 'Download acquisition 2 as Larch' }).click()]);
+  const larchText = await readFile(await larchDownload.path(), 'utf8');
+  expect(larchText).toContain('pre_edge(');
+  expect(larchText).toContain('autobk(');
   await expect(page.locator('.katex-error')).toHaveCount(0);
   expect(await axeViolations(page)).toEqual([]);
   expect(errors).toEqual([]);

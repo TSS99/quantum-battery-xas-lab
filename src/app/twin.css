@@ -171,6 +171,8 @@ body:has(.twin-app) {background:#050608}
 .twin-badge {padding:1px 8px;border:1px solid var(--tw-line-2);border-radius:999px;font:500 10.5px/1.6 var(--tw-mono);color:var(--tw-muted)}
 .twin-badge.is-teaching-model {border-color:#6b5a2e;color:#e8c27a}
 .twin-gallery h3 {margin:0 0 6px;font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
+.twin-gallery-head {display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.twin-gallery-head h3 {margin:0}
 .twin-gallery ol {display:grid;gap:6px;margin:0;padding:0;list-style:none}
 .twin-gallery li {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:6px 10px;border:1px solid var(--tw-line);border-radius:10px;font-size:13px}
 .twin-gallery-actions {display:flex;flex-wrap:wrap;gap:6px}
