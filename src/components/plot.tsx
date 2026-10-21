@@ -13,11 +13,13 @@ const sciText = (s: string) => s.replace(/^-/, '−').replace(/e([+-]?)(\d+)$/, 
 export interface Series { name: string; label?: ReactNode; color: string; x: number[]; y: number[]; dashed?: boolean; dash?: 'solid' | 'dashed' | 'dotted'; sigma?: number[] }
 /** A shaded x range, such as a fit window; the label is drawn when the band is wide enough. */
 export interface Band { from: number; to: number; label: string }
-interface Props { series: Series[]; xLabel?: string; yLabel?: string; yTex?: string; yUnit?: string; cursor?: number; onCursor?: (n: number) => void; height?: number; exportName?: string; minY?: number; ghostKey?: string; edge?: number; reveal?: number; bands?: Band[] }
-export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm⁻¹)', yTex = yLabel === 'μ (cm⁻¹)' ? '\\mu\\ (\\mathrm{cm}^{-1})' : undefined, yUnit: explicitYUnit, cursor, onCursor, height = 240, exportName = 'spectrum', minY, ghostKey, edge, reveal = 1, bands = [] }: Props) {
+/** onBand makes the band edges draggable with a pointer; the page must offer the same change by keyboard elsewhere. */
+interface Props { series: Series[]; xLabel?: string; yLabel?: string; yTex?: string; yUnit?: string; cursor?: number; onCursor?: (n: number) => void; height?: number; exportName?: string; minY?: number; ghostKey?: string; edge?: number; reveal?: number; bands?: Band[]; onBand?: (index: number, band: Band) => void }
+export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm⁻¹)', yTex = yLabel === 'μ (cm⁻¹)' ? '\\mu\\ (\\mathrm{cm}^{-1})' : undefined, yUnit: explicitYUnit, cursor, onCursor, height = 240, exportName = 'spectrum', minY, ghostKey, edge, reveal = 1, bands = [], onBand }: Props) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, ''), reduced = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null), ref = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(700), [hover, setHover] = useState<number | null>(null);
+  const [drag, setDrag] = useState<{ i: number; edge: 'from' | 'to'; value: number } | null>(null);
   const prior = useRef<{ key?: string; series: Series[]; edge?: number } | null>(null);
   const [ghost, setGhost] = useState<{ series: Series[]; delta: number | null } | null>(null);
   const valid = series.filter(s => s.x.length && s.x.length === s.y.length);
@@ -56,7 +58,12 @@ export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm�
   const ticks = Array.from({ length: width < 400 ? 3 : 5 }, (_, i) => i / (width < 400 ? 2 : 4));
   const fmt = (n: number) => Math.abs(n) >= 100000 || (Math.abs(n) < .01 && n !== 0) ? n.toExponential(1) : Math.abs(n) > 100 ? n.toFixed(0) : n.toFixed(2);
   const inspect = (value: number, commit: boolean) => { setHover(value); if (commit) onCursor?.(value); };
-  const pointerValue = (event: React.PointerEvent<SVGSVGElement>) => { const b = event.currentTarget.getBoundingClientRect(); return Math.max(x0, Math.min(x1, x0 + (((event.clientX - b.left) / b.width * W - L) / (W - L - R)) * (x1 - x0))); };
+  const valueAt = (clientX: number, b: DOMRect) => Math.max(x0, Math.min(x1, x0 + (((clientX - b.left) / b.width * W - L) / (W - L - R)) * (x1 - x0)));
+  const pointerValue = (event: React.PointerEvent<SVGSVGElement>) => valueAt(event.clientX, event.currentTarget.getBoundingClientRect());
+  // A dragged edge stays at least 0.5 % of the axis away from the other edge.
+  const settle = (band: Band, side: 'from' | 'to', value: number): Band => side === 'from'
+    ? { ...band, from: Math.min(value, band.to - (x1 - x0) / 200) } : { ...band, to: Math.max(value, band.from + (x1 - x0) / 200) };
+  const shownBands = bands.map((band, i) => drag?.i === i ? settle(band, drag.edge, drag.value) : band);
   return <div ref={wrapRef} className="plot-wrap">
     <div className="plot-top"><span>{yTex ? <Tex>{yTex}</Tex> : yLabel}</span>{ghost?.delta != null && <span className="edge-delta">edge {ghost.delta > 0 ? '+' : ''}<Num>{ghost.delta.toFixed(2)}</Num> <Unit>eV</Unit></span>}<button className="icon-button" aria-label={'Download ' + exportName + ' as SVG'} onClick={() => ref.current && download(exportName + '.svg', new XMLSerializer().serializeToString(ref.current), 'image/svg+xml')}><Download size={16} /></button></div>
     <svg ref={ref} xmlns="http://www.w3.org/2000/svg" role="slider" tabIndex={0} aria-label={exportName + ': ' + yLabel + ' versus ' + xLabel} aria-valuemin={x0} aria-valuemax={x1} aria-valuenow={cx} aria-valuetext={cx.toFixed(2) + ' ' + xUnit + '; ' + valid[0].name + ' ' + fmt(valid[0].y[nearest(valid[0])]) + ' ' + yUnit} aria-describedby={uid + '-help'} viewBox={'0 0 ' + W + ' ' + H}
@@ -69,7 +76,16 @@ export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'μ (cm�
       {ticks.map(t => <g key={t}><line x1={L} x2={W - R} y1={py(y0 + t * (y1 - y0))} y2={py(y0 + t * (y1 - y0))} stroke="#35404d" /><text x={L - 8} y={py(y0 + t * (y1 - y0)) + 4} textAnchor="end" fill="#c4ccd6" fontSize="13" fontFamily={TEX_FONT}>{sciText(fmt(y0 + t * (y1 - y0)))}</text><text x={px(x0 + t * (x1 - x0))} y={H - B + 20} textAnchor="middle" fill="#c4ccd6" fontSize="13" fontFamily={TEX_FONT}>{sciText(fmt(x0 + t * (x1 - x0)))}</text></g>)}
       <defs><clipPath id={uid + '-clip'}><rect x={L} y={T} width={W - L - R} height={H - T - B} /></clipPath></defs>
       <g clipPath={'url(#' + uid + '-clip)'}>
-        {bands.map(band => { const a = px(Math.max(x0, band.from)), z = px(Math.min(x1, band.to)); return z > a && <g key={band.label}><rect x={a} y={T} width={z - a} height={H - T - B} fill="#9cc5e8" opacity=".09" />{z - a > 6.5 * band.label.length + 8 && <text x={a + 6} y={T + 16} fill="#c4ccd6" fontSize="12" fontFamily={TEX_FONT}>{band.label}</text>}</g>; })}
+        {shownBands.map((band, i) => { const a = px(Math.max(x0, band.from)), z = px(Math.min(x1, band.to)); return z > a && <g key={band.label}><rect x={a} y={T} width={z - a} height={H - T - B} fill="#9cc5e8" opacity=".09" />{z - a > 6.5 * band.label.length + 8 && <text x={a + 6} y={T + 16} fill="#c4ccd6" fontSize="12" fontFamily={TEX_FONT}>{band.label}</text>}
+          {onBand && ([['from', a], ['to', z]] as const).map(([side, gx]) => <g key={side} className="plot-grip" data-band-edge={side} aria-hidden="true"
+            onPointerDown={e => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); setDrag({ i, edge: side, value: band[side] }); }}
+            onPointerMove={e => { e.stopPropagation(); if (drag && ref.current) setDrag({ ...drag, value: valueAt(e.clientX, ref.current.getBoundingClientRect()) }); }}
+            onPointerUp={e => { e.stopPropagation(); if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); if (drag) onBand(drag.i, settle(bands[drag.i], drag.edge, drag.value)); setDrag(null); }}
+            onPointerCancel={() => setDrag(null)}>
+            <rect x={gx - 8} y={T} width={16} height={H - T - B} fill="transparent" />
+            <line x1={gx} x2={gx} y1={T} y2={H - B} stroke="#9cc5e8" strokeWidth="1.5" opacity=".75" />
+            <rect x={gx - 3} y={(T + H - B) / 2 - 12} width="6" height="24" rx="3" fill="#9cc5e8" />
+          </g>)}</g>; })}
         {valid.length === 1 && <path d={line(valid[0]) + ' L' + px(x1) + ',' + py(y0) + ' L' + px(x0) + ',' + py(y0) + 'Z'} fill={valid[0].color} opacity=".06" />}
         {ghost?.series.map((s, i) => <path key={i} className="edge-ghost" d={line(s)} stroke={s.color} opacity=".3" fill="none" strokeWidth="2" />)}
         {valid.map((s, j) => <g key={s.name}>

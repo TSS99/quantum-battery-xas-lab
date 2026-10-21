@@ -191,7 +191,7 @@ export type TwinCommand =
   /** Any formula: a new material, absorber or edge also moves the energy, the window and the reference foil. */
   | { type: 'sample'; patch: Partial<Omit<SampleConfig, 'libraryId'>> }
   | { type: 'environment'; kind: EnvironmentConfig['kind'] }
-  | { type: 'sdd'; patch: Partial<Pick<SddConfig, 'distance_mm' | 'peaking_us' | 'soller' | 'elements' | 'exitAngle_deg'>> }
+  | { type: 'sdd'; patch: Partial<Pick<SddConfig, 'distance_mm' | 'peaking_us' | 'soller' | 'elements' | 'exitAngle_deg' | 'roi_eV'>> }
   | { type: 'scan'; plan: ScanPlan }
   | { type: 'source'; current_mA: number };
 
@@ -235,6 +235,12 @@ function centredRoi(state: TwinState): TwinState {
     const line = fluorescenceLine(state.sample.absorber, state.sample.edge).energy_eV;
     return { ...state, profile: { ...state.profile, sdd: { ...state.profile.sdd, roi_eV: [Math.round(line - 150), Math.round(line + 150)] } } };
   } catch { return state; }
+}
+
+/** The fluorescence counting window in whole eV, in order, at least 20 eV wide and within 0 to 100 keV. */
+function countingWindow([a, b]: readonly [number, number]): [number, number] {
+  const from = Math.round(clamp(Math.min(a, b), [0, 99_980]));
+  return [from, Math.round(clamp(Math.max(a, b), [from + 20, 100_000]))];
 }
 
 /** The state after one command, clamped to the allowed ranges. */
@@ -337,8 +343,10 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
         peaking_us: clamp(p.peaking_us ?? sdd.peaking_us, [0.05, 32]),
         elements: Math.round(clamp(p.elements ?? sdd.elements, [1, 7])),
         exitAngle_deg: clamp(p.exitAngle_deg ?? sdd.exitAngle_deg, [1, 90]),
+        roi_eV: countingWindow(p.roi_eV ?? sdd.roi_eV),
       };
-      return done({ ...state, profile: { ...state.profile, sdd: next } }, 'Fluorescence detector changed.');
+      return done({ ...state, profile: { ...state.profile, sdd: next } }, p.roi_eV
+        ? String.raw`Counting window set to $${next.roi_eV[0]}$ to $${next.roi_eV[1]}\ \mathrm{eV}$.` : 'Fluorescence detector changed.');
     }
     case 'scan': {
       const plan = { ...command.plan, repeats: Math.round(clamp(command.plan.repeats, [1, 50])) };

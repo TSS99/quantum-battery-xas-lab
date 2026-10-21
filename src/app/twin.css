@@ -160,7 +160,7 @@ body:has(.twin-app) {background:#050608}
 .twin-tabs [role="tab"] {min-height:30px;padding:4px 10px;border:0;border-radius:8px;background:none;color:var(--tw-muted);font:600 12.5px/1.2 var(--font-sans);white-space:nowrap;cursor:pointer;transition:background-color .2s,color .2s}
 .twin-tabs [role="tab"]:hover {color:var(--tw-text)}
 .twin-tabs [role="tab"][aria-selected="true"] {background:var(--tw-accent-soft);color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
-.twin-tabpanel {display:flex;flex-direction:column;gap:8px;min-height:160px;padding:10px 12px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(0 0 0/.28)}
+.twin-tabpanel {display:flex;flex-direction:column;flex-shrink:0;gap:8px;min-height:160px;padding:10px 12px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(0 0 0/.28)}
 .twin-tabpanel p {margin:0;font-size:13.5px}
 .twin-tabpanel > p:first-child {font-size:12.5px;color:var(--tw-muted)}
 .twin-tabpanel .twin-empty {font-size:13.5px;color:var(--tw-muted)}
@@ -354,3 +354,18 @@ body:has(.twin-app) {background:#050608}
   .twin-calibration-results {display:block;overflow-x:auto}
   .twin-calibration-results th,.twin-calibration-results td {min-width:130px}
 }
+
+/* ---------- Explanation level (General or Physics) and auto narrate ---------- */
+.twin-level {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.twin-level .twin-chip {min-height:32px;padding:4px 11px;font-size:12.5px}
+
+/* ---------- Pop out: one result view in a second window ---------- */
+.twin-app.twin-popout {display:block;height:auto;min-height:100vh;overflow:visible;padding:16px}
+.twin-popout-head {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.twin-popout-head h1 {display:flex;align-items:center;gap:8px}
+.twin-popout-view {display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tw-body)}
+
+/* ---------- First shell fit table ---------- */
+.twin-fit-table {width:100%;margin-top:8px;border-collapse:collapse;font-size:13px}
+.twin-fit-table th,.twin-fit-table td {padding:6px 8px;border-bottom:1px solid var(--tw-line);text-align:left;font-weight:400}
+.twin-fit-table thead th {font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-muted)}
