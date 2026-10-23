@@ -182,6 +182,44 @@ test('hutch scene: every part is a button that opens its card, labels toggle, an
   expect(errors).toEqual([]);
 });
 
+test('3D hutch: shown by default, its parts open their cards, and the diagram choice is remembered', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page);
+  const view = page.getByRole('button', { name: '3D view', exact: true });
+  await expect(view).toHaveAttribute('aria-pressed', 'true');
+  const scene = page.locator('.hutch-3d');
+  await expect(page.getByRole('img', { name: /^Beamline drawing, 3D view, transmission mode/ })).toBeVisible();
+  await expect(scene.locator('canvas')).toBeVisible();
+  // The labels are page buttons placed over the model; the mode's parts are in view, the rest wait at the edges.
+  await expect(scene.locator('.hutch-parts').getByRole('button')).toHaveCount(19);
+  const itChamber = scene.getByRole('button', { name: 'It chamber', exact: true });
+  await expect(itChamber).not.toHaveAttribute('data-outside');
+  await itChamber.click();
+  await expect(page.getByRole('region', { name: 'It chamber' })).toContainText('What goes wrong');
+  await page.keyboard.press('Escape');
+  await expect(scene.getByRole('button', { name: 'Source', exact: true })).toHaveAttribute('data-outside', '');
+  // Picking a part off the view turns the camera to it.
+  await scene.getByRole('button', { name: 'Monochromator', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Monochromator' })).toBeVisible();
+  await expect(scene.getByRole('button', { name: 'Monochromator', exact: true })).not.toHaveAttribute('data-outside');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Reset view', exact: true }).click();
+  await expect(scene.getByRole('button', { name: 'Monochromator', exact: true })).toHaveAttribute('data-outside', '');
+  // The whole beamline fits the box.
+  await page.getByRole('button', { name: 'Whole beamline', exact: true }).click();
+  for (const name of ['Source', 'Monochromator', 'Beam stop']) await expect(scene.getByRole('button', { name, exact: true })).not.toHaveAttribute('data-outside');
+  // The diagram stays chosen after a reload.
+  await view.click();
+  await expect(view).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.hutch-3d')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('img', { name: /^Beamline drawing, transmission mode/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: '3D view', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: '3D view', exact: true }).click();
+  await expect(page.getByRole('img', { name: /^Beamline drawing, 3D view/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('Acquire runs a scan in the worker: points build up, the acquisition is stored and downloads as XDI', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page, '#mode=transmission&seed=7');
@@ -538,7 +576,9 @@ test('phone layout: one column, sticky mode bar, folded explanation and controls
   await openTwin(page);
   const width = () => page.evaluate(() => document.documentElement.scrollWidth);
   expect(await width()).toBeLessThanOrEqual(390);
-  // The drawing scrolls sideways inside its own box, centred on the sample.
+  // The 3D view fits its box; the diagram, one tap away, scrolls sideways inside its own box, centred on the sample.
+  await expect(page.getByRole('img', { name: /^Beamline drawing, 3D view/ })).toBeVisible();
+  await page.getByRole('button', { name: '3D view', exact: true }).click();
   const drawing = page.getByRole('region', { name: 'Beamline drawing, scrolls sideways' });
   await expect(drawing).toBeVisible();
   expect(await drawing.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);

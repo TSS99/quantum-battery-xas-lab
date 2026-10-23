@@ -130,6 +130,15 @@ body:has(.twin-app) {background:#141d31}
 .hutch.no-labels .hutch-leaders {display:none}
 .hutch [data-part] {transition:opacity .3s}
 .hutch [data-part].is-idle {opacity:.42}
+/* The 3D view: the canvas fills the box; labels are page buttons moved over it each frame. */
+.hutch-3d .hutch-stage {min-width:0;width:100%;height:340px;overflow:hidden;border-radius:12px;background:#141d31}
+.hutch-3d .hutch-canvas {position:absolute;inset:0}
+.hutch-3d .hutch-canvas canvas {display:block}
+.hutch-3d .hutch-stage svg.hutch-leaders-3d {position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.hutch-3d .hutch-part[data-outside] {left:var(--ax);top:var(--ay);width:20px;height:20px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;opacity:.75}
+.hutch-3d .hutch-part[data-outside]::before {content:"";width:6px;height:6px;margin:auto;border-radius:50%;background:#a7b1c1;box-shadow:0 0 0 2px rgb(12 18 30/.7)}
+.hutch-3d .hutch-part[data-outside]:hover,.hutch-3d .hutch-part[data-outside]:focus-visible {opacity:1}
+.hutch-3d .hutch-part[data-outside] .hutch-part-text {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .hutch-wires {transition:opacity .3s}
 .hutch-wires.is-idle {opacity:.42}
 .hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(140 227 255/.7))}
@@ -292,6 +301,7 @@ body:has(.twin-app) {background:#141d31}
   .twin-scene .hutch {flex:1;min-height:0}
   .twin-scene .hutch-scroll {flex:1;min-height:0;display:flex;align-items:center}
   .twin-scene .hutch-stage {flex:none}
+  .twin-scene .hutch-3d .hutch-stage {flex:1 1 auto;height:auto;min-height:180px}
   .twin-dock {flex:none;height:clamp(220px,38vh,440px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
   .twin-app.is-enlarged .twin-dock {flex:1;height:auto}
   .twin-col-right .twin-toolbar {border-bottom:0;border-radius:14px 14px 0 0}

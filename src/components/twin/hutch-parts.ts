@@ -8,6 +8,12 @@
  */
 import type { TwinMode } from '@/lib/twin/types';
 
+/** Positions along the beamline shared by the diagram and the 3D view. */
+export const YB0 = 46; // beam height before the fixed-exit monochromator; YB (scene-kit) is after it
+export const XS = 1150; // sample position
+export const C1 = 512; // first crystal
+export const SOURCE_X = 96; // tangent point of the electron orbit inside the bending magnet
+
 /** The viewBox of the scene SVG; label and leader positions are in these units. */
 export const VIEW = { x: 0, y: -40, width: 1600, height: 400 } as const;
 

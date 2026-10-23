@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { Tex } from '../tex';
 import { B, Beam, Box, Breadboard, CylY, CylZ, Disc, IonChamber, K, P, Q, SceneDefs, Shadow, YB, circleYZ, line, pts, type V3 } from '../scene-kit';
 import type { TwinState } from '@/lib/twin/types';
-import { PARTS, VIEW, beamGlow, drawnBraggDeg, hasCue, legLit, lcdVolts, partActive, partOf, sceneFor, type Leg, type PartId } from './hutch-parts';
+import { C1, PARTS, SOURCE_X, VIEW, XS, YB0, beamGlow, drawnBraggDeg, hasCue, legLit, lcdVolts, partActive, partOf, sceneFor, type Leg, type PartId } from './hutch-parts';
 import { NARROW_QUERY } from './fold';
 import type { HutchLive } from './hutch-live';
 import { modeInfo } from './twin-state';
@@ -11,10 +11,6 @@ import { modeInfo } from './twin-state';
 /* The beamline from the storage ring to the beam stop in cabinet projection (scene-kit): X along the
    beam, Y up, Z into the page. Not to scale: the long stretches are cut at the break symbols. */
 
-const YB0 = 46; // beam height before the fixed-exit monochromator; YB is after it
-const XS = 1150; // sample position
-const C1 = 512; // first crystal
-const SOURCE_X = 96; // tangent point of the electron orbit inside the bending magnet
 /** The electron orbit: a 300 unit radius arc that curves away from the viewer through the magnet. */
 const ORBIT = line(...Array.from({ length: 24 }, (_, i): V3 => { const t = i * 0.5 / 23; return [-20 + 300 * Math.sin(t), YB0, 300 * (1 - Math.cos(t))]; }));
 
