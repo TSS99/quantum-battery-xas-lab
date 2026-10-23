@@ -2,38 +2,40 @@
    Every rule is scoped to twin classes, so other pages keep their look. */
 
 .bare-main {display:block;min-height:100vh}
-body:has(.twin-app) {background:#050608}
+body:has(.twin-app) {background:#141d31}
 
 .twin-app {
-  --tw-bg:#050608; --tw-card:rgb(11 14 19/.84); --tw-card-solid:#0b0e13; --tw-line:rgb(255 255 255/.08); --tw-line-2:rgb(255 255 255/.15);
-  --tw-text:#e9edf2; --tw-body:#c3cad3; --tw-muted:#8a94a3; --tw-accent:#6fd6ff; --tw-accent-soft:rgb(111 214 255/.12); --tw-accent-line:rgb(111 214 255/.38); --tw-warm:#ffc46b;
+  --tw-bg:#141d31; --tw-card:rgb(29 40 62/.86); --tw-card-solid:#1d283e; --tw-line:rgb(255 255 255/.12); --tw-line-2:rgb(255 255 255/.2);
+  --tw-text:#f3f6fa; --tw-body:#d4dae3; --tw-muted:#a7b1c1; --tw-accent:#8ce3ff; --tw-accent-soft:rgb(140 227 255/.14); --tw-accent-line:rgb(140 227 255/.42); --tw-warm:#ffc46b;
   --tw-serif:var(--font-twin-serif),Georgia,serif; --tw-mono:var(--font-tex-digits),var(--font-twin-mono),ui-monospace,monospace;
   --font-sans:var(--font-tex-digits),var(--font-twin-sans),system-ui,sans-serif; --font-display:var(--font-sans);
   /* The site's tokens, remapped so shared parts (sliders, plots, buttons, dialogs) match the console. */
-  --text:var(--tw-text); --text-2:var(--tw-body); --muted:var(--tw-muted); --accent:var(--tw-accent); --hairline:var(--tw-line); --control-edge:var(--tw-line-2); --surface-1:var(--tw-card-solid); --surface-2:#10151c; --bg:var(--tw-bg);
+  --text:var(--tw-text); --text-2:var(--tw-body); --muted:var(--tw-muted); --accent:var(--tw-accent); --hairline:var(--tw-line); --control-edge:var(--tw-line-2); --surface-1:var(--tw-card-solid); --surface-2:#26324b; --bg:var(--tw-bg);
   position:relative;color:var(--tw-text);font:14px/1.5 var(--font-sans);
-  background:radial-gradient(ellipse 55% 45% at 50% 36%,rgb(111 214 255/.07),transparent 70%),radial-gradient(ellipse 70% 25% at 50% 100%,rgb(111 214 255/.035),transparent 70%),var(--tw-bg);
+  background:radial-gradient(ellipse 55% 45% at 50% 36%,rgb(140 227 255/.1),transparent 70%),radial-gradient(ellipse 70% 25% at 50% 100%,rgb(140 227 255/.05),transparent 70%),var(--tw-bg);
 }
 .twin-app :focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
+/* Shared plots keep their own dark well on the site; here they sit one step below the card. */
+.twin-app .plot-wrap svg > rect:first-of-type {fill:#172235}
 
 /* ---------- Shared pieces: cards, kickers, chips, icon buttons ---------- */
 .twin-card {background:var(--tw-card);border:1px solid var(--tw-line);border-radius:14px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .twin-kicker {margin:0;font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
-.twin-chip {display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 13px;border:1px solid var(--tw-line-2);border-radius:999px;background:rgb(11 14 19/.6);color:var(--tw-text);font:500 13px/1.25 var(--font-sans);text-decoration:none;text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,color .2s}
+.twin-chip {display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 13px;border:1px solid var(--tw-line-2);border-radius:999px;background:rgb(29 40 62/.6);color:var(--tw-text);font:500 13px/1.25 var(--font-sans);text-decoration:none;text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,color .2s}
 .twin-chip:hover {border-color:rgb(255 255 255/.32);color:#fff;text-decoration:none}
 .twin-chip[aria-pressed="true"],.twin-chip.is-current {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
 .twin-chip.is-accent {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-accent)}
 .twin-chip:disabled {opacity:.45;cursor:not-allowed}
 .twin-chipset {display:flex;flex-wrap:wrap;gap:7px}
-.twin-icon {display:inline-grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:1px solid var(--tw-line);border-radius:10px;background:rgb(11 14 19/.6);color:var(--tw-muted);cursor:pointer;transition:border-color .2s,color .2s,background-color .2s}
+.twin-icon {display:inline-grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:1px solid var(--tw-line);border-radius:10px;background:rgb(29 40 62/.6);color:var(--tw-muted);cursor:pointer;transition:border-color .2s,color .2s,background-color .2s}
 .twin-icon:hover {border-color:var(--tw-line-2);color:var(--tw-text)}
 .twin-icon[aria-pressed="true"] {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-accent)}
-.twin-rail-toggle[aria-pressed="true"] {border-color:var(--tw-line-2);background:rgb(11 14 19/.6);color:var(--tw-text)}
+.twin-rail-toggle[aria-pressed="true"] {border-color:var(--tw-line-2);background:rgb(29 40 62/.6);color:var(--tw-text)}
 .twin-app .button {border-radius:999px;font-family:var(--font-sans)}
 .twin-app .button.cta {padding:6px 14px;border:1px solid var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-accent)}
-.twin-app .button.cta:hover {background:rgb(111 214 255/.2);color:#fff}
+.twin-app .button.cta:hover {background:rgb(140 227 255/.2);color:#fff}
 .twin-app select,.twin-app textarea,.twin-app input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {min-height:38px;padding:7px 11px;border:1px solid var(--tw-line-2);border-radius:10px;background:rgb(255 255 255/.03);color:var(--tw-text);font-size:14px}
-.twin-app select option {background:#0b0e13}
+.twin-app select option {background:#1d283e}
 
 /* ---------- Hero: kicker, serif title, intro, links ---------- */
 .twin-hero {display:flex;flex-direction:column;gap:12px;padding:10px 14px 6px}
@@ -70,12 +72,12 @@ body:has(.twin-app) {background:#050608}
 .twin-part {display:flex;flex-direction:column;gap:10px}
 .twin-part-live {margin:0;font-size:13.5px;color:var(--tw-accent)}
 .twin-part .twin-chip {align-self:flex-start}
-.twin-physics {display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(0 0 0/.25)}
+.twin-physics {display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(8 12 22/.22)}
 .twin-physics .tex-block {display:block;text-align:center;font-size:15px}
 .twin-part-notes {display:grid;gap:10px;margin:0}
 .twin-part-notes dd {margin:3px 0 0;font-size:13px;line-height:1.55;color:var(--tw-body)}
 .twin-source {margin:0;font-size:11.5px;line-height:1.45;color:var(--tw-muted)}
-.twin-changed {padding:11px 13px;border:1px solid rgb(111 214 255/.22);border-radius:10px;background:rgb(111 214 255/.035)}
+.twin-changed {padding:11px 13px;border:1px solid rgb(140 227 255/.22);border-radius:10px;background:rgb(140 227 255/.035)}
 .twin-changed .twin-kicker {color:var(--tw-accent)}
 .twin-changed p {margin:4px 0 0;font-size:13.5px;line-height:1.5;color:var(--tw-text)}
 .twin-stats {display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin:0;padding-top:14px;border-top:1px solid var(--tw-line)}
@@ -107,28 +109,28 @@ body:has(.twin-app) {background:#050608}
 
 /* ---------- Hutch drawing: the box fades at its edges; below its minimum width it scrolls inside the box, never the page ---------- */
 .hutch {display:flex;flex-direction:column;min-width:0}
-.hutch-scroll {overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:rgb(111 214 255/.25) transparent;
+.hutch-scroll {overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:rgb(140 227 255/.25) transparent;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
 .hutch-scroll[role="region"] {cursor:grab}
 .hutch-scroll.is-dragging {cursor:grabbing;user-select:none}
 .hutch-stage {position:relative;min-width:1140px}
 .hutch-stage svg {display:block;width:100%;height:auto}
-.hutch-part {position:absolute;left:var(--ax);top:var(--ay);transform:translate(-50%,-50%);display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid rgb(111 214 255/.3);border-radius:4px;background:rgb(5 8 12/.9);color:#cfe9f5;font:500 11px/1.1 var(--tw-mono);white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
+.hutch-part {position:absolute;left:var(--ax);top:var(--ay);transform:translate(-50%,-50%);display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid rgb(140 227 255/.3);border-radius:4px;background:rgb(12 18 30/.88);color:#d8f0fa;font:500 11px/1.1 var(--tw-mono);white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}
 .hutch-part:hover {border-color:var(--tw-accent);color:#fff}
 .hutch-part.is-idle {border-color:rgb(255 255 255/.1);color:#97a3b0}
-.hutch-part.is-focus {border-color:var(--tw-accent);background:#08202a;color:#fff;box-shadow:0 0 0 3px rgb(111 214 255/.16)}
+.hutch-part.is-focus {border-color:var(--tw-accent);background:#183a4e;color:#fff;box-shadow:0 0 0 3px rgb(140 227 255/.16)}
 .hutch-part[aria-expanded="true"] {border-color:var(--tw-accent);background:var(--tw-accent);color:#031018}
 .hutch.no-labels .hutch-part {left:var(--tx);top:var(--ty);width:24px;height:24px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none}
-.hutch.no-labels .hutch-part::before {content:"";width:10px;height:10px;margin:auto;border-radius:50%;background:var(--tw-accent);box-shadow:0 0 0 3px rgb(111 214 255/.28)}
+.hutch.no-labels .hutch-part::before {content:"";width:10px;height:10px;margin:auto;border-radius:50%;background:var(--tw-accent);box-shadow:0 0 0 3px rgb(140 227 255/.28)}
 .hutch.no-labels .hutch-part.is-idle::before {background:#6b7a8c;box-shadow:none}
 .hutch.no-labels .hutch-part[aria-expanded="true"]::before {background:#fff}
 .hutch.no-labels .hutch-part-text {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.hutch-leaders path {fill:none;stroke:#6fd6ff;stroke-opacity:.5;stroke-width:1}
-.hutch-leaders circle {fill:#6fd6ff;fill-opacity:.85}
+.hutch-leaders path {fill:none;stroke:#8ce3ff;stroke-opacity:.5;stroke-width:1}
+.hutch-leaders circle {fill:#8ce3ff;fill-opacity:.85}
 .hutch.no-labels .hutch-leaders {display:none}
 .hutch [data-part] {transition:opacity .3s}
 .hutch [data-part].is-idle {opacity:.42}
-.hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(111 214 255/.7))}
+.hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(140 227 255/.7))}
 .hutch-leg {transition:opacity .3s}
 .hutch-leg:not(.is-lit) {opacity:.16}
 .hutch-leg:not(.is-lit) .bl-flow,.hutch-leg:not(.is-lit) .hutch-current {animation:none;stroke-opacity:0}
@@ -151,14 +153,14 @@ body:has(.twin-app) {background:#050608}
 .twin-dot {width:7px;height:7px;border-radius:50%;background:var(--tw-accent);box-shadow:0 0 8px var(--tw-accent)}
 .twin-dot.is-live {animation:hutch-pulse .8s ease-in-out infinite alternate}
 .twin-acquire {display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:4px 14px;border:1px solid var(--tw-accent-line);border-radius:8px;background:var(--tw-accent-soft);color:var(--tw-accent);font:600 13px/1 var(--font-sans);cursor:pointer;transition:background-color .2s}
-.twin-acquire:hover {background:rgb(111 214 255/.2)}
+.twin-acquire:hover {background:rgb(140 227 255/.2)}
 .twin-acquire:disabled {opacity:.5;cursor:not-allowed}
 .twin-acquire.is-stop {border-color:rgb(255 196 107/.45);background:rgb(255 196 107/.1);color:var(--tw-warm)}
 .twin-tabs {display:flex;flex-wrap:wrap;gap:2px}
 .twin-tabs [role="tab"] {min-height:30px;padding:4px 10px;border:0;border-radius:8px;background:none;color:var(--tw-muted);font:600 12.5px/1.2 var(--font-sans);white-space:nowrap;cursor:pointer;transition:background-color .2s,color .2s}
 .twin-tabs [role="tab"]:hover {color:var(--tw-text)}
 .twin-tabs [role="tab"][aria-selected="true"] {background:var(--tw-accent-soft);color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
-.twin-tabpanel {display:flex;flex-direction:column;flex-shrink:0;gap:8px;min-height:160px;padding:10px 12px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(0 0 0/.28)}
+.twin-tabpanel {display:flex;flex-direction:column;flex-shrink:0;gap:8px;min-height:160px;padding:10px 12px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(8 12 22/.24)}
 .twin-tabpanel p {margin:0;font-size:13.5px}
 .twin-tabpanel > p:first-child {font-size:12.5px;color:var(--tw-muted)}
 .twin-tabpanel .twin-empty {font-size:13.5px;color:var(--tw-muted)}
@@ -184,7 +186,7 @@ body:has(.twin-app) {background:#050608}
 .twin-toolbar-buttons {display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .twin-right {display:flex;flex-direction:column;gap:14px;min-width:0;padding:10px 16px 20px}
 .twin-clarity {display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.twin-clarity button {display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:56px;padding:10px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(11 14 19/.6);color:var(--tw-muted);text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,color .2s}
+.twin-clarity button {display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:56px;padding:10px 12px;border:1px solid var(--tw-line);border-radius:10px;background:rgb(29 40 62/.6);color:var(--tw-muted);text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,color .2s}
 .twin-clarity strong {font:600 13.5px/1.3 var(--font-sans);color:inherit}
 .twin-clarity span {font-size:11.5px;line-height:1.35;color:var(--tw-muted)}
 .twin-clarity button:hover {border-color:var(--tw-line-2);color:var(--tw-text)}
@@ -216,7 +218,7 @@ body:has(.twin-app) {background:#050608}
 .twin-app input[type="range"] {height:30px}
 .twin-app input[type="range"]::-webkit-slider-runnable-track {height:3px;border-radius:2px;background:rgb(255 255 255/.16)}
 .twin-app input[type="range"]::-moz-range-track {height:3px;border-radius:2px;background:rgb(255 255 255/.16)}
-.twin-app input[type="range"]::-webkit-slider-thumb {width:16px;height:16px;margin-top:-6.5px;border:2px solid var(--tw-accent);background:var(--tw-bg);box-shadow:0 0 0 3px rgb(111 214 255/.16)}
+.twin-app input[type="range"]::-webkit-slider-thumb {width:16px;height:16px;margin-top:-6.5px;border:2px solid var(--tw-accent);background:var(--tw-bg);box-shadow:0 0 0 3px rgb(140 227 255/.16)}
 .twin-app input[type="range"]::-moz-range-thumb {width:13px;height:13px;border:2px solid var(--tw-accent);background:var(--tw-bg)}
 
 /* ---------- Dialogs ---------- */
@@ -261,7 +263,7 @@ body:has(.twin-app) {background:#050608}
 .twin-scenarios h3 {margin:0;font:400 22px/1.15 var(--tw-serif)}
 .twin-scenarios p {margin:0;font-size:13.5px;color:var(--tw-body)}
 .twin-scenarios .button {justify-self:start}
-.twin-task {display:grid;gap:10px;padding:14px 16px;border:1px solid var(--tw-accent-line);border-radius:14px;background:rgb(8 26 34/.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.twin-task {display:grid;gap:10px;padding:14px 16px;border:1px solid var(--tw-accent-line);border-radius:14px;background:rgb(22 46 66/.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .twin-task h2 {font:400 24px/1.1 var(--tw-serif)}
 .twin-task p {margin:0;font-size:13.5px}
 .twin-task-actions {display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px}
@@ -330,7 +332,7 @@ body:has(.twin-app) {background:#050608}
   .twin-left .twin-fold-head button {min-height:40px}
   .twin-icon {width:40px;height:40px}
   /* scroll-padding matches the side padding, so snapping never pushes the first group name out of view. */
-  .twin-modes {position:sticky;top:0;z-index:10;flex-wrap:nowrap;justify-content:flex-start;gap:0;margin:0 -16px;padding:6px 16px;scroll-padding-inline:16px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;border-width:0 0 1px;border-radius:0;background:rgb(8 10 14/.95)}
+  .twin-modes {position:sticky;top:0;z-index:10;flex-wrap:nowrap;justify-content:flex-start;gap:0;margin:0 -16px;padding:6px 16px;scroll-padding-inline:16px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;border-width:0 0 1px;border-radius:0;background:rgb(20 29 49/.95)}
   .twin-modes::-webkit-scrollbar {display:none}
   .twin-mode-group {flex:none;flex-direction:row;align-items:center;gap:4px;padding:0 6px}
   .twin-mode-group:first-child {padding-left:0}
