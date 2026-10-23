@@ -16,15 +16,22 @@ export function InstallApp() {
       setStatus(event.data.failed ? 'Some files could not be saved for offline use.' : 'Available offline.');
     };
     navigator.serviceWorker.addEventListener('message', onMessage);
-    navigator.serviceWorker.register(`${BASE}/sw.js`, { scope: `${BASE}/` }).then(() => navigator.serviceWorker.ready).then(registration => {
-      // Only the installed app downloads everything for offline use; web visitors cache what they open.
-      if (installed) registration.active?.postMessage({ type: 'precache-all' });
-    }).catch(() => { /* Without a worker the site still works online. */ });
+    let cancelled = false;
+    const register = () => {
+      if (cancelled) return;
+      navigator.serviceWorker.register(`${BASE}/sw.js`, { scope: `${BASE}/` }).then(() => navigator.serviceWorker.ready).then(registration => {
+        // Only the installed app downloads everything for offline use; web visitors cache what they open.
+        if (installed) registration.active?.postMessage({ type: 'precache-all' });
+      }).catch(() => { /* Without a worker the site still works online. */ });
+    };
+    // Register once the page has loaded and gone quiet, so the worker's own downloads never compete with the page's.
+    const whenIdle = () => { if ('requestIdleCallback' in window) requestIdleCallback(register, { timeout: 4000 }); else setTimeout(register, 2500); };
+    if (document.readyState === 'complete') whenIdle(); else addEventListener('load', whenIdle, { once: true });
     const onPrompt = (event: Event) => { event.preventDefault(); setPrompt(event as InstallPrompt); };
     const onInstalled = () => { setPrompt(null); setStatus('Installed. Open XAS Lab from your apps.'); };
     addEventListener('beforeinstallprompt', onPrompt);
     addEventListener('appinstalled', onInstalled);
-    return () => { navigator.serviceWorker.removeEventListener('message', onMessage); removeEventListener('beforeinstallprompt', onPrompt); removeEventListener('appinstalled', onInstalled); };
+    return () => { cancelled = true; removeEventListener('load', whenIdle); navigator.serviceWorker.removeEventListener('message', onMessage); removeEventListener('beforeinstallprompt', onPrompt); removeEventListener('appinstalled', onInstalled); };
   }, []);
   return <>
     {prompt && <button className="text-button" onClick={async () => { await prompt.prompt(); await prompt.userChoice; setPrompt(null); }}>Install app</button>}
