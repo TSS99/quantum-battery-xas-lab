@@ -22,6 +22,7 @@ export function Fold({ id, title, desktopOpen = false, level = 3, className = ''
   const Heading = level === 2 ? 'h2' : 'h3';
   return <div className={'twin-fold ' + className} data-fold={open === undefined ? 'auto' : open ? 'open' : 'closed'}>
     <Heading className="twin-fold-head"><button type="button" aria-expanded={open ?? true} aria-controls={id} onClick={() => setOpen(!(open ?? true))}>{title}<ChevronDown size={16} aria-hidden="true" /></button></Heading>
-    <div id={id} className="twin-fold-body">{children}</div>
+    {/* A folded section does not build its body, so a slider step elsewhere does not re-render hidden controls. */}
+    <div id={id} className="twin-fold-body">{open !== false && children}</div>
   </div>;
 }

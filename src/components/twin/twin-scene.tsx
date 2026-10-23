@@ -1,12 +1,15 @@
 'use client';
-import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { memo, useCallback, useDeferredValue, useEffect, useState, type ComponentType } from 'react';
 import { Box, Eye, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { Tex } from '../tex';
 import { HutchScene } from './hutch-scene';
 import { useTwin } from './twin-store';
 
-const Hutch3D = dynamic(() => import('./hutch-3d'), { ssr: false, loading: () => <div className="twin-scene-wait">Loading the 3D hutch…</div> });
+const Diagram = memo(HutchScene);
+type Hutch3DView = ComponentType<import('./hutch-3d').Hutch3DProps>;
+/** The 3D code and its textures, fetched once; the view switches over only when both are in. */
+let loading3D: Promise<Hutch3DView> | null = null;
+const load3D = () => loading3D ??= import('./hutch-3d').then(async m => { await m.texturesReady; return m.default; }).catch(error => { loading3D = null; throw error; });
 
 const VIEW_KEY = 'xaslab-twin-hutch-view';
 
@@ -17,7 +20,9 @@ function useHutchView() {
     let ok = false;
     try { ok = !!document.createElement('canvas').getContext('webgl2'); } catch { ok = false; }
     setWebgl(ok);
-    try { setDiagram(localStorage.getItem(VIEW_KEY) === 'diagram'); } catch { /* storage unavailable: keep the default */ }
+    let diagram = false;
+    try { diagram = localStorage.getItem(VIEW_KEY) === 'diagram'; } catch { /* storage unavailable: keep the default */ }
+    setDiagram(diagram);
   }, []);
   const toggle = () => setDiagram(was => { try { localStorage.setItem(VIEW_KEY, was ? '3d' : 'diagram'); } catch { /* not kept */ } return !was; });
   return { webgl, show3d: webgl === true && !diagram, toggle };
@@ -29,20 +34,35 @@ export function TwinScene() {
   const [whole, setWhole] = useState(false), [reset, setReset] = useState(0);
   const { webgl, show3d, toggle } = useHutchView();
   const failed = tables === 'failed' || typeof live === 'string';
-  const props = live && typeof live !== 'string' ? { twin, live, labels: view.labels, whole, part: view.part, onPart: (id: typeof view.part) => dispatch({ type: 'part', id }) } : null;
-  return <section className={'twin-scene' + (view.labels ? '' : ' no-labels')} aria-labelledby="twin-scene-title" hidden={view.enlarged}>
+  // The diagram shows as soon as the X-ray tables are in; the 3D view loads after them (so it never delays the first
+  // drawing) and takes over once its code and textures have arrived. Until then the scene says it is busy.
+  const [three, setThree] = useState<{ view: Hutch3DView } | 'failed' | null>(null);
+  const tablesIn = !!live && typeof live !== 'string';
+  useEffect(() => {
+    if (!show3d || !tablesIn || three) return;
+    let on = true;
+    load3D().then(view => { if (on) setThree({ view }); }, () => { if (on) setThree('failed'); });
+    return () => { on = false; };
+  }, [show3d, tablesIn, three]);
+  const Three = three && three !== 'failed' ? three.view : null;
+  // The drawing follows a deferred copy of the state: the controls answer at once, and the drawing, the heaviest part
+  // of the page, catches up in the background without holding up the next key press or drag.
+  const shownTwin = useDeferredValue(twin), shownLive = useDeferredValue(live);
+  const onPart = useCallback((id: typeof view.part) => dispatch({ type: 'part', id }), [dispatch]);
+  const props = shownLive && typeof shownLive !== 'string' ? { twin: shownTwin, live: shownLive, labels: view.labels, whole, part: view.part, onPart } : null;
+  return <section className={'twin-scene' + (view.labels ? '' : ' no-labels')} aria-labelledby="twin-scene-title" hidden={view.enlarged} aria-busy={!!props && show3d && !three}>
     <h2 id="twin-scene-title" className="sr-only">Beamline</h2>
-    {props ? show3d ? <Hutch3D {...props} reset={reset} /> : <HutchScene {...props} />
+    {props ? show3d && Three ? <Three {...props} reset={reset} /> : <Diagram {...props} />
       : <div className="twin-scene-wait" role={failed ? 'alert' : undefined}>{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : typeof live === 'string' ? 'The beamline could not be computed: ' + live : 'Loading the X-ray tables…'}</div>}
     <div className="twin-scene-foot">
-      <details className="twin-note"><summary>About the drawing</summary>{show3d
+      <details className="twin-note"><summary>About the drawing</summary>{show3d && Three
         ? <p>A 3D model of a generic beamline, not to scale: the long stretches between the source, the optics and the experiment are shortened. Drag to turn the hutch, scroll or pinch to zoom, and use two fingers on a phone. The crystals are drawn at a Bragg angle held between <Tex plain>{'7^\\circ'}</Tex> and <Tex plain>{'40^\\circ'}</Tex> so both stay visible; the readings give the true angle. Readings are expected values from the source, optics, ion chamber and sample models, without noise. The electron-yield model is relative, so the drain current has no reading.</p>
         : <p>Not to scale: the beamline is shortened at the break symbols. The crystals are drawn at a Bragg angle held between <Tex plain>{'7^\\circ'}</Tex> and <Tex plain>{'40^\\circ'}</Tex> so both stay visible; the readings give the true angle. Readings are expected values from the source, optics, ion chamber and sample models, without noise. The electron-yield model is relative, so the drain current has no reading.</p>}</details>
       <div className="twin-scene-tools">
         {webgl && <button type="button" className="twin-icon" aria-pressed={show3d} title={show3d ? 'Show the diagram' : 'Show the 3D view'} onClick={toggle}>
           <Box size={16} aria-hidden="true" /><span className="sr-only">3D view</span>
         </button>}
-        {show3d && <button type="button" className="twin-icon" title="Reset the view" onClick={() => setReset(n => n + 1)}><RotateCcw size={16} aria-hidden="true" /><span className="sr-only">Reset view</span></button>}
+        {show3d && Three && <button type="button" className="twin-icon" title="Reset the view" onClick={() => setReset(n => n + 1)}><RotateCcw size={16} aria-hidden="true" /><span className="sr-only">Reset view</span></button>}
         <button type="button" className="twin-icon twin-whole" aria-pressed={whole} title={whole ? 'Close-up on this mode' : 'Whole beamline (labels become dots)'} onClick={() => setWhole(!whole)}>
           {whole ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}<span className="sr-only">Whole beamline</span>
         </button>

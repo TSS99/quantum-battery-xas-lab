@@ -11,6 +11,9 @@ import { toThree, type V3 } from './hutch-3d-layout';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 /* The last one is a panorama of a hutch interior, used only for what shiny surfaces reflect. */
 export const TEXTURES = ['aluminium', 'hutch-wall', 'concrete', 'floor', 'hutch-pano'].map(name => `${BASE}/images/twin/${name}.webp`);
+// Fetched as soon as this code loads; the page switches to the 3D view once they are in, so it never shows an empty room.
+useTexture.preload(TEXTURES);
+export const texturesReady = Promise.all(TEXTURES.map(url => new Promise<void>(done => { const img = new Image(); img.onload = img.onerror = () => done(); img.src = url; })));
 
 /** A copy of a texture that repeats every `size` world units (or `rx` by `ry` times on a plane). */
 function tiled(source: THREE.Texture, rx: number, ry = rx, color = true) {
@@ -59,8 +62,8 @@ function makeMaterials([alu, wall, concrete, floor, pano]: THREE.Texture[]) {
   return {
     alu: std({ color: '#d7dce2', map: tiled(alu, 1 / 80), metalness: 0.6, roughness: 0.42 }),
     steel: std({ color: '#dde2e8', map: tiled(alu, 1 / 50), roughnessMap: tiled(alu, 1 / 50, 1 / 50, false), metalness: 1, roughness: 0.26 }),
-    paint: std({ color: '#68717d', roughnessMap: tiled(floor, 1 / 60, 1 / 60, false), metalness: 0.25, roughness: 0.85 }),
-    panel: std({ color: '#cfd4da', metalness: 0.3, roughness: 0.5 }),
+    paint: std({ color: '#3a414b', roughnessMap: tiled(floor, 1 / 60, 1 / 60, false), metalness: 0.35, roughness: 0.8 }),
+    panel: std({ color: '#2a313a', metalness: 0.5, roughness: 0.4 }),
     yellow: std({ color: '#e2b22a', roughness: 0.5 }),
     red: std({ color: '#c62828', roughness: 0.35 }),
     dark: std({ color: '#272b31', metalness: 0.55, roughness: 0.42 }),
@@ -68,7 +71,7 @@ function makeMaterials([alu, wall, concrete, floor, pano]: THREE.Texture[]) {
     magnet: std({ color: '#2d5f97', metalness: 0.3, roughness: 0.4 }),
     copper: std({ color: '#c27a45', metalness: 1, roughness: 0.3 }),
     brass: std({ color: '#c9a45c', metalness: 1, roughness: 0.28 }),
-    concrete: std({ color: '#bdbcb7', map: tiled(concrete, 1 / 140), roughness: 0.92 }),
+    concrete: std({ color: '#7d828a', map: tiled(concrete, 1 / 140), roughness: 0.9 }),
     granite: std({ color: '#585d66', map: tiled(concrete, 1 / 90), metalness: 0.1, roughness: 0.55 }),
     tungsten: std({ color: '#7c8188', metalness: 0.9, roughness: 0.42 }),
     silicon: std({ color: '#9fb2ca', metalness: 0.95, roughness: 0.06 }),
@@ -83,8 +86,10 @@ function makeMaterials([alu, wall, concrete, floor, pano]: THREE.Texture[]) {
     tableSide: std({ color: '#2b3038', metalness: 0.45, roughness: 0.45 }),
     isolator: std({ color: '#545d68', metalness: 0.45, roughness: 0.4 }),
     tableTop: std({ map: tableTopTexture(alu, 670, 140), metalness: 0.7, roughness: 0.34 }),
-    wall: std({ color: '#c4c8cf', map: tiled(wall, 2400 / 260, 450 / 260), roughness: 0.82 }),
-    floor: std({ color: '#a9adb3', map: tiled(floor, 2400 / 150, 800 / 150), metalness: 0.08, roughness: 0.42 }),
+    wall: std({ map: tiled(wall, 2400 / 320, 450 / 320), metalness: 0.35, roughness: 0.5 }),
+    floor: std({ map: tiled(floor, 2400 / 120, 800 / 120), metalness: 0.4, roughness: 0.3 }),
+    led: new THREE.MeshBasicMaterial({ color: new THREE.Color('#3fd0ff').multiplyScalar(2.4), toneMapped: false }),
+    ledSoft: new THREE.MeshBasicMaterial({ color: new THREE.Color('#3fd0ff').multiplyScalar(1.1), toneMapped: false }),
     hazard: std({ map: (() => { const t = hazardTexture(); t.repeat.set(72, 1); return t; })(), roughness: 0.6 }),
     duct: std({ color: '#3a4357', metalness: 0.3, roughness: 0.5 }),
     ceramic: std({ color: '#d9d4c8', roughness: 0.7 }),
@@ -128,29 +133,37 @@ export function CylZ({ x, y, z0, z1, r, m, seg = 28 }: { x: number; y: number; z
 
 /** A cable or hose through world points. */
 export function Tube({ points, r, m, segments = 64 }: { points: V3[]; r: number; m: THREE.Material; segments?: number }) {
-  const geometry = useMemo(() => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...toThree(p))), false, 'catmullrom', 0.3), segments, r, 8), [points, r, segments]);
+  // Keyed by the coordinates, not the array: callers build a new array on every render.
+  const key = points.flat().join(' ');
+  const geometry = useMemo(() => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...toThree(p))), false, 'catmullrom', 0.3), segments, r, 8), [key, r, segments]);
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
   return <mesh geometry={geometry} material={m} castShadow receiveShadow />;
 }
 
 /** A cable from a fitting on top of a part: it rises, bends back over the part and drops into the floor duct behind the table. */
-export const drapePoints = (x: number, y: number, z = 0, back = 10, rise = 14): V3[] =>
+export const drapePoints = (x: number, y: number, z = 0, back = 12, rise = 9): V3[] =>
   [[x, y, z], [x + 1, y + rise * 0.7, z + 4], [x + back * 0.6, y + rise, 40], [x + back, y + rise - 6, 72], [x + back, 6, 86], [x + back, -82, 90]];
 
 /** A flat text plate or display drawn on a canvas, facing the viewer, centred at a world point. */
 export function TextPlate({ at, w, h, text, fg = '#d9e1ea', bg = 'rgba(0,0,0,0)', font = '600', glow = false, mono = false }: { at: V3; w: number; h: number; text: string; fg?: string; bg?: string; font?: string; glow?: boolean; mono?: boolean }) {
+  const scale = 8;
+  // One canvas per plate, redrawn when the text changes (a display updates on every slider step).
   const texture = useMemo(() => {
-    const scale = 8, canvas = document.createElement('canvas');
+    const canvas = document.createElement('canvas');
     canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
-    const g = canvas.getContext('2d')!;
+    const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    return t;
+  }, [w, h]);
+  useLayoutEffect(() => {
+    const canvas = texture.image as HTMLCanvasElement, g = canvas.getContext('2d')!;
+    g.clearRect(0, 0, canvas.width, canvas.height); g.shadowBlur = 0;
     g.fillStyle = bg; g.fillRect(0, 0, canvas.width, canvas.height);
     g.font = `${font} ${Math.round(h * scale * 0.62)}px ${mono ? 'ui-monospace, Consolas, monospace' : 'system-ui, sans-serif'}`;
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = fg;
     if (glow) { g.shadowColor = fg; g.shadowBlur = scale * 1.2; }
     g.fillText(text, canvas.width / 2, canvas.height / 2 + scale * 0.3);
-    const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-    return t;
-  }, [w, h, text, fg, bg, font, glow, mono]);
+    texture.needsUpdate = true;
+  }, [texture, text, fg, bg, font, glow, mono]);
   useLayoutEffect(() => () => texture.dispose(), [texture]);
   return <mesh position={toThree(at)}>
     <planeGeometry args={[w, h]} />
@@ -158,31 +171,24 @@ export function TextPlate({ at, w, h, text, fg = '#d9e1ea', bg = 'rgba(0,0,0,0)'
   </mesh>;
 }
 
+/** How a part the mode does not use is drawn: a faint cyan hologram that casts no shadow. */
+const GHOST = new THREE.MeshBasicMaterial({ color: '#4fd2ff', transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+
 /**
- * A clickable part of the beamline, faded when the mode does not use it. Meshes get their own copy of a shared
- * material the first time, so fading one part leaves the rest alone.
+ * A clickable part of the beamline, shown as a hologram when the mode does not use it. Each mesh keeps the material
+ * React last gave it, so a part that changes (a new mirror coating, say) comes back with the right one.
  */
 export function Part({ idle, children }: { idle: boolean; children: ReactNode }) {
   const group = useRef<THREE.Group>(null);
   useLayoutEffect(() => {
     group.current?.traverse(object => {
       const mesh = object as THREE.Mesh;
-      if (!mesh.isMesh || Array.isArray(mesh.material)) return;
-      if (!mesh.userData.own) {
-        const m = mesh.material.clone();
-        mesh.material = m;
-        mesh.userData = { own: true, opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite };
-      }
-      const m = mesh.material, u = mesh.userData;
-      const transparent = u.transparent || idle;
-      if (m.transparent !== transparent) { m.transparent = transparent; m.needsUpdate = true; }
-      m.opacity = u.opacity * (idle ? 0.32 : 1);
-      m.depthWrite = u.depthWrite && !idle;
+      if (!mesh.isMesh) return;
+      if (mesh.material !== GHOST) mesh.userData.base = mesh.material;
+      if (mesh.userData.cast === undefined) mesh.userData.cast = mesh.castShadow;
+      mesh.material = idle ? GHOST : mesh.userData.base;
+      mesh.castShadow = !idle && mesh.userData.cast;
     });
   });
-  useLayoutEffect(() => {
-    const root = group.current;
-    return () => root?.traverse(object => { const mesh = object as THREE.Mesh; if (mesh.isMesh && mesh.userData.own) (mesh.material as THREE.Material).dispose(); });
-  }, []);
   return <group ref={group}>{children}</group>;
 }

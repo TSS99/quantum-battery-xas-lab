@@ -27,13 +27,22 @@ export function unitTex(unit: string) {
 /** Chemical formula with numeric subscripts: Li0.5MnO2 becomes \mathrm{Li_{0.5}MnO_{2}}. */
 export const formulaTex = (formula: string) => '\\mathrm{' + formula.replace(/(?<=[A-Za-z)\]])(\d+(?:\.\d+)?)/g, '_{$1}').replace(/[·•]/g, '\\cdot ') + '}';
 
+/** Typeset HTML by source, so a page that re-renders on every slider step typesets each string only once. */
+const typeset = new Map<string, string>();
+
 /**
  * LaTeX rendered with KaTeX during the static build and in the browser, so the HTML already contains typeset math.
  * `plain` skips the hidden MathML copy; use it for bare numbers and units whose text is read as-is.
  */
 export function Tex({ children, block = false, plain = false }: { children: string; block?: boolean; plain?: boolean }) {
-  let html = katex.renderToString(block ? '\\displaystyle ' + children : children, { throwOnError: false, strict: 'ignore', output: plain ? 'html' : 'htmlAndMathml' });
-  if (plain) html = html.replace(' aria-hidden="true"', '');
+  const key = (block ? 'b' : '-') + (plain ? 'p' : '-') + children;
+  let html = typeset.get(key);
+  if (html === undefined) {
+    html = katex.renderToString(block ? '\\displaystyle ' + children : children, { throwOnError: false, strict: 'ignore', output: plain ? 'html' : 'htmlAndMathml' });
+    if (plain) html = html.replace(' aria-hidden="true"', '');
+    if (typeset.size >= 5000) typeset.clear();
+    typeset.set(key, html);
+  }
   return <span className={'tex' + (block ? ' tex-block' : '')} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 /** A number with a true minus sign; exponent notation becomes a power of ten. */

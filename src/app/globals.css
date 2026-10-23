@@ -147,7 +147,7 @@ input[aria-invalid="true"],textarea[aria-invalid="true"] {border-color:var(--err
 input[type="checkbox"] {width:20px;height:20px;flex:none;accent-color:var(--accent)}
 .check-control {display:flex;align-items:center;gap:12px;min-height:44px;font-size:14px}
 .file-control {display:flex;flex-direction:column;gap:8px;font-size:14px;max-width:100%}
-input[type="file"] {width:100%;max-width:100%;font-size:14px}
+input[type="file"]:not(.sr-only) {width:100%;max-width:100%;font-size:14px}
 input[type="file"]::file-selector-button {min-height:44px;background:var(--surface-2);color:var(--accent);border:1px solid var(--control-edge);border-radius:10px;padding:8px 12px;margin-right:12px}
 .range-control {display:flex;flex-direction:column;gap:4px;min-width:0}
 .range-control>div {display:flex;align-items:baseline;justify-content:space-between;gap:12px}

@@ -20,8 +20,9 @@ function collectErrors(page: Page) {
 
 async function openTwin(page: Page, hash = '') {
   await page.goto('./twin/' + hash);
-  // The drawing appears once the X-ray tables have loaded and the page has hydrated.
+  // The drawing appears once the X-ray tables have loaded and the page has hydrated; the 3D view then takes over.
   await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
+  await expect(page.locator('.twin-scene')).not.toHaveAttribute('aria-busy', 'true', { timeout: 30_000 });
 }
 
 async function axeViolations(page: Page) {
@@ -565,10 +566,14 @@ test('calibration dialog loads a generated mystery file and applies its energy c
   await expect(dialog.getByRole('status')).toContainText('3 calibration fits completed', { timeout: 30_000 });
   await dialog.getByRole('button', { name: 'Apply to profile' }).click();
   await expect(dialog.getByRole('status')).toContainText('Applied energy correction and processor dead time');
-  // The twin models dead time as the peaking time, so the fitted value shows in the detector's list.
-  await expect(page.getByRole('complementary', { name: 'Controls' }).getByLabel('Peaking time').locator('option:checked')).toContainText('(fitted)');
   await dialog.getByRole('button', { name: 'Profile editor' }).click();
   await expect(dialog.getByLabel('Energy correction')).not.toHaveValue('0');
+  // The twin models dead time as the peaking time, so the fitted value shows in the detector's list once its section is open.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  const controls = page.getByRole('complementary', { name: 'Controls' });
+  await controls.getByRole('button', { name: 'Fluorescence detector', exact: true }).click();
+  await expect(controls.getByLabel('Peaking time').locator('option:checked')).toContainText('(fitted)');
 });
 
 test('phone layout: one column, sticky mode bar, folded explanation and controls, no horizontal scroll at 390 px', async ({ page }) => {

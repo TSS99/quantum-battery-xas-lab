@@ -19,7 +19,7 @@ body:has(.twin-app) {background:#141d31}
 .twin-app .plot-wrap svg > rect:first-of-type {fill:#172235}
 
 /* ---------- Shared pieces: cards, kickers, chips, icon buttons ---------- */
-.twin-card {background:var(--tw-card);border:1px solid var(--tw-line);border-radius:14px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.twin-card {background:var(--tw-card);border:1px solid var(--tw-line);border-radius:14px}
 .twin-kicker {margin:0;font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--tw-muted)}
 .twin-chip {display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 13px;border:1px solid var(--tw-line-2);border-radius:999px;background:rgb(29 40 62/.6);color:var(--tw-text);font:500 13px/1.25 var(--font-sans);text-decoration:none;text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,color .2s}
 .twin-chip:hover {border-color:rgb(255 255 255/.32);color:#fff;text-decoration:none}
@@ -131,7 +131,23 @@ body:has(.twin-app) {background:#141d31}
 .hutch [data-part] {transition:opacity .3s}
 .hutch [data-part].is-idle {opacity:.42}
 /* The 3D view: the canvas fills the box; labels are page buttons moved over it each frame. */
-.hutch-3d .hutch-stage {min-width:0;width:100%;height:340px;overflow:hidden;border-radius:12px;background:#141d31}
+.hutch-3d .hutch-stage {min-width:0;width:100%;height:340px;overflow:hidden;border-radius:12px;background:#070b12;border:1px solid rgb(120 220 255/.16);box-shadow:0 0 40px rgb(40 160 255/.07)}
+/* HUD frame: corner brackets, and the live strip in the top left */
+.hutch-3d .hutch-stage::before {content:"";position:absolute;inset:8px;z-index:1;pointer-events:none;--c:rgb(140 227 255/.65);
+  background:linear-gradient(var(--c),var(--c)) 0 0/18px 1.5px,linear-gradient(var(--c),var(--c)) 0 0/1.5px 18px,linear-gradient(var(--c),var(--c)) 100% 0/18px 1.5px,linear-gradient(var(--c),var(--c)) 100% 0/1.5px 18px,
+    linear-gradient(var(--c),var(--c)) 0 100%/18px 1.5px,linear-gradient(var(--c),var(--c)) 0 100%/1.5px 18px,linear-gradient(var(--c),var(--c)) 100% 100%/18px 1.5px,linear-gradient(var(--c),var(--c)) 100% 100%/1.5px 18px;background-repeat:no-repeat}
+.hutch-hud {position:absolute;left:18px;top:15px;z-index:1;display:flex;align-items:center;gap:9px;font:500 10px/1 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase;color:rgb(170 232 255/.9);text-shadow:0 0 8px rgb(60 190 255/.55);pointer-events:none}
+.hutch-hud span + span::before {content:"";display:inline-block;width:3px;height:3px;margin:0 9px 2px 0;border-radius:50%;background:rgb(140 227 255/.5)}
+.hutch-hud-live::before {content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:#5dff9a;box-shadow:0 0 8px #5dff9a;animation:hutch-pulse 1.4s ease-in-out infinite alternate}
+/* HUD labels (only the named labels in view; the dots keep their own look) */
+.hutch-3d:not(.no-labels) .hutch-part:not([data-outside]) {border-color:rgb(120 220 255/.42);border-radius:3px;background:rgb(6 14 26/.84);color:#e2f7ff;letter-spacing:.03em;box-shadow:0 0 14px rgb(60 190 255/.14)}
+.hutch-3d:not(.no-labels) .hutch-part:not([data-outside]):hover {border-color:var(--tw-accent);color:#fff}
+.hutch-3d:not(.no-labels) .hutch-part:not([data-outside]).is-idle {border-color:rgb(120 220 255/.16);background:rgb(6 14 26/.55);color:#94a8bd;box-shadow:none}
+.hutch-3d:not(.no-labels) .hutch-part:not([data-outside]).is-focus {border-color:var(--tw-accent);background:rgb(10 40 60/.82);color:#fff;box-shadow:0 0 0 1px rgb(140 227 255/.3),0 0 18px rgb(60 190 255/.42)}
+.hutch-3d:not(.no-labels) .hutch-part:not([data-outside])[aria-expanded="true"] {border-color:var(--tw-accent);background:var(--tw-accent);color:#031018}
+.hutch-3d .hutch-leaders-3d path {stroke-dasharray:3 3}
+.hutch-3d .hutch-leaders-3d circle {filter:drop-shadow(0 0 3px #8ce3ff)}
+@media (prefers-reduced-motion: reduce) {.hutch-hud-live::before {animation:none}}
 .hutch-3d .hutch-canvas {position:absolute;inset:0}
 .hutch-3d .hutch-canvas canvas {display:block}
 .hutch-3d .hutch-stage svg.hutch-leaders-3d {position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -274,7 +290,7 @@ body:has(.twin-app) {background:#141d31}
 .twin-scenarios h3 {margin:0;font:400 22px/1.15 var(--tw-serif)}
 .twin-scenarios p {margin:0;font-size:13.5px;color:var(--tw-body)}
 .twin-scenarios .button {justify-self:start}
-.twin-task {display:grid;gap:10px;padding:14px 16px;border:1px solid var(--tw-accent-line);border-radius:14px;background:rgb(22 46 66/.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.twin-task {display:grid;gap:10px;padding:14px 16px;border:1px solid var(--tw-accent-line);border-radius:14px;background:rgb(22 46 66/.9)}
 .twin-task h2 {font:400 24px/1.1 var(--tw-serif)}
 .twin-task p {margin:0;font-size:13.5px}
 .twin-task-actions {display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px}
