@@ -47,7 +47,29 @@ The Explore/Research switch changes explanatory depth. It does not change the mo
 * **Sessions and sharing:** save the instrument, settings and every acquisition as a session file and load it back; copy a share link that carries the settings and seed; import your own XDI or named columns as Measured data; download a Larch script per acquisition that repeats the dock's reduction (checked against xraylarch).
 * **Calibrate from data:** load your own XDI or columns to fit the energy offset, harmonic fraction and dead time, edit the instrument profile, or test yourself on a seeded mystery instrument.
 
-Keys: 1 to 8 switch modes, I acquires, Space pauses, X enlarges the results, L toggles labels, T opens training, [ and ] hide the side panels, and \` opens the console.
+Keys: 1 to 8 switch modes, I acquires, Space pauses, X enlarges the results, L toggles labels, T opens training, / opens the command bar ("set energy 8979", "detune 30 %", "insert harmonic mirror", "acquire 3 scans"; a typo is corrected and confirmed before it runs), [ and ] hide the side panels, and \` opens the console.
+
+**Calculators and teaching:** `/tools/` has four calculators taken from the twin (ion chamber gas, harmonic rejection mirror angle, fluorescence self absorption and X-ray dose), each with worked examples computed at build time, and `/instructors/` explains class links and result files.
+
+### Without a browser: command line and MCP server
+
+The same `src/lib/twin` modules run headless in Node (bundled on the fly with esbuild):
+
+```bash
+npm run twin -- --sample limn2o4-pellet --mode fluorescence --seed 7 --do "detune 30 %" --out run.xdi --larch
+npm run twin -- --formula CuO --edge Cu-K --density 6.3 --thickness 10 --realistic --out cuo.xdi
+npm run twin -- --help
+```
+
+It writes XDI (or CSV or JSON by the file extension), prints the edge position, edge step and first-shell peak, and with `--larch` writes a Larch script that reduces the file. The same seed gives the same file.
+
+`npm run --silent mcp` starts an MCP server on stdio for AI agents, with the tools `twin_status`, `twin_command` (the command bar grammar), `twin_acquire`, `twin_analyze`, `twin_export` (XDI, CSV, JSON or Larch), `twin_reset` and a one-off `simulate`. For Claude Code, from the project folder:
+
+```bash
+claude mcp add xaslab-twin -- npm run --silent --prefix "$PWD" mcp
+```
+
+The agent skill in [`skills/xas-lab-twin/SKILL.md`](skills/xas-lab-twin/SKILL.md) tells Claude or Codex how to use both. The server drives its own headless twin; it does not control a twin open in a browser.
 
 ## Research and industry workflows
 

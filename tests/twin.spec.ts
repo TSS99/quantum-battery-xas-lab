@@ -528,7 +528,7 @@ test('keyboard shortcuts dialog lists the keys, blocks them while open and retur
   await opener.click();
   const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('row')).toHaveCount(19);
+  await expect(dialog.getByRole('row')).toHaveCount(20);
   await page.keyboard.press('4');
   await expect(mode(page, 'Transmission')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
@@ -610,4 +610,31 @@ test('axe finds no accessibility violations on the twin page at 1440 and 390 px'
   await openTwin(page);
   await page.getByRole('button', { name: 'What you are looking at' }).click();
   expect(await axeViolations(page)).toEqual([]);
+});
+
+test('the / key opens the command bar, which runs commands and confirms a corrected typo first', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=7');
+  await page.keyboard.press('/');
+  const bar = page.getByRole('dialog', { name: 'Command' }), input = bar.getByRole('textbox');
+  await expect(input).toBeFocused();
+  await input.fill('set energy 9000');
+  await input.press('Enter');
+  await expect(bar).toBeHidden();
+  await expect(changed(page)).toContainText('9000');
+  await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue('9000');
+  await page.getByRole('button', { name: 'Command', exact: true }).click();
+  await input.fill('swich to flourescence');
+  await input.press('Enter');
+  await expect(bar.getByRole('status')).toHaveText('Did you mean "switch to fluorescence"? Press Enter to run it.');
+  await input.press('Enter');
+  await expect(bar).toBeHidden();
+  await expect(mode(page, 'Fluorescence')).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('/');
+  await input.fill('make coffee');
+  await input.press('Enter');
+  await expect(bar.getByRole('status')).toContainText('Not understood');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Command', exact: true })).toBeFocused();
+  expect(errors).toEqual([]);
 });

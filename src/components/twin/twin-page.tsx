@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useRef, useState, type Dispatch } from 'react';
+import { useCallback, useEffect, useRef, useState, type Dispatch } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, FlaskConical, FolderArchive, GraduationCap, Keyboard, PanelLeft, PanelRight, SquareTerminal } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { ArrowLeft, FlaskConical, FolderArchive, GraduationCap, Keyboard, PanelLeft, PanelRight, Slash, SquareTerminal } from 'lucide-react';
 import { energyChange, shortcutAction, type TwinAction } from './twin-state';
 import { TwinProvider, useTwin } from './twin-store';
 import { ModeBar } from './mode-bar';
@@ -15,6 +16,9 @@ import { SessionDialog } from './session-dialog';
 import { Training } from './training';
 import { NARROW_QUERY } from './fold';
 
+// The command bar's code (and its grammar) loads the first time it opens, which keeps it out of the page's first download.
+const CommandBar = dynamic(() => import('./command-bar').then(m => m.CommandBar), { ssr: false });
+
 // Inputs that take typed text; the others (buttons, checkboxes, sliders) leave the shortcut keys free.
 const KEY_FREE_INPUTS = ['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'color', 'file', 'image', 'hidden'];
 function typingIn(target: EventTarget | null) {
@@ -22,14 +26,15 @@ function typingIn(target: EventTarget | null) {
     target instanceof HTMLInputElement && !KEY_FREE_INPUTS.includes(target.type));
 }
 
-/** Page shortcuts (keys 1 to 8, C, L, I, X, T, Space, [ and ]), never while typing and never inside a dialog. */
-function useShortcuts(dispatch: Dispatch<TwinAction>) {
+/** Page shortcuts (keys 1 to 8, C, L, I, X, T, /, Space, [ and ]), never while typing and never inside a dialog. */
+function useShortcuts(dispatch: Dispatch<TwinAction>, openCommand: () => void) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.target instanceof Element && event.target.closest('dialog')) return;
       if (typingIn(event.target)) return;
       if (event.key === 'Escape') { dispatch({ type: 'enlarge', value: false }); return; }
+      if (event.key === '/') { event.preventDefault(); openCommand(); return; }
       if (event.key === ' ') {
         // Space pauses or resumes a running scan, except on controls that Space itself operates.
         if (event.repeat || event.target instanceof Element && event.target.closest('button, a, summary, [role="tab"], [role="slider"], [tabindex]')) return;
@@ -45,7 +50,7 @@ function useShortcuts(dispatch: Dispatch<TwinAction>) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dispatch]);
+  }, [dispatch, openCommand]);
 }
 
 /** Describes the energy once the slider or field settles, so screen readers hear one line rather than every step. */
@@ -63,14 +68,18 @@ function TwinLayout() {
   const [keysOpen, setKeysOpen] = useState(false);
   const [calibrateOpen, setCalibrateOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false), [commandUsed, setCommandUsed] = useState(false);
+  const commandButton = useRef<HTMLButtonElement>(null);
+  const openCommand = useCallback(() => { setCommandUsed(true); setCommandOpen(true); }, []);
   const keysButton = useRef<HTMLButtonElement>(null);
   const calibrateButton = useRef<HTMLButtonElement>(null);
   const sessionButton = useRef<HTMLButtonElement>(null);
-  useShortcuts(dispatch);
+  useShortcuts(dispatch, openCommand);
   useEnergyNote(twin.energy_eV, dispatch);
   const closeKeys = () => { setKeysOpen(false); keysButton.current?.focus(); };
   const closeCalibrate = () => { setCalibrateOpen(false); calibrateButton.current?.focus(); };
   const closeSession = () => { setSessionOpen(false); sessionButton.current?.focus(); };
+  const closeCommand = () => { setCommandOpen(false); commandButton.current?.focus(); };
   return <div className={'twin-app' + (view.enlarged ? ' is-enlarged' : '') + (view.leftHidden ? ' left-hidden' : '') + (view.rightHidden ? ' right-hidden' : '')}>
     <div className="twin-col twin-col-left">
       <header className="twin-hero">
@@ -101,6 +110,7 @@ function TwinLayout() {
           <button type="button" className="twin-chip is-accent" aria-haspopup="dialog" aria-keyshortcuts="T" onClick={() => dispatch({ type: 'training', open: true })}><GraduationCap size={15} aria-hidden="true" />Training</button>
         </div>
         <div className="twin-toolbar-buttons">
+          <button type="button" className="twin-icon" ref={commandButton} aria-haspopup="dialog" aria-keyshortcuts="/" title="Command (/)" onClick={openCommand}><Slash size={16} aria-hidden="true" /><span className="sr-only">Command</span></button>
           <button type="button" className="twin-icon" ref={sessionButton} aria-haspopup="dialog" title="Session" onClick={() => setSessionOpen(true)}><FolderArchive size={16} aria-hidden="true" /><span className="sr-only">Session</span></button>
           <button type="button" className="twin-icon" ref={calibrateButton} aria-haspopup="dialog" title="Calibrate from data" onClick={() => setCalibrateOpen(true)}><FlaskConical size={16} aria-hidden="true" /><span className="sr-only">Calibrate from data</span></button>
           <button type="button" className="twin-icon" aria-haspopup="dialog" aria-keyshortcuts="`" title="Console (`)" onClick={() => window.dispatchEvent(new Event('xaslab:console'))}><SquareTerminal size={16} aria-hidden="true" /><span className="sr-only">Console</span></button>
@@ -114,6 +124,7 @@ function TwinLayout() {
     <ShortcutsDialog open={keysOpen} onClose={closeKeys} />
     <CalibrateDialog open={calibrateOpen} onClose={closeCalibrate} />
     <SessionDialog open={sessionOpen} onClose={closeSession} />
+    {commandUsed && <CommandBar open={commandOpen} onClose={closeCommand} />}
   </div>;
 }
 

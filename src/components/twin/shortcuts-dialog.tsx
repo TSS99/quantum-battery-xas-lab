@@ -10,6 +10,7 @@ const KEYS: [string, string][] = [
   ['I', 'Acquire'],
   ['Space', 'Pause or resume a running scan'],
   ['T', 'Open the training scenarios'],
+  ['/', 'Type a command, such as "set energy 8979" or "acquire 3 scans"'],
   ['X', 'Enlarge or shrink the results'],
   ['Escape', 'Shrink the enlarged results'],
   ['[', 'Show or hide the explanation (wide windows)'],

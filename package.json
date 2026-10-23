@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:ui": "playwright test",
-    "science": "python -m uvicorn science.app:app --host 127.0.0.1 --port 8000"
+    "science": "python -m uvicorn science.app:app --host 127.0.0.1 --port 8000",
+    "twin": "esbuild src/cli/twin-cli.ts --bundle --platform=node --format=esm --outfile=.cache/twin-cli.mjs --log-level=warning && node .cache/twin-cli.mjs",
+    "mcp": "esbuild src/cli/xaslab-mcp.ts --bundle --platform=node --format=esm --outfile=.cache/xaslab-mcp.mjs --log-level=warning && node .cache/xaslab-mcp.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.0",
@@ -32,6 +34,7 @@
     "@types/react-dom": "^19.2.0",
     "@types/three": "^0.180.0",
     "axe-core": "4.10.2",
+    "esbuild": "0.28.2",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
