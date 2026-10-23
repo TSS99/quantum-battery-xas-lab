@@ -59,7 +59,7 @@ export const focusX3 = (mode: TwinMode) => { const xs = sceneFor(mode).emphasis.
  * beamline. The distance fits both the width and the height of the box.
  */
 export function frameFor(mode: TwinMode, whole: boolean, aspect: number): Frame {
-  const target: V3 = whole ? [780, 10, 20] : [focusX3(mode), 52, 10];
+  const target: V3 = whole ? [780, 20, 20] : [focusX3(mode), 62, 10];
   const width = whole ? 1700 : aspect < 1.6 ? 400 : 560, height = whole ? 380 : 340;
   const t = Math.tan(FOV / 2 * Math.PI / 180);
   const d = Math.max(width / 2 / (t * Math.max(aspect, 0.3)), height / 2 / t);

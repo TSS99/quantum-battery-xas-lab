@@ -418,8 +418,11 @@ test('the beamline twin is linked from the header and landing page, and the Meth
   await page.goto('./');
   await expect(page.locator('.hero-actions').getByRole('link', { name: 'Operate the beamline twin' })).toHaveAttribute('href', /\/twin\/$/);
   await page.goto('./validation/');
-  // Phones reach the header links through the menu.
-  if ((page.viewportSize()?.width ?? 1440) < 800) await page.getByRole('button', { name: 'Open menu' }).click();
+  // Phones reach the header links through the menu. A tap before hydration does nothing, so tap until it opens.
+  if ((page.viewportSize()?.width ?? 1440) < 800) await expect(async () => {
+    await page.getByRole('button', { name: 'Open menu' }).click({ timeout: 1000 });
+    await expect(page.locator('#mobile-menu')).toBeVisible({ timeout: 1000 });
+  }).toPass();
   const menu = (page.viewportSize()?.width ?? 1440) < 800 ? page.locator('#mobile-menu') : page.locator('.header-links');
   await expect(menu.getByRole('link', { name: /^Beamline twin/ }).first()).toHaveAttribute('href', /\/twin\/$/);
   await page.keyboard.press('Escape');

@@ -7,7 +7,7 @@ import { Suspense, memo, useEffect, useLayoutEffect, useMemo, useRef, useState, 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, OrbitControls } from '@react-three/drei';
 import { Bloom, EffectComposer, N8AO, ToneMapping, Vignette } from '@react-three/postprocessing';
-import { ToneMappingMode } from 'postprocessing';
+import { ToneMappingMode, type EffectComposer as EffectComposerImpl } from 'postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { useReducedMotion } from 'motion/react';
@@ -16,7 +16,7 @@ import type { TwinState } from '@/lib/twin/types';
 import { C1, PARTS, SOURCE_X, XS, YB0, beamGlow, drawnBraggDeg, hasCue, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
 import { FLOOR, FOV, LABEL3, TIP3, clampToBox, frameFor, toThree, type V3 } from './hutch-3d-layout';
 import { YB } from '../scene-kit';
-import { Blk, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, useMaterials, type Mats } from './hutch-3d-kit';
+import { Blk, Bolts, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
 export { texturesReady } from './hutch-3d-kit';
 import type { HutchSceneProps } from './hutch-scene';
 import { modeInfo } from './twin-state';
@@ -62,23 +62,26 @@ function dash() {
 
 /* ---------- The beam ---------- */
 const additive = (color: string, opacity: number, map?: THREE.Texture) => new THREE.MeshBasicMaterial({ color, opacity, ...(map ? { map } : {}), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+/** A see-through colour that still shows on a white wall (additive light would wash out there). */
+const tinted = (color: string, opacity: number, alphaMap?: THREE.Texture) => new THREE.MeshBasicMaterial({ color, opacity, ...(alphaMap ? { alphaMap } : {}), transparent: true, depthWrite: false, toneMapped: false });
 const UP = new THREE.Vector3(0, 1, 0);
 
-/** One straight stretch of beam: a bright core in a soft halo, with pulses running along it while the leg is in use. */
-function BeamSeg({ a, b, color = '#ffc46b', core = '#fff1d6', glow: strength, lit = true, flow = true, speed = 1, animate }: { a: V3; b: V3; color?: string; core?: string; glow: number; lit?: boolean; flow?: boolean; speed?: number; animate: boolean }) {
+/** One straight stretch of beam: a saturated core in a tinted halo and a soft glow, with pale pulses running along it
+    while the leg is in use. */
+function BeamSeg({ a, b, color = '#ffa733', core = '#fff6e0', glow: strength, lit = true, flow = true, speed = 1, animate }: { a: V3; b: V3; color?: string; core?: string; glow: number; lit?: boolean; flow?: boolean; speed?: number; animate: boolean }) {
   const pa = new THREE.Vector3(...toThree(a)), pb = new THREE.Vector3(...toThree(b)), length = pa.distanceTo(pb);
   const mid = pa.clone().add(pb).multiplyScalar(0.5), q = new THREE.Quaternion().setFromUnitVectors(UP, pb.clone().sub(pa).normalize());
   const k = strength * (lit ? 1 : 0.16), moving = flow && lit && strength > 0;
   const mats = useMemo(() => {
     const map = dash().clone(); map.needsUpdate = true; map.repeat.set(1, Math.max(1, length / 26));
-    return [additive(color, 0.05), additive(color, 0.14), additive(core, 0.9), additive(core, 0.8, map)];
+    return [additive(color, 0.1), tinted(color, 0.3), tinted(color, 0.95), tinted(core, 0.9, map)];
   }, [color, core, length]);
-  useLayoutEffect(() => () => mats.forEach(m => { m.map?.dispose(); m.dispose(); }), [mats]);
-  mats[0].opacity = 0.06 * k; mats[1].opacity = 0.16 * k; mats[2].opacity = 0.9 * k; mats[3].opacity = moving ? 0.7 * k : 0;
-  useFrame((_, dt) => { if (moving && animate && mats[3].map) mats[3].map.offset.y -= Math.min(dt, 0.1) * 2.3 * speed; });
+  useLayoutEffect(() => () => mats.forEach(m => { m.alphaMap?.dispose(); m.dispose(); }), [mats]);
+  mats[0].opacity = 0.1 * k; mats[1].opacity = 0.3 * k; mats[2].opacity = 0.95 * k; mats[3].opacity = moving ? 0.9 * k : 0;
+  useFrame((_, dt) => { if (moving && animate && mats[3].alphaMap) mats[3].alphaMap.offset.y -= Math.min(dt, 0.1) * 2.3 * speed; });
   if (length < 0.5) return null;
   return <group position={mid} quaternion={q}>
-    {[5.5, 2.6, 0.75, 1.15].map((r, i) => <mesh key={i} material={mats[i]} renderOrder={2}><cylinderGeometry args={[r, r, length, 16, 1, true]} /></mesh>)}
+    {[5.5, 2.4, 0.9, 1.2].map((r, i) => <mesh key={i} material={mats[i]} renderOrder={2}><cylinderGeometry args={[r, r, length, 16, 1, true]} /></mesh>)}
   </group>;
 }
 
@@ -89,19 +92,22 @@ function GlowSprite({ at, size, color, opacity = 1 }: { at: V3; size: number; co
 }
 
 /* ---------- Hardware ---------- */
-function Pipe({ m, x0, x1, y }: { m: Mats; x0: number; x1: number; y: number }) {
+function Pipe({ m, x0, x1, y, bellows }: { m: Mats; x0: number; x1: number; y: number; bellows?: [number, number] }) {
   const xm = (x0 + x1) / 2;
   return <>
     <CylX x0={x0} x1={x1} y={y} r={6} m={m.steel} />
     {[x0 + 1.5, x1 - 1.5].map(x => <CylX key={x} x0={x - 1.5} x1={x + 1.5} y={y} r={10.5} m={m.steel} />)}
-    <Blk x0={xm - 2.5} x1={xm + 2.5} y0={FLOOR + 2} y1={y - 6} z0={-2.5} z1={2.5} m={m.paint} />
-    <Blk x0={xm - 9} x1={xm + 9} y0={FLOOR} y1={FLOOR + 2} z0={-9} z1={9} m={m.paint} />
+    <Bolts points={[...ring(x0 - 0.3, y, 8.6), ...ring(x1 + 0.3, y, 8.6)]} axis="x" m={m.steel} size={1} height={1.2} />
+    {bellows && Array.from({ length: Math.floor((bellows[1] - bellows[0]) / 2.2) }, (_, i) => <CylX key={i} x0={bellows[0] + i * 2.2} x1={bellows[0] + i * 2.2 + 1.1} y={y} r={7.8} m={m.steel} seg={24} />)}
+    <Blk x0={xm - 2.5} x1={xm + 2.5} y0={FLOOR + 2} y1={y - 6} z0={-2.5} z1={2.5} m={m.white} />
+    <Blk x0={xm - 9} x1={xm + 9} y0={FLOOR} y1={FLOOR + 2} z0={-9} z1={9} m={m.white} />
+    <Bolts points={[[xm - 6, FLOOR + 2.4, -6], [xm + 6, FLOOR + 2.4, -6], [xm - 6, FLOOR + 2.4, 6], [xm + 6, FLOOR + 2.4, 6]]} axis="y" m={m.steel} size={1.3} height={0.9} />
   </>;
 }
 
 /** A stainless vacuum tank on a granite stand, with a glass viewport in its front wall. */
 function Tank({ m, x0, x1, y1, z, win: [wy0, wy1], plate, children }: { m: Mats; x0: number; x1: number; y1: number; z: number; win: [number, number]; plate?: string; children?: ReactNode }) {
-  const y0 = 4, t = 3, xm = (x0 + x1) / 2;
+  const y0 = 4, t = 3, xm = (x0 + x1) / 2, frameBolts = Math.max(2, Math.floor((x1 - x0 - 24) / 9));
   return <>
     <Blk x0={x0 + 10} x1={x1 - 10} y0={FLOOR + 4} y1={y0} z0={-z + 8} z1={z - 8} m={m.granite} r={2} />
     {[x0 + 14, x1 - 14].flatMap(x => [-z + 12, z - 12].map(zz => <CylY key={x + ':' + zz} x={x} z={zz} y0={FLOOR} y1={FLOOR + 4} r={5} m={m.dark} seg={12} />))}
@@ -117,6 +123,11 @@ function Tank({ m, x0, x1, y1, z, win: [wy0, wy1], plate, children }: { m: Mats;
     <mesh position={toThree([xm, (y0 + y1) / 2, z - t - 0.2])} material={m.inner}><planeGeometry args={[x1 - x0 - 2 * t, y1 - y0 - 2 * t]} /></mesh>
     <mesh position={toThree([xm, (wy0 + wy1) / 2, -z + 1.5])} material={m.glass} renderOrder={1}><planeGeometry args={[x1 - x0 - 20, wy1 - wy0]} /></mesh>
     {Array.from({ length: Math.floor((x1 - x0 - 8) / 14) }, (_, i) => <CylY key={i} x={x0 + 7 + i * 14} z={-z + 4} y0={y1} y1={y1 + 1.4} r={1.5} m={m.steel} seg={8} />)}
+    <Bolts points={[wy0 - 3, wy1 + 3].flatMap(y => Array.from({ length: frameBolts }, (_, i): V3 => [x0 + 14 + i * (x1 - x0 - 28) / (frameBolts - 1), y, -z - 0.5]))} axis="z" m={m.steel} size={0.9} height={1} />
+    {[x0 + 14, x1 - 14].map(x => <mesh key={x} position={toThree([x, y1 + 3.2, 0])} castShadow material={m.steel}><torusGeometry args={[2.6, 0.7, 8, 20]} /></mesh>)}
+    <CylY x={xm + 16} z={z - 12} y0={y1} y1={y1 + 9} r={2.4} m={m.steel} seg={16} />
+    <CylZ x={xm + 16} y={y1 + 13} z0={z - 14} z1={z - 10} r={4.5} m={m.steel} />
+    <mesh position={toThree([xm + 16, y1 + 13, z - 14.05])}><circleGeometry args={[3.8, 24]} /><meshStandardMaterial color="#f4f6f8" roughness={0.3} /></mesh>
     <mesh position={toThree([xm, wy1 + 1.4, -z - 0.2])} material={m.led}><planeGeometry args={[x1 - x0 - 24, 0.8]} /></mesh>
     {plate && <TextPlate at={[x0 + 26, (y0 + t + wy0) / 2, -z - 0.4]} w={36} h={Math.min(9, wy0 - y0 - t - 1)} text={plate} bg="#16191d" fg="#cfd6de" />}
     {children}
@@ -160,6 +171,8 @@ function Chamber({ m, c, beam, readout, gas }: { m: Mats; c: ChamberBox; beam: n
     </group>)}
     {readout !== undefined && <TextPlate at={[xc, (wy1 + y1) / 2, -z - 0.4]} w={54} h={lcdH} text={readout} fg="#74dcaa" bg="#06130f" mono glow />}
     <mesh position={toThree([xc, y0 + 1.6, -z - 0.45])} material={m.led}><planeGeometry args={[x1 - x0 - 16, 0.9]} /></mesh>
+    <TextPlate at={[x0 + 9, (y0 + wy0) / 2, -z - 0.45]} w={7} h={6} text="⚡" fg="#16191d" bg="#f2c230" />
+    <TextPlate at={[x1 - 11, (y0 + wy0) / 2, -z - 0.45]} w={13} h={4} text={'IC-' + Math.round(x1 - x0)} fg="#3a414b" bg="#f4f6f8" mono />
     {gas && <TextPlate at={[xc, (y0 + wy0) / 2, -z - 0.4]} w={40} h={8} text={gasText(gas)} bg="#16191d" fg="#cfd6de" />}
     {[x0 + 14, x1 - 14].map(x => <group key={x}>
       <CylY x={x} y0={y1} y1={y1 + 9} r={4} m={m.steel} />
@@ -284,11 +297,11 @@ function WallFittings({ m }: { m: Mats }) {
 }
 
 /** Ambient occlusion, bloom on the beam and displays, a soft vignette and filmic tone mapping. Lighter on phones. */
-function Effects({ light }: { light: boolean }) {
-  return <EffectComposer multisampling={light ? 0 : 2} enableNormalPass={false}>
-    <N8AO aoRadius={24} distanceFalloff={0.8} intensity={2.6} quality={light ? 'performance' : 'low'} halfRes />
-    <Bloom luminanceThreshold={0.72} luminanceSmoothing={0.25} intensity={0.95} mipmapBlur radius={0.78} />
-    <Vignette offset={0.26} darkness={0.6} />
+function Effects({ light, hq, composer }: { light: boolean; hq: boolean; composer: MutableRefObject<EffectComposerImpl | null> }) {
+  return <EffectComposer ref={composer} multisampling={hq ? 8 : light ? 0 : 4} enableNormalPass={false}>
+    <N8AO aoRadius={24} distanceFalloff={0.8} intensity={2.2} quality={hq ? 'ultra' : light ? 'performance' : 'low'} halfRes={!hq} />
+    <Bloom luminanceThreshold={0.9} luminanceSmoothing={0.2} intensity={0.8} mipmapBlur radius={0.72} />
+    <Vignette offset={0.3} darkness={0.3} />
     <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
   </EffectComposer>;
 }
@@ -309,7 +322,7 @@ function FloorGrid() {
   useLayoutEffect(() => () => texture.dispose(), [texture]);
   return <mesh rotation-x={-Math.PI / 2} position={toThree([1150, FLOOR + 0.4, -60])} renderOrder={1}>
     <planeGeometry args={[2000, 1000]} />
-    <meshBasicMaterial map={texture} transparent opacity={0.085} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+    <meshBasicMaterial map={texture} transparent opacity={0.3} depthWrite={false} toneMapped={false} />
   </mesh>;
 }
 
@@ -333,6 +346,39 @@ const Room = memo(function Room({ m }: { m: Mats }) {
     <WallFittings m={m} />
     <Rack m={m} x0={985} z0={128} tall />
     <Rack m={m} x0={1455} z0={128} tall={false} />
+    {/* Wall lamps: white housings with bright diffusers */}
+    {[380, 700, 1020, 1340, 1660].map(x => <group key={x}>
+      <Blk x0={x - 72} x1={x + 72} y0={197} y1={207} z0={191} z1={199} m={m.white} r={1.5} />
+      <mesh position={toThree([x, 201, 190.9])} material={m.lamp}><planeGeometry args={[136, 5]} /></mesh>
+    </group>)}
+    {/* Pendant light bars over the experiment table, hung on wires */}
+    {[1080, 1380].map(x => <group key={x}>
+      <Blk x0={x - 120} x1={x + 120} y0={226} y1={232} z0={24} z1={36} m={m.white} r={1.5} />
+      <mesh position={toThree([x, 229, 23.9])} material={m.lamp}><planeGeometry args={[232, 2.6]} /></mesh>
+      <mesh position={toThree([x, 225.9, 30])} rotation-x={Math.PI / 2} material={m.lamp}><planeGeometry args={[232, 10]} /></mesh>
+      {[x - 100, x + 100].map(xx => <CylY key={xx} x={xx} z={30} y0={232} y1={420} r={0.5} m={m.steel} seg={6} />)}
+    </group>)}
+    {/* The hutch door, sliding on its rail, with hazard edges, a window, and the search and interlock panel beside it */}
+    <Blk x0={1590} x1={1790} y0={136} y1={142} z0={190} z1={196} m={m.steel} r={0.8} />
+    <Blk x0={1600} x1={1780} y0={FLOOR} y1={134} z0={186} z1={192} m={m.white} r={1.2} />
+    {[1600, 1774].map(x => <mesh key={x} position={toThree([x + 3, 22, 185.6])} material={m.hazardV}><planeGeometry args={[6, 224]} /></mesh>)}
+    <Blk x0={1660} x1={1720} y0={70} y1={110} z0={185.4} z1={186} m={m.glass} r={0.2} cast={false} />
+    <CylY x={1612} z={184} y0={10} y1={50} r={1.6} m={m.steel} />
+    <TextPlate at={[1690, 125, 185.5]} w={64} h={7} text="HUTCH 1 · INTERLOCKED" fg="#16191d" bg="#f2c230" />
+    <Blk x0={1556} x1={1584} y0={30} y1={74} z0={193} z1={198} m={m.dark} r={1} />
+    {[[1564, 62, '#5dff9a'], [1576, 62, '#ff5a4a']].map(([x, y, c]) => <mesh key={x as number} position={toThree([x as number, y as number, 192.3])}><circleGeometry args={[3, 20]} /><meshBasicMaterial color={c as string} toneMapped={false} /></mesh>)}
+    <CylZ x={1570} y={46} z0={191} z1={193} r={4} m={m.yellow} />
+    <TextPlate at={[1570, 36, 192.4]} w={24} h={4} text="SEARCH" fg="#cfd6de" bg="#16191d" mono />
+    {/* Fire extinguisher on its wall bracket */}
+    <CylY x={1540} z={186} y0={FLOOR + 2} y1={-34} r={6} m={m.red} />
+    <CylY x={1540} z={186} y0={-34} y1={-28} r={2.4} m={m.black} />
+    <Tube points={[[1543, -30, 186], [1550, -36, 182], [1549, -60, 181]]} r={0.9} m={m.black} />
+    <Blk x0={1534} x1={1546} y0={-60} y1={-56} z0={192} z1={198} m={m.dark} />
+    {/* Power and network outlets along the skirting */}
+    {[930, 1190, 1420].map(x => <group key={x}>
+      <Blk x0={x - 10} x1={x + 10} y0={FLOOR + 22} y1={FLOOR + 34} z0={197} z1={199.6} m={m.white} r={0.8} />
+      {[x - 4, x + 4].map(xx => <mesh key={xx} position={toThree([xx, FLOOR + 28, 196.9])}><circleGeometry args={[2, 16]} /><meshStandardMaterial color="#2b3038" roughness={0.6} /></mesh>)}
+    </group>)}
 
     {/* Experiment table: a thick optical table on pneumatic isolators */}
     {[[912, 59], [1544, 59], [912, -59], [1544, -59]].map(([x, z]) => <group key={x + ':' + z}>
@@ -347,7 +393,7 @@ const Room = memo(function Room({ m }: { m: Mats }) {
 });
 
 /** Everything in the hutch. */
-function World({ twin, live, animate }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean }) {
+function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean }) {
   const m = useMaterials();
   const { mode, environment, profile } = twin;
   const idle = (id: PartId) => !partActive(mode, id);
@@ -374,8 +420,22 @@ function World({ twin, live, animate }: { twin: TwinState; live: HutchSceneProps
     electrons.current?.children.forEach((e, i) => e.position.copy(orbit.getPointAt(((animate ? t * 0.7 : 0) + i / 6) % 1)));
     if (pulse.current) pulse.current.children.forEach(s => { ((s as THREE.Sprite).material as THREE.SpriteMaterial).opacity = animate ? 0.55 + 0.45 * Math.abs(Math.sin(t * 2.2)) : 0.9; });
   });
-  const gl = useThree(state => state.gl);
-  useEffect(() => { gl.shadowMap.needsUpdate = true; });
+  const gl = useThree(state => state.gl), invalidate = useThree(state => state.invalidate);
+  // Shadows are redrawn once a change settles rather than on every slider step: what moves meanwhile (the crystals,
+  // the sliding mirror) sits inside the tanks, where a shadow a moment late cannot be seen.
+  useEffect(() => {
+    const timer = setTimeout(() => { gl.shadowMap.needsUpdate = true; invalidate(); }, 150);
+    return () => clearTimeout(timer);
+  });
+  // A 4K capture redraws the shadow maps at twice the resolution, then goes back.
+  const keyRef = useRef<THREE.DirectionalLight>(null), spotRef = useRef<THREE.SpotLight>(null);
+  useEffect(() => {
+    for (const [light, size] of [[keyRef.current, hq ? 4096 : 2048], [spotRef.current, hq ? 2048 : 1024]] as const) {
+      if (!light || light.shadow.mapSize.x === size) continue;
+      light.shadow.mapSize.set(size, size); light.shadow.map?.dispose(); light.shadow.map = null;
+    }
+    gl.shadowMap.needsUpdate = true;
+  }, [hq, gl]);
   const lightTarget = useMemo(() => new THREE.Object3D(), []), spots = useMemo(() => [new THREE.Object3D(), new THREE.Object3D()], []);
   const current = useMemo(() => additive('#7fd8cf', 0.5), []);
   const fan = useMemo(() => {
@@ -385,22 +445,23 @@ function World({ twin, live, animate }: { twin: TwinState; live: HutchSceneProps
   }, []);
 
   return <>
-    <color attach="background" args={['#070b12']} />
-    <fogExp2 attach="fog" args={['#070b12', 0.00032]} />
-    <Environment map={m.pano} environmentIntensity={1.1} />
-    <hemisphereLight args={['#9fc8ff', '#05070a', 0.24]} />
+    <color attach="background" args={['#cfd8e3']} />
+    <fogExp2 attach="fog" args={['#cfd8e3', 0.0002]} />
+    <Environment map={m.pano} environmentIntensity={1} />
+    <hemisphereLight args={['#ffffff', '#aab4c0', 0.85]} />
     <primitive object={lightTarget} position={[820, 0, 0]} />
     {spots.map((target, i) => <primitive key={i} object={target} position={[[1230, 560][i], 0, 0]} />)}
-    <spotLight target={spots[0]} position={[1180, 560, 80]} angle={0.62} penumbra={0.85} intensity={2.4} decay={0} color="#eaf6ff" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
-    <spotLight target={spots[1]} position={[520, 560, 60]} angle={0.6} penumbra={0.9} intensity={1.6} decay={0} color="#dff0ff" />
-    <directionalLight target={lightTarget} position={[520, 1000, 650]} intensity={0.75} color="#e8f2ff" castShadow
+    <spotLight ref={spotRef} target={spots[0]} position={[1180, 560, 80]} angle={0.62} penumbra={0.85} intensity={2.1} decay={0} color="#fffaf2" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
+    <spotLight target={spots[1]} position={[520, 560, 60]} angle={0.6} penumbra={0.9} intensity={1.5} decay={0} color="#fffaf2" />
+    <directionalLight ref={keyRef} target={lightTarget} position={[520, 1000, 650]} intensity={1.3} color="#ffffff" castShadow
       shadow-mapSize={[2048, 2048]} shadow-bias={-0.0003} shadow-normalBias={0.8}
       shadow-camera-left={-1150} shadow-camera-right={1150} shadow-camera-top={800} shadow-camera-bottom={-800} shadow-camera-near={100} shadow-camera-far={3200} />
-    <directionalLight position={[-600, 300, 900]} intensity={0.4} color="#59c8ff" />
-    <directionalLight position={[900, 260, -900]} intensity={0.9} color="#3fbfff" />
-    {[1060, 1400].map(x => <pointLight key={x} position={[x, -62, 0]} color="#3fd0ff" intensity={0.6} distance={300} decay={0} />)}
+    <directionalLight position={[-600, 300, 900]} intensity={0.3} color="#cfeaff" />
+    <directionalLight position={[900, 260, -900]} intensity={0.45} color="#7fd8ff" />
+    {[1060, 1400].map(x => <pointLight key={x} position={[x, -62, 0]} color="#3fd0ff" intensity={0.35} distance={300} decay={0} />)}
 
     <Room m={m} />
+    <StatusScreen mode={mode} energy={live.energy_eV} theta={live.theta_deg} crystal={profile.mono.crystal} transmission={live.sampleTransmission} />
 
     {/* Source: the storage ring vacuum chamber curving through a C-shaped bending magnet */}
     <Part idle={idle('source')}>
@@ -427,7 +488,7 @@ function World({ twin, live, animate }: { twin: TwinState; live: HutchSceneProps
       <CylY x={250} y0={YB0 + 16} y1={YB0 + 30} r={6} m={m.dark} />
       <CylZ x={250} y={YB0} z0={-26} z1={-16} r={5} m={m.dark} />
     </Part>
-    <Pipe m={m} x0={262} x1={344} y={YB0} />
+    <Pipe m={m} x0={262} x1={344} y={YB0} bellows={[312, 334]} />
     {/* Ion pump hanging under the pipe */}
     <Blk x0={277} x1={283} y0={YB0 - 12} y1={YB0 - 5} z0={-3} z1={3} m={m.steel} />
     <Blk x0={270} x1={290} y0={YB0 - 42} y1={YB0 - 12} z0={-12} z1={12} m={m.dark} />
@@ -452,7 +513,7 @@ function World({ twin, live, animate }: { twin: TwinState; live: HutchSceneProps
     <Part idle={idle('second-crystal')}>
       <group ref={crystal2} position={toThree([c2x, YB, 0])} rotation={[0, 0, tv]}><Blk x0={-15} x1={15} y0={0} y1={8} z0={-12} z1={12} m={m.silicon} r={0.5} /></group>
     </Part>
-    <Pipe m={m} x0={640} x1={680} y={YB} />
+    <Pipe m={m} x0={640} x1={680} y={YB} bellows={[648, 670]} />
     <Part idle={idle('focusing-mirror')}>
       <Tank m={m} x0={680} x1={772} y1={YB + 34} z={34} win={[YB - 26, YB + 26]} plate={'M2 ' + (focusing?.coating ?? '')}>
         <Mirror m={m} x0={690} x1={762} top={YB - 1} coating={focusing?.coating ?? 'Si'} />
@@ -502,7 +563,7 @@ function World({ twin, live, animate }: { twin: TwinState; live: HutchSceneProps
     </Part>
 
     {/* The beam: white before the monochromator, one energy after it; each leg dims by what the element before it absorbed */}
-    <BeamSeg a={[SOURCE_X, YB0, 0]} b={[C1, YB0, 0]} color="#f4f1ea" core="#ffffff" glow={1} animate={animate} />
+    <BeamSeg a={[SOURCE_X, YB0, 0]} b={[C1, YB0, 0]} color="#8fb8ff" core="#ffffff" glow={1} animate={animate} />
     <BeamSeg a={[C1, YB0, 0]} b={[c2x, YB, 0]} glow={1} animate={animate} speed={fast ? 3 : 1} />
     <BeamSeg a={[c2x, YB, 0]} b={[1090, YB, 0]} glow={1} animate={animate} speed={fast ? 3 : 1} />
     <BeamSeg a={[1090, YB, 0]} b={[XS - 3, YB, 0]} glow={afterI0} lit={lit('i0-to-sample')} animate={animate} speed={fast ? 3 : 1} />
@@ -559,6 +620,62 @@ function World({ twin, live, animate }: { twin: TwinState; live: HutchSceneProps
   </>;
 }
 
+/* ---------- 4K capture ---------- */
+/**
+ * Draws the current view once at 4K (3840 by 2160; 2560 by 1440 on phones) straight through the effect composer, with
+ * full-quality effects and sharper shadows, reads that frame, and puts the renderer, camera and composer back. The
+ * camera does not move, and the page's own canvas keeps its size.
+ */
+function Snapshot({ shot, light, onShot, setHq, composer }: { shot: number; light: boolean; onShot: (image: Blob | null, width: number, height: number) => void; setHq: (on: boolean) => void; composer: MutableRefObject<EffectComposerImpl | null> }) {
+  const { gl, camera, invalidate } = useThree();
+  const job = useRef<{ frames: number } | null>(null);
+  useEffect(() => {
+    if (!shot || job.current) return;
+    job.current = { frames: 0 }; setHq(true); invalidate();
+  }, [shot, setHq, invalidate]);
+  useFrame(() => {
+    const j = job.current, fx = composer.current; if (!j) return;
+    // A few frames for the full-quality passes and the larger shadow maps to be built.
+    if (j.frames++ < 3 || !fx) { invalidate(); return; }
+    const width = light ? 2560 : 3840, height = light ? 1440 : 2160, cam = camera as THREE.PerspectiveCamera;
+    const size = gl.getSize(new THREE.Vector2()), dpr = gl.getPixelRatio(), aspect = cam.aspect;
+    gl.setPixelRatio(1); fx.setSize(width, height, false); cam.aspect = width / height; cam.updateProjectionMatrix();
+    fx.render();
+    gl.domElement.toBlob(image => onShot(image, width, height), 'image/png');
+    gl.setPixelRatio(dpr); fx.setSize(size.x, size.y, false); cam.aspect = aspect; cam.updateProjectionMatrix();
+    job.current = null; setHq(false); invalidate();
+  }, 2);
+  return null;
+}
+
+/** A wall screen with the beamline's live status. */
+function StatusScreen({ mode, energy, theta, crystal, transmission }: { mode: TwinState['mode']; energy: number; theta: number | null; crystal: string; transmission: number | null }) {
+  const texture = useMemo(() => {
+    const c = document.createElement('canvas'); c.width = 1600; c.height = 700;
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; return t;
+  }, []);
+  useLayoutEffect(() => {
+    const c = texture.image as HTMLCanvasElement, g = c.getContext('2d')!;
+    const bg = g.createLinearGradient(0, 0, 0, 700); bg.addColorStop(0, '#0b1a2b'); bg.addColorStop(1, '#06101c');
+    g.fillStyle = bg; g.fillRect(0, 0, 1600, 700);
+    g.strokeStyle = 'rgba(80,210,255,.25)'; g.lineWidth = 2;
+    for (let x = 0; x < 1600; x += 80) { g.beginPath(); g.moveTo(x, 150); g.lineTo(x, 700); g.stroke(); }
+    g.fillStyle = '#4fd8ff'; g.font = '600 64px ui-monospace, Consolas, monospace'; g.fillText('XAS LAB · HUTCH 1', 60, 100);
+    g.fillStyle = '#5dff9a'; g.beginPath(); g.arc(1500, 80, 18, 0, 2 * Math.PI); g.fill();
+    g.fillStyle = '#e8f6ff'; g.font = '500 76px ui-monospace, Consolas, monospace';
+    const rows: [string, string][] = [['MODE', modeInfo(mode).name.toUpperCase()], ['ENERGY', energy.toFixed(1) + ' eV'], ['BRAGG', theta === null ? '—' : theta.toFixed(3) + '°  ' + crystal.replace(/Si(\d+)/, 'Si($1)')], ['SAMPLE T', transmission === null ? '—' : (transmission * 100).toFixed(1) + ' %']];
+    rows.forEach(([k, v], i) => { g.fillStyle = 'rgba(160,230,255,.7)'; g.fillText(k, 60, 250 + i * 120); g.fillStyle = '#ffffff'; g.fillText(v, 520, 250 + i * 120); });
+    texture.needsUpdate = true;
+  }, [texture, mode, energy, theta, crystal, transmission]);
+  useLayoutEffect(() => () => texture.dispose(), [texture]);
+  const frame = useMemo(() => new THREE.MeshStandardMaterial({ color: '#1b2028', metalness: 0.5, roughness: 0.4 }), []);
+  useLayoutEffect(() => () => frame.dispose(), [frame]);
+  return <group>
+    <Blk x0={556} x1={724} y0={116} y1={192} z0={194} z1={199} m={frame} r={1.5} />
+    <mesh position={toThree([640, 154, 193.6])}><planeGeometry args={[160, 70]} /><meshBasicMaterial map={texture} toneMapped={false} /></mesh>
+  </group>;
+}
+
 /* ---------- Frame pacing ---------- */
 /**
  * The canvas draws only when asked. While something moves (the beam pulses, the electrons, a rocking crystal) this asks
@@ -601,7 +718,8 @@ function Rig({ mode, whole, focusOn, reset, reduced }: { mode: TwinState['mode']
     if (!placed.current || reduced) { camera.position.copy(position); c.target.copy(target); c.update(); placed.current = true; invalidate(); return; }
     tween.current = { from: [camera.position.clone(), c.target.clone()], to: [position, target], t: 0 };
     invalidate();
-  }, [mode, whole, focusOn, reset, aspect, size.width, size.height, reduced, camera, invalidate]);
+  // Re-framed when the box changes shape, not on every size change: a 4K capture keeps the shape.
+  }, [mode, whole, focusOn, reset, Math.round(aspect * 50), reduced, camera, invalidate]);
   // One finger scrolls the page on phones; two fingers turn and zoom the hutch.
   useEffect(() => { if (coarse) gl.domElement.style.touchAction = 'pan-y'; });
   useFrame((_, dt) => {
@@ -685,9 +803,12 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
 export interface Hutch3DProps extends HutchSceneProps {
   /** Bumped by the Reset view button. */
   reset: number;
+  /** Bumped by the Save 4K image button; the image comes back through onShot. */
+  shot: number;
+  onShot: (image: Blob | null, width: number, height: number) => void;
 }
 
-function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset }: Hutch3DProps) {
+function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot }: Hutch3DProps) {
   const reduced = !!useReducedMotion();
   const coarse = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
   const { mode } = twin;
@@ -695,7 +816,8 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset }: Hutch
   const showLabels = labels && !whole;
   const stage = useRef<HTMLDivElement>(null);
   const overlay = useRef<Overlay>({ buttons: new Map(), leaders: new Map(), dots: new Map(), svg: null, tips: {}, drawn: new Map(), widths: new Map(), hud: null, hudBox: null });
-  const [visible, setVisible] = useState(true), [focusOn, setFocusOn] = useState<PartId | null>(null);
+  const [visible, setVisible] = useState(true), [focusOn, setFocusOn] = useState<PartId | null>(null), [hq, setHq] = useState(false);
+  const composer = useRef<EffectComposerImpl | null>(null);
   useEffect(() => {
     const el = stage.current; if (!el || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
@@ -713,14 +835,15 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset }: Hutch
   const label = `Beamline drawing, 3D view, ${modeInfo(mode).name.toLowerCase()} mode. The monochromator passes ${live.energy_eV.toFixed(1)} eV` +
     (live.sampleTransmission === null ? '.' : ` and the sample passes ${percent(live.sampleTransmission)}% of the beam.`);
 
-  return <div className={'hutch hutch-3d mode-' + mode + cues + (showLabels ? '' : ' no-labels')}>
+  return <div className={'hutch hutch-3d mode-' + mode + cues + (showLabels ? '' : ' no-labels') + (hq ? ' is-capturing' : '')}>
     <div className="hutch-stage" ref={stage}>
       <div className="hutch-canvas" role="img" aria-label={label}>
-        <Canvas shadows dpr={[1, 1.5]} frameloop={visible ? 'demand' : 'never'} camera={{ fov: FOV, near: 10, far: 9000, position: [700, 600, 2400] }}
-          gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMappingExposure = 1.05; gl.shadowMap.autoUpdate = false; }}>
-          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} /></Suspense>
+        <Canvas shadows dpr={coarse ? [1, 1.5] : [1, 2]} frameloop={visible || hq ? 'demand' : 'never'} camera={{ fov: FOV, near: 10, far: 9000, position: [700, 600, 2400] }}
+          gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMappingExposure = 1; gl.shadowMap.autoUpdate = false; }}>
+          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} /></Suspense>
           <Rig mode={mode} whole={whole} focusOn={focusOn} reset={reset} reduced={reduced} />
-          <Effects light={coarse} />
+          <Effects light={coarse} hq={hq} composer={composer} />
+          <Snapshot shot={shot} light={coarse} onShot={onShot} setHq={setHq} composer={composer} />
           <Pacer animate={!reduced && visible} />
           <Projector overlay={overlay} showLabels={showLabels} />
         </Canvas>

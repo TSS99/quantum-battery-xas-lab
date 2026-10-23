@@ -1,6 +1,6 @@
 'use client';
-import { memo, useCallback, useDeferredValue, useEffect, useState, type ComponentType } from 'react';
-import { Box, Eye, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { memo, useCallback, useDeferredValue, useEffect, useRef, useState, type ComponentType } from 'react';
+import { Box, Camera, Eye, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { Tex } from '../tex';
 import { HutchScene } from './hutch-scene';
 import { useTwin } from './twin-store';
@@ -31,7 +31,19 @@ function useHutchView() {
 /** The beamline hutch on the dark stage, driven by the twin state once the X-ray and optics tables have loaded. */
 export function TwinScene() {
   const { store: { twin, view }, dispatch, tables, live } = useTwin();
-  const [whole, setWhole] = useState(false), [reset, setReset] = useState(0);
+  const [whole, setWhole] = useState(false), [reset, setReset] = useState(0), [shot, setShot] = useState(0), [shooting, setShooting] = useState(false);
+  // The 4K image downloads as a PNG named after the mode and energy, and the change note says what was saved. The
+  // callback reads them from a ref so it stays the same function: a new one on every step would redraw the 3D view.
+  const named = useRef(twin);
+  useEffect(() => { named.current = twin; });
+  const onShot = useCallback((image: Blob | null, width: number, height: number) => {
+    setShooting(false);
+    if (!image) { dispatch({ type: 'note', text: 'The 4K image could not be made in this browser.' }); return; }
+    const url = URL.createObjectURL(image), a = document.createElement('a'), { mode, energy_eV } = named.current;
+    a.href = url; a.download = `xas-lab-hutch-${mode}-${energy_eV.toFixed(0)}eV-${width}x${height}.png`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    dispatch({ type: 'note', text: `Saved a ${width} by ${height} pixel image of the hutch.` });
+  }, [dispatch]);
   const { webgl, show3d, toggle } = useHutchView();
   const failed = tables === 'failed' || typeof live === 'string';
   // The diagram shows as soon as the X-ray tables are in; the 3D view loads after them (so it never delays the first
@@ -52,7 +64,7 @@ export function TwinScene() {
   const props = shownLive && typeof shownLive !== 'string' ? { twin: shownTwin, live: shownLive, labels: view.labels, whole, part: view.part, onPart } : null;
   return <section className={'twin-scene' + (view.labels ? '' : ' no-labels')} aria-labelledby="twin-scene-title" hidden={view.enlarged} aria-busy={!!props && show3d && !three}>
     <h2 id="twin-scene-title" className="sr-only">Beamline</h2>
-    {props ? show3d && Three ? <Three {...props} reset={reset} /> : <Diagram {...props} />
+    {props ? show3d && Three ? <Three {...props} reset={reset} shot={shot} onShot={onShot} /> : <Diagram {...props} />
       : <div className="twin-scene-wait" role={failed ? 'alert' : undefined}>{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : typeof live === 'string' ? 'The beamline could not be computed: ' + live : 'Loading the X-ray tables…'}</div>}
     <div className="twin-scene-foot">
       <details className="twin-note"><summary>About the drawing</summary>{show3d && Three
@@ -62,6 +74,7 @@ export function TwinScene() {
         {webgl && <button type="button" className="twin-icon" aria-pressed={show3d} title={show3d ? 'Show the diagram' : 'Show the 3D view'} onClick={toggle}>
           <Box size={16} aria-hidden="true" /><span className="sr-only">3D view</span>
         </button>}
+        {show3d && Three && <button type="button" className="twin-icon" title="Save a 4K image of this view" disabled={shooting} onClick={() => { setShooting(true); setShot(n => n + 1); }}><Camera size={16} aria-hidden="true" /><span className="sr-only">Save 4K image</span></button>}
         {show3d && Three && <button type="button" className="twin-icon" title="Reset the view" onClick={() => setReset(n => n + 1)}><RotateCcw size={16} aria-hidden="true" /><span className="sr-only">Reset view</span></button>}
         <button type="button" className="twin-icon twin-whole" aria-pressed={whole} title={whole ? 'Close-up on this mode' : 'Whole beamline (labels become dots)'} onClick={() => setWhole(!whole)}>
           {whole ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}<span className="sr-only">Whole beamline</span>

@@ -206,6 +206,10 @@ test('3D hutch: shown by default, its parts open their cards, and the diagram ch
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Reset view', exact: true }).click();
   await expect(scene.getByRole('button', { name: 'Monochromator', exact: true })).toHaveAttribute('data-outside', '');
+  // Save 4K image downloads a 3840 by 2160 PNG of the current view and says so.
+  const [image] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }), page.getByRole('button', { name: 'Save 4K image', exact: true }).click()]);
+  expect(image.suggestedFilename()).toMatch(/^xas-lab-hutch-transmission-\d+eV-3840x2160\.png$/);
+  await expect(changed(page)).toContainText('Saved a 3840 by 2160 pixel image of the hutch');
   // The whole beamline fits the box.
   await page.getByRole('button', { name: 'Whole beamline', exact: true }).click();
   for (const name of ['Source', 'Monochromator', 'Beam stop']) await expect(scene.getByRole('button', { name, exact: true })).not.toHaveAttribute('data-outside');
