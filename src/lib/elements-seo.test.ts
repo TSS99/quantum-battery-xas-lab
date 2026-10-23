@@ -40,8 +40,9 @@ describe('static element routes and search metadata', () => {
 
   it('lists every canonical page exactly once in the sitemap without query links', () => {
     const urls = sitemap().map(entry => entry.url);
-    // Overview and seven modules, the beamline twin, the element index and the 98 elements from H to Cf.
-    expect(urls).toHaveLength(108);
+    // Overview and seven modules, the beamline twin, the element index, the 98 elements from H to Cf, the calculator
+    // index, four calculators and the instructors page.
+    expect(urls).toHaveLength(114);
     expect(urls).toContain(pageUrl('twin'));
     expect(new Set(urls).size).toBe(urls.length);
     for (const page of pages) expect(urls).toContain(pageUrl(page.path));

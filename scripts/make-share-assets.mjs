@@ -7,7 +7,7 @@ import { chromium } from '@playwright/test';
 
 const site = JSON.parse(await readFile('src/data/site-pages.json', 'utf8'));
 const only = process.argv.includes('--elements-only') ? 'elements' : process.argv.find(a => a.startsWith('--only='))?.slice(7);
-const cards = [...site.pages, site.elements, site.twin];
+const cards = [...site.pages, site.elements, site.twin, site.tools, site.instructors];
 const pages = only ? cards.filter(p => p.slug === only) : cards;
 if (!pages.length) throw new Error(`No card with the slug "${only}".`);
 const oneCard = !!only;

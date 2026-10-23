@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Copy, Download, Upload, X } from 'lucide-react';
 import { Num } from '../tex';
 import { Plot } from '../plot';
@@ -182,7 +183,7 @@ export function Training() {
         </li>)}</ul>
         <details className="twin-details twin-class">
           <summary>For instructors: class links and results</summary>
-          <p className="twin-note">A class link opens one task with one seed for everyone, so the whole class meets the same hidden fault. After the reveal each student downloads a result file; load the files here to see the class together. The files stay in this browser.</p>
+          <p className="twin-note">A class link opens one task with one seed for everyone, so the whole class meets the same hidden fault. After the reveal each student downloads a result file; load the files here to see the class together. The files stay in this browser. <Link href="/instructors/">Guide for instructors</Link></p>
           <input ref={resultFiles} className="sr-only" type="file" multiple accept=".json,application/json" aria-label="Student result files" onChange={e => loadResults(e.target.files)} />
           <div className="twin-task-actions">
             <button type="button" className="button secondary small" onClick={() => resultFiles.current?.click()}><Upload size={14} aria-hidden="true" />Load result files</button>

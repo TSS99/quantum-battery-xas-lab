@@ -1,7 +1,10 @@
 {
   "siteName": "XAS Lab",
   "siteUrl": "https://tss99.github.io/quantum-battery-xas-lab",
-  "author": { "name": "TSS99", "url": "https://github.com/TSS99" },
+  "author": {
+    "name": "TSS99",
+    "url": "https://github.com/TSS99"
+  },
   "repository": "https://github.com/TSS99/quantum-battery-xas-lab",
   "twin": {
     "slug": "twin",
@@ -16,6 +19,46 @@
     "title": "X-ray absorption edges by element",
     "description": "K, L and M edge energies, jump ratios and fluorescence yields for every element from hydrogen to californium, with links to plan an XAS sample.",
     "ogAlt": "Elements card: X-ray absorption edge energies for hydrogen to californium"
+  },
+  "tools": {
+    "slug": "tools",
+    "name": "Calculators",
+    "title": "XAS beamline calculators: gases, mirrors, self absorption, dose",
+    "description": "Four quick calculators from the beamline twin: ion chamber gas fills, the harmonic rejection mirror angle, fluorescence self absorption and X-ray dose rate, from tabulated cross sections.",
+    "ogAlt": "Calculators card: ion chamber gas, mirror angle, self absorption and dose",
+    "pages": [
+      {
+        "slug": "tools/ion-chamber-gas",
+        "name": "Ion chamber gas",
+        "title": "Ion chamber gas calculator for XAS",
+        "description": "Choose the gas fill for an I0 or It ion chamber at any X-ray energy and chamber length: the absorbed fraction of He, N2, Ar and Kr mixes from tabulated cross sections."
+      },
+      {
+        "slug": "tools/harmonic-rejection-mirror",
+        "name": "Harmonic rejection mirror",
+        "title": "Harmonic rejection mirror angle calculator",
+        "description": "Find the mirror angle that keeps the fundamental and rejects the third harmonic for Si, Ni, Rh and Pt coatings at any energy, with the cutoff energy and both reflectivities."
+      },
+      {
+        "slug": "tools/self-absorption",
+        "name": "Self absorption",
+        "title": "Fluorescence self absorption estimator for XAS",
+        "description": "Estimate how much self absorption shrinks the white line and EXAFS in a fluorescence measurement, for any formula, density, thickness and detector angle."
+      },
+      {
+        "slug": "tools/x-ray-dose",
+        "name": "X-ray dose",
+        "title": "X-ray dose rate calculator for XAS samples",
+        "description": "Dose rate in gray per second for any sample, flux, energy and beam size, with the absorbed power, the flux density and the time to reach typical damage doses."
+      }
+    ]
+  },
+  "instructors": {
+    "slug": "instructors",
+    "name": "For instructors",
+    "title": "Teach XAS with the beamline twin: class links and results",
+    "description": "Run an XAS class on the beamline twin: share one task and seed with a link, let students find the hidden fault, then load their result files into a class table. No accounts, nothing uploaded.",
+    "ogAlt": "Instructors card: class links, hidden faults and a class results table"
   },
   "pages": [
     {

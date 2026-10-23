@@ -24,7 +24,7 @@ const routes = [
 // Full-screen consoles: outside the eight modules, linked from the header, the menus and the footer.
 const consoles = [['/twin/', 'Beamline twin', 'Operate a working XAS beamline, full screen']] as const;
 
-export function Shell({ children, elementNames }: { children: React.ReactNode; elementNames: Record<string, string> }) {
+export function Shell({ children, elementNames, trails }: { children: React.ReactNode; elementNames: Record<string, string>; trails: Record<string, [string, string][]> }) {
   const pathname = usePathname(), { state, set, notice, canUndo, undoPreset } = useLab();
   const [consoleOpen, setConsoleOpen] = useState(false), [consoleLoaded, setConsoleLoaded] = useState(false);
   const [scrolled, setScrolled] = useState(false), [labMenu, setLabMenu] = useState(false), [mobileMenu, setMobileMenu] = useState(false);
@@ -77,6 +77,8 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
   const elementPath = /^\/elements(?:\/([a-z]{1,2}))?\/?$/.exec(pathname), elementSlug = elementPath?.[1];
   const elementName = elementSlug && Object.hasOwn(elementNames, elementSlug) ? elementNames[elementSlug] : undefined;
   const inElements = !!elementPath && (!elementSlug || !!elementName);
+  // Calculators and the instructors page: Overview / Calculators / Ion chamber gas.
+  const trail = trails[pathname.replace(/\/?$/, '/')];
   const home = current[0] === '/';
   const expanded = home && !scrolled;
 
@@ -113,7 +115,7 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
       <main id="main" tabIndex={-1}>
         {home && <LandingHero />}
         <div className="page-bar">
-          <nav aria-label="Breadcrumb"><ol className="breadcrumb"><li><Link href="/" aria-current={home ? 'page' : undefined}>Overview</Link></li>{inElements ? <><li><Link href="/elements/" aria-current={elementName ? undefined : 'page'}>Elements</Link></li>{elementName && <li><Link href={`/elements/${elementSlug}/`} aria-current="page">{elementName}</Link></li>}</> : current[0] === '' ? <li><span aria-current="page">{current[1]}</span></li> : !home && <li><Link href={current[0]} aria-current="page">{current[1]}</Link></li>}</ol></nav>
+          <nav aria-label="Breadcrumb"><ol className="breadcrumb"><li><Link href="/" aria-current={home ? 'page' : undefined}>Overview</Link></li>{trail ? trail.map(([name, href], i) => <li key={href}><Link href={href} aria-current={i === trail.length - 1 ? 'page' : undefined}>{name}</Link></li>) : inElements ? <><li><Link href="/elements/" aria-current={elementName ? undefined : 'page'}>Elements</Link></li>{elementName && <li><Link href={`/elements/${elementSlug}/`} aria-current="page">{elementName}</Link></li>}</> : current[0] === '' ? <li><span aria-current="page">{current[1]}</span></li> : !home && <li><Link href={current[0]} aria-current="page">{current[1]}</Link></li>}</ol></nav>
           <div className="topbar-actions"><button className="console-toggle" type="button" aria-haspopup="dialog" aria-expanded={consoleOpen} aria-controls={consoleLoaded ? 'lab-console' : undefined} aria-keyshortcuts="`" title="Open console (`)" onClick={consoleOpen ? closeConsole : openConsole}><span aria-hidden="true">&gt;_</span> Console</button><div className="mode-switch" role="group" aria-label="Explanation level"><button aria-pressed={!state.expert} className={!state.expert ? 'selected' : ''} onClick={() => set({ expert: false })}>Explore</button><button aria-pressed={state.expert} className={state.expert ? 'selected' : ''} onClick={() => set({ expert: true })}>Research</button></div></div>
         </div>
         <nav aria-label="Laboratory modules" className="module-bar"><ul>{routes.map(([href, name]) => <li key={href}><Link href={href} aria-current={current[0] === href ? 'page' : undefined} className={current[0] === href ? 'active' : undefined}>{name}</Link></li>)}</ul></nav>
@@ -124,7 +126,7 @@ export function Shell({ children, elementNames }: { children: React.ReactNode; e
           <div className="footer-brand"><Link href="/" className="wordmark large" aria-label="XAS Lab overview"><Atom size={22} aria-hidden="true" /><span>XAS Lab</span></Link><p>X-ray absorption spectroscopy for any material, in your browser. Calculations stay on your computer.</p><InstallApp /></div>
           <div className="footer-cols">
             <div><h2>Lab</h2><ul>{[...routes.slice(1, 6), ...consoles].map(([href, name]) => <li key={href}><Link href={href}>{name}</Link></li>)}</ul></div>
-            <div><h2>Reference</h2><ul><li><Link href="/elements/">Elements</Link></li><li><Link href="/validation/">Methods</Link></li><li><Link href="/experiments/">Experiments</Link></li></ul></div>
+            <div><h2>Reference</h2><ul><li><Link href="/elements/">Elements</Link></li><li><Link href="/tools/">Calculators</Link></li><li><Link href="/instructors/">For instructors</Link></li><li><Link href="/validation/">Methods</Link></li><li><Link href="/experiments/">Experiments</Link></li></ul></div>
             <div><h2>Project</h2><ul><li><a href={REPO} target="_blank" rel="noreferrer"><Github size={14} aria-hidden="true" /> Source code</a></li><li><a href={REPO + '/issues'} target="_blank" rel="noreferrer">Report an issue</a></li></ul></div>
           </div>
         </div>

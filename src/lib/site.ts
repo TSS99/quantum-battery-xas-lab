@@ -10,6 +10,12 @@ export const PAGES: SitePage[] = site.pages;
 export const ELEMENTS_PAGE = site.elements;
 /** The beamline twin runs full screen outside the eight modules and has its own card. */
 export const TWIN_PAGE = site.twin;
+/** The calculators (/tools/ and /tools/<name>/) share one card, like the element pages. */
+export const TOOLS_PAGE = site.tools;
+export type ToolPage = (typeof site.tools.pages)[number];
+export const TOOL_PAGES: ToolPage[] = site.tools.pages;
+/** The page for teachers running a class on the twin. */
+export const INSTRUCTORS_PAGE = site.instructors;
 
 /** Absolute URL with a trailing slash, matching trailingSlash: true. */
 export const pageUrl = (slug: string) => `${SITE_URL}/${slug ? slug + '/' : ''}`;
@@ -82,6 +88,37 @@ export function twinMetadata(): Metadata {
 /** JSON-LD for the twin: Overview > Beamline twin. */
 export function twinJsonLd() {
   return { '@context': 'https://schema.org', '@graph': [webSite, webApplication, breadcrumbs([[TWIN_PAGE.name, TWIN_PAGE.slug]])] };
+}
+
+/** Metadata for the calculator index or one calculator, with the shared calculators card. */
+export function toolsMetadata(page: { slug: string; title: string; description: string }): Metadata {
+  return routeMetadata({ path: page.slug, title: page.title, description: page.description, ogSlug: TOOLS_PAGE.slug, ogAlt: TOOLS_PAGE.ogAlt });
+}
+
+/** JSON-LD for the calculators: Overview > Calculators, then the calculator when there is one. */
+export function toolsJsonLd(tool?: ToolPage) {
+  const trail: [string, string][] = [[TOOLS_PAGE.name, TOOLS_PAGE.slug]];
+  if (tool) trail.push([tool.name, tool.slug]);
+  return { '@context': 'https://schema.org', '@graph': [webSite, webApplication, breadcrumbs(trail)] };
+}
+
+export function instructorsMetadata(): Metadata {
+  const page = INSTRUCTORS_PAGE;
+  return routeMetadata({ path: page.slug, title: page.title, description: page.description, ogSlug: page.slug, ogAlt: page.ogAlt });
+}
+
+export function instructorsJsonLd() {
+  return { '@context': 'https://schema.org', '@graph': [webSite, webApplication, breadcrumbs([[INSTRUCTORS_PAGE.name, INSTRUCTORS_PAGE.slug]])] };
+}
+
+/** Breadcrumb trails after Overview for the pages outside the modules that the site shell draws, keyed by path. */
+export function referenceTrails(): Record<string, [string, string][]> {
+  const tools: [string, string] = [TOOLS_PAGE.name, `/${TOOLS_PAGE.slug}/`];
+  return {
+    [tools[1]]: [tools],
+    ...Object.fromEntries(TOOL_PAGES.map(t => [`/${t.slug}/`, [tools, [t.name, `/${t.slug}/`]]])),
+    [`/${INSTRUCTORS_PAGE.slug}/`]: [[INSTRUCTORS_PAGE.name, `/${INSTRUCTORS_PAGE.slug}/`]],
+  };
 }
 
 /** JSON-LD for the element pages: Overview > Elements, then the element when there is one. */

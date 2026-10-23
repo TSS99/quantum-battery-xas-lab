@@ -3,7 +3,7 @@ import localFont from 'next/font/local';
 import { Outfit } from 'next/font/google';
 import { LabProvider } from '@/components/lab-context';
 import { Shell } from '@/components/shell';
-import { SITE_NAME, SITE_URL, sitePage } from '@/lib/site';
+import { SITE_NAME, SITE_URL, referenceTrails, sitePage } from '@/lib/site';
 import { ELEMENT_NAMES } from '@/lib/elements';
 import 'katex/dist/katex.min.css';
 import './globals.css';
@@ -33,5 +33,5 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { themeColor: '#121212', colorScheme: 'dark' };
 export default function RootLayout({children}: {children: React.ReactNode}) {
-  return <html lang="en" className={`${texDigits.variable} ${outfit.variable}`}><body><LabProvider><Shell elementNames={ELEMENT_NAMES}>{children}</Shell></LabProvider></body></html>;
+  return <html lang="en" className={`${texDigits.variable} ${outfit.variable}`}><body><LabProvider><Shell elementNames={ELEMENT_NAMES} trails={referenceTrails()}>{children}</Shell></LabProvider></body></html>;
 }
