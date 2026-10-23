@@ -21,12 +21,69 @@ const ORBIT = line(...Array.from({ length: 24 }, (_, i): V3 => { const t = i * 0
 const percent = (fraction: number) => fraction >= 0.9995 ? '100' : fraction < 0.001 ? (fraction * 100).toExponential(1) : (fraction * 100).toFixed(1);
 const short = (value: number) => value.toExponential(1).replace('e+', 'e');
 
-/** A horizontal vacuum pipe along the beam with a flange at each end. */
+/** A horizontal vacuum pipe along the beam with a bolted flange at each end. */
 function Pipe({ x0, x1, y, r = 7 }: { x0: number; x1: number; y: number; r?: number }) {
   return <g>
     <rect x={x0} y={B - y - r} width={x1 - x0} height={2 * r} fill="url(#bl-pipe)" />
     {[x0, x1 - 4].map(x => <rect key={x} x={x} y={B - y - r - 4} width={4} height={2 * r + 8} fill="url(#bl-pipe)" />)}
+    {[x0 + 2, x1 - 2].flatMap(x => [-r - 2, 0, r + 2].map(dy => <circle key={x + ':' + dy} cx={x} cy={B - y + dy} r={0.9} fill="#c4ccd6" />))}
     <Box x0={(x0 + x1) / 2 - 3} x1={(x0 + x1) / 2 + 3} y0={-90} y1={y - r} z0={-3} z1={3} front="url(#bl-dark)" />
+  </g>;
+}
+
+/** An ion pump hanging under a pipe at height y, with its magnets and high-voltage cable. */
+function IonPump({ x, y }: { x: number; y: number }) {
+  return <g>
+    <Box x0={x + 7} x1={x + 13} y0={y - 12} y1={y - 6} z0={-3} z1={3} front="url(#bl-pipe)" />
+    <Box x0={x} x1={x + 20} y0={y - 42} y1={y - 12} z0={-12} z1={12} front="url(#bl-dark)" />
+    <Box x0={x - 4} x1={x} y0={y - 38} y1={y - 16} z0={-10} z1={10} front="#2b4563" top="#3d5f86" side="#22384f" />
+    <path d={`M${P(x + 20, y - 30, 0).join(' ')}c10 2 12 30 10 ${y + 60}`} fill="none" stroke="#9a3a34" strokeWidth={2.2} strokeLinecap="round" />
+  </g>;
+}
+
+/** A gate valve on a pipe at height y, with its pneumatic actuator on top. */
+function GateValve({ x, y }: { x: number; y: number }) {
+  return <g>
+    <Box x0={x - 6} x1={x + 6} y0={y - 12} y1={y + 22} z0={-10} z1={10} />
+    <CylY x={x} y0={y + 22} y1={y + 38} r={4} />
+  </g>;
+}
+
+/** The ion chamber boxes: x along the beam, y from the bottom of the box to its lid, z the half depth. */
+const CHAMBER = {
+  i0: { x0: 1010, x1: 1090, y0: 30, y1: 102, z: 30 },
+  it: { x0: 1215, x1: 1300, y0: 30, y1: 102, z: 30 },
+  iref: { x0: 1390, x1: 1450, y0: 38, y1: 94, z: 24 },
+} as const;
+type ChamberBox = (typeof CHAMBER)[keyof typeof CHAMBER];
+
+/** The fill gas as a nameplate prints it, main gas first: N₂ + Ar. The control rail gives the fractions. */
+const gasText = (gas: Partial<Record<string, number>>) => Object.entries(gas).filter(([, f]) => (f ?? 0) > 0).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+  .map(([name]) => name.replace('2', '₂')).join(' + ');
+
+/** What the twin adds to an ion chamber: gas fittings on the lid, a lit top edge and the fill gas on the nameplate. */
+function ChamberDress({ x0, x1, y0, y1, z, gas }: ChamberBox & { gas?: Partial<Record<string, number>> }) {
+  const xc = (x0 + x1) / 2, [px, py] = P(xc, y0 + 4, -z);
+  return <g>
+    {[xc - 10, xc + 10].map(x => <CylY key={x} x={x} y0={y1} y1={y1 + 5} z={14} r={2.6} />)}
+    <path d={line([x0, y1, -z], [x1, y1, -z])} stroke="#fff" strokeOpacity={0.3} />
+    {gas && <text x={px} y={py} textAnchor="middle" className="bl-plate">{gasText(gas)}</text>}
+  </g>;
+}
+
+/** A cable or gas line from a fitting at (x, y, z): it rises, bends back over the part and drops behind the table into the
+    floor duct. Drawn before the table and the hardware, so they hide what runs behind them. */
+const drape = (x: number, y: number, z = 0, back = 10, rise = 14) =>
+  `M${P(x, y, z).join(' ')}C${P(x + 2, y + rise, z + 10).join(' ')} ${P(x + back, y + rise - 4, 70).join(' ')} ${P(x + back, 0, 84).join(' ')}L${P(x + back, -82, 88).join(' ')}`;
+
+/** The radiation warning sign on the hutch wall. */
+function Trefoil({ x, y }: { x: number; y: number }) {
+  const p = (r: number, t: number) => `${(x + r * Math.cos(t)).toFixed(2)} ${(y - r * Math.sin(t)).toFixed(2)}`;
+  const blade = (a: number) => { const t0 = (a - 30) * Math.PI / 180, t1 = (a + 30) * Math.PI / 180; return `M${p(3, t0)}L${p(7.5, t0)}A7.5 7.5 0 0 0 ${p(7.5, t1)}L${p(3, t1)}A3 3 0 0 1 ${p(3, t0)}Z`; };
+  return <g aria-hidden="true">
+    <rect x={x - 11} y={y - 11} width={22} height={22} rx={2} fill="#f2c230" />
+    <circle cx={x} cy={y} r={1.8} fill="#15181c" />
+    <path d={[30, 150, 270].map(blade).join('')} fill="#15181c" />
   </g>;
 }
 
@@ -163,6 +220,7 @@ export function HutchScene({ twin, live, labels, part: open, onPart, whole }: Hu
 
   const scene = sceneFor(mode);
   const partClass = (id: PartId) => (partActive(mode, id) ? '' : 'is-idle') + (scene.emphasis.includes(id) ? ' is-focus' : '');
+  const wiresClass = (id: PartId) => 'hutch-wires' + (partActive(mode, id) ? '' : ' is-idle');
   const legClass = (leg: Leg) => 'hutch-leg' + (legLit(mode, leg) ? ' is-lit' : '');
   const cues = scene.cues.map(cue => ' cue-' + cue).join('');
 
@@ -173,6 +231,7 @@ export function HutchScene({ twin, live, labels, part: open, onPart, whole }: Hu
   const slab = (c: [number, number], side: number): V3[] => [[c[0] - u[0] * L, c[1] - u[1] * L, -12], [c[0] + u[0] * L, c[1] + u[1] * L, -12], [c[0] + u[0] * L + side * n[0] * 8, c[1] + u[1] * L + side * n[1] * 8, -12], [c[0] - u[0] * L + side * n[0] * 8, c[1] - u[1] * L + side * n[1] * 8, -12]];
   const surface = (c: [number, number], off: number): V3[] => [-12, 12].flatMap(z => (z < 0 ? [-1, 1] : [1, -1]).map(s => [c[0] + s * u[0] * L + off * n[0], c[1] + s * u[1] * L + off * n[1], z] as V3));
 
+  const gasOf = (id: 'I0' | 'It' | 'Iref') => profile.chambers.find(c => c.id === id)?.gas;
   const hrm = profile.mirrors.find(m => m.role === 'harmonic-rejection');
   const collimating = profile.mirrors.find(m => m.role === 'collimating'), focusing = profile.mirrors.find(m => m.role === 'focusing');
   const helium = live.energy_eV < 5000;
@@ -204,12 +263,22 @@ export function HutchScene({ twin, live, labels, part: open, onPart, whole }: Hu
             <linearGradient id="hutch-fan" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor="#f4f1ea" stopOpacity=".55" /><stop offset="1" stopColor="#f4f1ea" stopOpacity=".08" /></linearGradient>
             <radialGradient id="hutch-heat-glow"><stop offset="0" stopColor="#ffd08a" /><stop offset=".45" stopColor="#ff7a3d" stopOpacity=".75" /><stop offset="1" stopColor="#ff4d2e" stopOpacity="0" /></radialGradient>
             <linearGradient id="hutch-cone" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#74dcaa" stopOpacity=".5" /><stop offset="1" stopColor="#74dcaa" stopOpacity=".08" /></linearGradient>
+            <linearGradient id="hutch-wall" gradientUnits="userSpaceOnUse" x1="0" y1="-40" x2="0" y2="250"><stop offset="0" stopColor="#2d3a57" /><stop offset="1" stopColor="#1b2337" /></linearGradient>
+            <linearGradient id="hutch-leg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#6a7686" /><stop offset=".5" stopColor="#3f4955" /><stop offset="1" stopColor="#262d36" /></linearGradient>
+            <radialGradient id="hutch-lamp"><stop offset="0" stopColor="#dfe9ff" stopOpacity=".09" /><stop offset="1" stopColor="#dfe9ff" stopOpacity="0" /></radialGradient>
+            <pattern id="hutch-hazard" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="#e3b52c" /><rect width="5" height="10" fill="#1a1d22" /></pattern>
           </defs>
 
-          {/* Floor, back wall and the shadows of the stands */}
+          {/* Hutch: a painted, lead-lined back wall with its panel seams, the floor, and the shadows of the stands */}
+          <polygon points={pts([-200, -90, 200], [1800, -90, 200], [1800, 360, 200], [-200, 360, 200])} fill="url(#hutch-wall)" />
+          <polygon points={pts([-200, -90, 200], [1800, -90, 200], [1800, -74, 200], [-200, -74, 200])} fill="#151c2b" />
+          <path d={Array.from({ length: 15 }, (_, i) => line([i * 120, -74, 200], [i * 120, 360, 200])).join('') + line([-200, 150, 200], [1800, 150, 200])} stroke="#fff" strokeOpacity=".06" />
+          <ellipse cx={560} cy={70} rx={330} ry={150} fill="url(#hutch-lamp)" />
+          <ellipse cx={1240} cy={60} rx={460} ry={170} fill="url(#hutch-lamp)" />
+          {(() => { const [x, y] = P(1478, 168, 200); return <Trefoil x={x} y={y} />; })()}
           <polygon points={pts([-200, -90, 200], [1800, -90, 200], [1800, -90, -220], [-200, -90, -220])} fill="url(#bl-floor)" />
           <path d={Array.from({ length: 19 }, (_, i) => line([-120 + i * 110, -90, 200], [-120 + i * 110 - 160, -90, -220])).join('') + [100, 0, -100].map(z => line([-200, -90, z], [1800, -90, z])).join('')} stroke="#fff" strokeOpacity=".035" />
-          <path d={Array.from({ length: 15 }, (_, i) => line([i * 120, -90, 200], [i * 120, 300, 200])).join('')} stroke="#fff" strokeOpacity=".025" />
+          <polygon points={pts([880, -90, -96], [1600, -90, -96], [1600, -90, -106], [880, -90, -106])} fill="url(#hutch-hazard)" opacity={0.6} />
           {[[110, 70], [398, 60], [560, 80], [726, 52], [840, 34], [1225, 380]].map(([x, w]) => <Shadow key={x} x={x} y={-90} w={w} h={11} />)}
 
           {/* Source: the storage ring vacuum chamber curving through a C-shaped bending magnet */}
@@ -237,6 +306,7 @@ export function HutchScene({ twin, live, labels, part: open, onPart, whole }: Hu
             <path d={circleYZ(262, YB0, 0, 5)} fill="#0c1116" />
           </>)}
           <Pipe x0={262} x1={344} y={YB0} />
+          <IonPump x={270} y={YB0} />
           {g('collimating-mirror', <Tank id="hutch-m1" x0={344} x1={452} y1={YB0 + 40} z={34} win={[YB0 - 26, YB0 + 26]} plate={'M1 ' + (collimating?.coating ?? '')}>
             <Mirror x0={356} x1={440} top={YB0 - 1} coating={COATING[collimating?.coating ?? 'Si']} />
           </Tank>)}
@@ -253,6 +323,7 @@ export function HutchScene({ twin, live, labels, part: open, onPart, whole }: Hu
             <Mirror x0={690} x1={762} top={YB - 1} coating={COATING[focusing?.coating ?? 'Si']} />
           </Tank>)}
           <Pipe x0={772} x1={812} y={YB} />
+          <GateValve x={792} y={YB} />
           {g('harmonic-rejection-mirror', <Tank id="hutch-m3" x0={812} x1={868} y1={YB + 30} z={30} win={[YB - 30, YB + 22]} plate={hrm?.inserted ? 'IN' : 'OUT'}>
             <g className="hutch-hrm-mirror" style={{ transform: `translateY(${hrm?.inserted ? 0 : 16}px)` }}>
               <Mirror x0={820} x1={860} top={YB - 1} coating={COATING[hrm?.coating ?? 'Si']} />
@@ -260,9 +331,27 @@ export function HutchScene({ twin, live, labels, part: open, onPart, whole }: Hu
           </Tank>)}
           <Pipe x0={868} x1={898} y={YB} />
 
-          {/* Experiment table */}
-          {[[904, -66], [904, 52], [1536, -66], [1536, 52]].map(([x, z]) => <Box key={x + ':' + z} x0={x} x1={x + 16} y0={-90} y1={-14} z0={z} z1={z + 14} front="url(#bl-dark)" />)}
-          <Breadboard x0={890} x1={1560} z0={-70} z1={70} />
+          {/* Signal cables and gas lines leave the tops of the hardware and drop to the floor behind the table; they fade with their part */}
+          <g fill="none" strokeLinecap="round">
+            {(Object.entries(CHAMBER) as [PartId, ChamberBox][]).map(([id, c]) => <g key={id} className={wiresClass(id)}>
+              <path d={drape(c.x0 + 14, c.y1 + 13)} className="bl-cable" />
+              <path d={drape(c.x1 - 14, c.y1 + 13)} className="bl-cable" />
+              {[-10, 10].map(dx => <path key={dx} d={drape((c.x0 + c.x1) / 2 + dx, c.y1 + 5, 14, 16, 8)} stroke="#3d6c9e" strokeWidth={1.6} />)}
+            </g>)}
+            <path d={drape(XS + 30, 17, 0, 6)} className={'bl-cable ' + wiresClass('sample-stage')} />
+            <path d={`M${P(XS + 8, YB + 13, 172).join(' ')}C${P(XS + 12, YB + 24, 178).join(' ')} ${P(XS + 20, YB + 6, 184).join(' ')} ${P(XS + 20, 0, 186).join(' ')}L${P(XS + 20, -90, 186).join(' ')}`} className={'bl-cable ' + wiresClass('fluorescence-detector')} />
+          </g>
+          <Box x0={880} x1={1580} y0={-90} y1={-80} z0={82} z1={98} front="#2a3550" top="#36435f" side="#1f283c" />
+
+          {/* Experiment table: a thick optical table on pneumatic isolators, lit from above */}
+          {[[912, 59], [1544, 59], [912, -59], [1544, -59]].map(([x, z]) => <g key={x + ':' + z}>
+            <Disc x={x} z={z} y0={-90} y1={-30} r={9} side="url(#hutch-leg)" top="#2a323c" />
+            <Disc x={x} z={z} y0={-90} y1={-80} r={11.5} side="url(#bl-dark)" top="#2a323c" />
+            <Disc x={x} z={z} y0={-52} y1={-48} r={10} side="#1d232b" top="#2a323c" />
+          </g>)}
+          <Breadboard x0={890} x1={1560} z0={-70} z1={70} depth={26} />
+          <ellipse cx={P(1230, 0, 0)[0]} cy={P(1230, 0, 0)[1]} rx={360} ry={30} fill="url(#hutch-lamp)" />
+          {[[909, 16, 4], [940, 6, 3], [986, 6, 3], [1050, 44, 9], [XS, 38, 10], [1257, 46, 9], [1352, 10, 3], [1420, 34, 8], [1504, 12, 3]].map(([x, w, h]) => <Shadow key={x} x={x} w={w} h={h} />)}
           {g('experiment-slits', <>
             <Box x0={898} x1={920} y0={0} y1={6} z0={-16} z1={16} front="url(#bl-dark)" />
             <Box x0={905} x1={913} y0={6} y1={YB - 24} z0={-5} z1={5} />
@@ -305,20 +394,25 @@ export function HutchScene({ twin, live, labels, part: open, onPart, whole }: Hu
           <Wall />
           <BreakMark x={222} y={YB0} />
           <BreakMark x={884} y={YB} />
-          {g('i0', <IonChamber id="hutch-i0" x0={1010} x1={1090} y0={30} y1={102} z={30} beam={1} readout={live.i0 ? lcdVolts(live.i0.voltage_V, live.i0.saturated) : undefined} />)}
+          {g('i0', <><IonChamber id="hutch-i0" {...CHAMBER.i0} beam={1} readout={live.i0 ? lcdVolts(live.i0.voltage_V, live.i0.saturated) : undefined} cables={false} /><ChamberDress {...CHAMBER.i0} gas={gasOf('I0')} /></>)}
           {g('sample-stage', <>
             <Box x0={XS - 26} x1={XS + 26} y0={0} y1={8} z0={-28} z1={28} front="url(#bl-dark)" />
             <Box x0={XS - 20} x1={XS + 20} y0={8} y1={18} z0={-22} z1={22} />
+            {/* Stepper motors that drive the two translations, and the front one's cable over the table edge */}
+            <Box x0={XS + 20} x1={XS + 33} y0={9} y1={17} z0={-6} z1={6} front="#2a3038" top="#3c444f" side="#1b1f25" />
+            <Box x0={XS - 6} x1={XS + 6} y0={1} y1={8} z0={-42} z1={-28} front="#2a3038" top="#3c444f" side="#1b1f25" />
+            <rect x={P(XS - 4, 6, -42)[0]} y={P(XS - 4, 6, -42)[1]} width={8} height={3} fill="#c4ccd6" opacity={0.7} />
+            <path d={`M${P(XS - 6, 4, -36).join(' ')}C${P(XS - 16, 4, -50).join(' ')} ${P(XS - 18, 0, -70).join(' ')} ${P(XS - 18, -26, -72).join(' ')}L${P(XS - 20, -90, -78).join(' ')}`} className="bl-cable" />
             <Disc x={XS} y0={18} y1={26} r={17} top="url(#bl-black-top)" side="url(#bl-dark)" />
           </>)}
           {g('sample-environment', <Environment kind={environment.kind} />)}
-          {g('it', <IonChamber id="hutch-it" x0={1215} x1={1300} y0={30} y1={102} z={30} beam={afterSample} readout={live.it ? lcdVolts(live.it.voltage_V, live.it.saturated) : undefined} />)}
+          {g('it', <><IonChamber id="hutch-it" {...CHAMBER.it} beam={afterSample} readout={live.it ? lcdVolts(live.it.voltage_V, live.it.saturated) : undefined} cables={false} /><ChamberDress {...CHAMBER.it} gas={gasOf('It')} /></>)}
           {g('reference-foil', <>
             <Box x0={1346} x1={1358} y0={0} y1={34} z0={-4} z1={4} />
             <Box x0={1348} x1={1354} y0={34} y1={92} z0={-16} z1={16} />
             <polygon points={pts([1354, 56, -10], [1354, 76, -10], [1354, 76, 10], [1354, 56, 10])} fill="url(#bl-foil)" />
           </>)}
-          {g('iref', <IonChamber id="hutch-iref" x0={1390} x1={1450} y0={38} y1={94} z={24} beam={afterFoil} readout={live.iref ? lcdVolts(live.iref.voltage_V, live.iref.saturated) : undefined} />)}
+          {g('iref', <><IonChamber id="hutch-iref" {...CHAMBER.iref} beam={afterFoil} readout={live.iref ? lcdVolts(live.iref.voltage_V, live.iref.saturated) : undefined} cables={false} /><ChamberDress {...CHAMBER.iref} gas={gasOf('Iref')} /></>)}
           {g('beam-stop', <>
             <Box x0={1500} x1={1508} y0={0} y1={50} z0={-4} z1={4} />
             <Box x0={1494} x1={1514} y0={50} y1={82} z0={-12} z1={12} front="url(#bl-tungsten)" />

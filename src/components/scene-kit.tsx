@@ -44,8 +44,9 @@ export function Beam({ d, color = '#ffc46b', core = '#fff1d6', glow = 1, flow = 
     {flow && <path d={d} stroke={core} strokeWidth={2.6} className={flowClass} />}
   </g>;
 }
-/** Ion chamber with a glass viewport, collector plates and a Kapton exit window. */
-export function IonChamber({ x0, x1, y0, y1, z, beam, readout, id }: { x0: number; x1: number; y0: number; y1: number; z: number; beam: number; readout?: string; id: string }) {
+/** Ion chamber with a glass viewport, collector plates and a Kapton exit window. `cables={false}` leaves the
+    signal cables to the scene, which can route them behind other hardware. */
+export function IonChamber({ x0, x1, y0, y1, z, beam, readout, id, cables = true }: { x0: number; x1: number; y0: number; y1: number; z: number; beam: number; readout?: string; id: string; cables?: boolean }) {
   const fz = -z, gx0 = x0 + 10 + K * fz, gx1 = x1 - 10 + K * fz, gy0 = B - (YB + 16) - Q * fz, gy1 = B - (YB - 16) - Q * fz;
   return <g>
     <Box x0={x0 + 12} x1={x1 - 12} y0={0} y1={y0} z0={-z + 10} z1={z - 10} front="url(#bl-dark)" />
@@ -72,8 +73,8 @@ export function IonChamber({ x0, x1, y0, y1, z, beam, readout, id }: { x0: numbe
       <rect x={sx - 3} y={sy - 5} width={6} height={8} rx={2} fill="#18212b" />
       <path d={`M${sx - 2.5} ${sy - 3}h5m-5 2h5m-5 2h5`} fill="none" stroke="#647182" strokeWidth={.7} />
     </g>; })}
-    <path d={`M${P(x0 + 14, y1 + 9, 0).join(' ')}c-2 -18 14 -30 34 -38`} className="bl-cable" />
-    <path d={`M${P(x1 - 14, y1 + 9, 0).join(' ')}c-2 -16 12 -26 30 -32`} className="bl-cable" />
+    {cables && <path d={`M${P(x0 + 14, y1 + 9, 0).join(' ')}c-2 -18 14 -30 34 -38`} className="bl-cable" />}
+    {cables && <path d={`M${P(x1 - 14, y1 + 9, 0).join(' ')}c-2 -16 12 -26 30 -32`} className="bl-cable" />}
   </g>;
 }
 /** Vertical cylinder (a disc when short), such as coin-cell parts or a sample stage. */

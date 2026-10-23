@@ -130,6 +130,8 @@ body:has(.twin-app) {background:#141d31}
 .hutch.no-labels .hutch-leaders {display:none}
 .hutch [data-part] {transition:opacity .3s}
 .hutch [data-part].is-idle {opacity:.42}
+.hutch-wires {transition:opacity .3s}
+.hutch-wires.is-idle {opacity:.42}
 .hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(140 227 255/.7))}
 .hutch-leg {transition:opacity .3s}
 .hutch-leg:not(.is-lit) {opacity:.16}
