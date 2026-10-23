@@ -340,6 +340,10 @@ test('installs as an app and keeps working offline', async ({ page, context }) =
   await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveText('Quantum dynamics');
   await page.goto('./beamline/');
   await expect(page.locator('.beam-legend')).toContainText('Bragg angle');
+  // The beamline twin too: its X-ray tables, 3D code and textures come from the cache.
+  await page.goto('./twin/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Beamline twin');
+  await expect(page.getByRole('img', { name: /^Beamline drawing, 3D view/ })).toBeVisible({ timeout: 30_000 });
   await context.setOffline(false);
 });
 

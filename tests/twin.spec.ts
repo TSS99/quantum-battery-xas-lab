@@ -1,11 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
+import { axeViolations } from './axe';
 
 // Browser tests for the /twin/ beamline twin. Names avoid the word "mobile" so the desktop project runs them;
 // the phone checks set a 390 px viewport themselves.
 const MODES = ['Transmission', 'Fluorescence', 'Electron yield', 'XRF spectrum', 'Monochromator', 'Energy calibration', 'Time resolved', 'Beam damage'];
-// axe-core is not a dependency of the project, so the accessibility check loads a pinned copy from a CDN.
-const AXE_URL = 'https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js';
 
 const mode = (page: Page, name: string) => page.getByRole('group', { name: 'Modes' }).getByRole('button', { name, exact: true });
 const changed = (page: Page) => page.locator('.twin-changed [aria-live="polite"]');
@@ -13,8 +12,7 @@ const changed = (page: Page) => page.locator('.twin-changed [aria-live="polite"]
 function collectErrors(page: Page) {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
-  // A failed attempt to fetch the axe-core test helper from its CDN is the test's own network, not the page's.
-  page.on('console', m => { if (m.type() === 'error' && !m.location().url.startsWith(AXE_URL)) errors.push(m.text()); });
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   return errors;
 }
 
@@ -23,21 +21,6 @@ async function openTwin(page: Page, hash = '') {
   // The drawing appears once the X-ray tables have loaded and the page has hydrated; the 3D view then takes over.
   await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
   await expect(page.locator('.twin-scene')).not.toHaveAttribute('aria-busy', 'true', { timeout: 30_000 });
-}
-
-async function axeViolations(page: Page) {
-  // The CDN occasionally drops or stalls a request; give each try 15 s and try three times before giving up on the check.
-  let loaded = false;
-  for (let attempt = 0; attempt < 3 && !loaded; attempt++) {
-    const stalled = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('stalled')), 15_000));
-    try { await Promise.race([page.addScriptTag({ url: AXE_URL }), stalled]); loaded = true; } catch { await page.waitForTimeout(1000); }
-  }
-  if (!loaded) test.skip(true, `axe-core could not be loaded from ${AXE_URL}`);
-  return page.evaluate(async () => {
-    const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe;
-    const result = await axe.run(document, { resultTypes: ['violations'] });
-    return result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`);
-  });
 }
 
 test('twin page loads with one h1, a breadcrumb, indexable metadata and no console errors', async ({ page }) => {
@@ -302,6 +285,8 @@ test('Space pauses and resumes a running scan', async ({ page }) => {
   await expect(pause).toHaveAttribute('aria-pressed', 'true');
   await expect(changed(page)).toContainText('Scan paused at point');
   const bar = page.getByRole('progressbar', { name: 'Scan progress' });
+  // The bar can still draw a point or two that the worker finished as the pause landed; read it once that is done.
+  await page.waitForTimeout(400);
   const held = await bar.getAttribute('aria-valuenow');
   await page.waitForTimeout(800);
   await expect(bar).toHaveAttribute('aria-valuenow', held!);
