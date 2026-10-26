@@ -33,7 +33,7 @@ function useShortcuts(dispatch: Dispatch<TwinAction>, openCommand: () => void) {
       if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.target instanceof Element && event.target.closest('dialog')) return;
       if (typingIn(event.target)) return;
-      if (event.key === 'Escape') { dispatch({ type: 'enlarge', value: false }); return; }
+      if (event.key === 'Escape') { dispatch({ type: 'enlarge', value: false }); dispatch({ type: 'cinema', value: false }); return; }
       if (event.key === '/') { event.preventDefault(); openCommand(); return; }
       if (event.key === ' ') {
         // Space pauses or resumes a running scan, except on controls that Space itself operates.
@@ -80,7 +80,7 @@ function TwinLayout() {
   const closeCalibrate = () => { setCalibrateOpen(false); calibrateButton.current?.focus(); };
   const closeSession = () => { setSessionOpen(false); sessionButton.current?.focus(); };
   const closeCommand = () => { setCommandOpen(false); commandButton.current?.focus(); };
-  return <div className={'twin-app' + (view.enlarged ? ' is-enlarged' : '') + (view.leftHidden ? ' left-hidden' : '') + (view.rightHidden ? ' right-hidden' : '')}>
+  return <div className={'twin-app' + (view.enlarged ? ' is-enlarged' : '') + (view.cinema ? ' is-cinema' : '') + (view.leftHidden ? ' left-hidden' : '') + (view.rightHidden ? ' right-hidden' : '')}>
     <div className="twin-col twin-col-left">
       <header className="twin-hero">
         <nav aria-label="Breadcrumb" className="twin-crumbs"><ol>

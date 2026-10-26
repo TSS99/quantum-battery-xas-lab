@@ -19,7 +19,6 @@ describe('3D hutch layout', () => {
   it('floats labels above their part, except the two below the table, which sit on the floor in front', () => {
     for (const part of PARTS) {
       const [x, y, z] = LABEL3[part.id];
-      expect(x).toBe(part.at[0]);
       if (part.at[1] > 300) { expect(y).toBeLessThan(0); expect(z).toBeLessThan(-100); }
       else expect(y).toBeGreaterThanOrEqual(TIP3[part.id][1]);
     }

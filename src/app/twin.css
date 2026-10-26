@@ -136,7 +136,7 @@ body:has(.twin-app) {background:#141d31}
 .hutch-3d .hutch-stage::before {content:"";position:absolute;inset:8px;z-index:1;pointer-events:none;--c:rgb(140 227 255/.65);
   background:linear-gradient(var(--c),var(--c)) 0 0/18px 1.5px,linear-gradient(var(--c),var(--c)) 0 0/1.5px 18px,linear-gradient(var(--c),var(--c)) 100% 0/18px 1.5px,linear-gradient(var(--c),var(--c)) 100% 0/1.5px 18px,
     linear-gradient(var(--c),var(--c)) 0 100%/18px 1.5px,linear-gradient(var(--c),var(--c)) 0 100%/1.5px 18px,linear-gradient(var(--c),var(--c)) 100% 100%/18px 1.5px,linear-gradient(var(--c),var(--c)) 100% 100%/1.5px 18px;background-repeat:no-repeat}
-.hutch-hud {position:absolute;left:18px;top:15px;z-index:1;display:flex;align-items:center;gap:9px;padding:6px 10px;border:1px solid rgb(120 220 255/.3);border-radius:3px;background:rgb(6 14 26/.8);font:500 10px/1 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase;color:rgb(170 232 255/.9);text-shadow:0 0 8px rgb(60 190 255/.55);pointer-events:none}
+.hutch-hud {position:absolute;left:14px;top:12px;z-index:1;display:flex;align-items:center;gap:7px;padding:5px 8px;border:1px solid rgb(120 220 255/.24);border-radius:3px;background:rgb(10 17 30/.8);font:500 9px/1 var(--tw-mono);letter-spacing:.12em;text-transform:uppercase;color:rgb(170 232 255/.9);text-shadow:0 0 8px rgb(60 190 255/.55);pointer-events:none}
 .hutch-hud span + span::before {content:"";display:inline-block;width:3px;height:3px;margin:0 9px 2px 0;border-radius:50%;background:rgb(140 227 255/.5)}
 .hutch-hud-live::before {content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:#5dff9a;box-shadow:0 0 8px #5dff9a;animation:hutch-pulse 1.4s ease-in-out infinite alternate}
 /* HUD labels (only the named labels in view; the dots keep their own look) */
@@ -157,14 +157,24 @@ body:has(.twin-app) {background:#141d31}
 .hutch-3d .hutch-part[data-outside] .hutch-part-text {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .hutch-3d.is-capturing .hutch-parts,.hutch-3d.is-capturing .hutch-leaders-3d,.hutch-3d.is-capturing .hutch-hud,.hutch-3d.is-capturing .hutch-legend {visibility:hidden}
 /* What the photon dots mean: bottom left, under the labels' floor */
-.hutch-legend {position:absolute;left:14px;bottom:12px;z-index:1;max-width:min(520px,calc(100% - 28px));padding:6px 9px;border:1px solid rgb(120 220 255/.3);border-radius:3px;background:rgb(6 14 26/.84);font:400 10px/1.4 var(--tw-sans);color:rgb(226 240 255/.9);pointer-events:none}
+.hutch-legend {position:absolute;left:12px;bottom:12px;z-index:2;max-width:min(520px,calc(100% - 24px));border:1px solid rgb(120 220 255/.28);border-radius:4px;background:rgb(10 17 30/.86);font:400 10.5px/1.45 var(--tw-sans);color:rgb(226 240 255/.9)}
+.hutch-legend p {padding:0 10px 8px}
+.hutch-legend-chip {display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border:0;background:none;color:inherit;font:500 10px/1 var(--tw-mono);cursor:pointer}
+.hutch-legend-chip strong {font:600 11px/1 var(--tw-sans);color:#fff}
+.hutch-legend-chip i {width:110px;height:6px;border-radius:2px}
+.hutch-legend-chip::after {content:'i';display:grid;place-items:center;width:15px;height:15px;border:1px solid rgb(140 227 255/.5);border-radius:50%;font:600 9px/1 var(--tw-serif);color:var(--tw-accent)}
+.hutch-legend.is-open .hutch-legend-chip::after {content:'×';font-family:var(--tw-sans)}
 .hutch-legend .katex {font-size:1em}
 .hutch-legend p {margin:0}
 .hutch-legend p + p {margin-top:3px}
 .hutch-legend strong {font-weight:600;color:#fff}
-.hutch-legend-bar {display:flex;align-items:center;gap:8px;font:500 10px/1 var(--tw-mono)}
-.hutch-legend-bar i {flex:0 1 150px;height:7px;border-radius:2px}
-@media (max-width:640px) {.hutch-legend {font-size:10px;left:10px;bottom:10px;max-width:calc(100% - 20px)}}
+@media (max-width:640px) {.hutch-legend {left:8px;bottom:8px;max-width:calc(100% - 16px)} .hutch-legend-chip i {width:72px}}
+/* Parts without a label in a close-up: a marker on the hardware, named on hover and for screen readers */
+.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]) {left:var(--tx);top:var(--ty);width:20px;height:20px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;opacity:.62}
+.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside])::before {content:'';width:6px;height:6px;margin:auto;border-radius:50%;background:var(--tw-accent);box-shadow:0 0 0 2px rgb(12 18 30/.55)}
+.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]).is-idle::before {background:#7d8a99}
+.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]):hover,.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]):focus-visible {opacity:1}
+.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]) .hutch-part-text {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .hutch-wires {transition:opacity .3s}
 .hutch-wires.is-idle {opacity:.42}
 .hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(140 227 255/.7))}
@@ -316,19 +326,27 @@ body:has(.twin-app) {background:#141d31}
 
 /* ---------- Wide screens: one screen, three columns, nothing scrolls but the cards ---------- */
 @media (min-width:1150px) {
-  .twin-app {display:grid;grid-template-columns:minmax(290px,330px) minmax(0,1fr) minmax(320px,350px);grid-template-areas:"left centre right";gap:14px;height:100vh;height:100dvh;padding:14px;overflow:hidden}
+  .twin-app {display:grid;grid-template-columns:minmax(270px,300px) minmax(0,1fr) minmax(300px,330px);grid-template-areas:"left centre right";gap:12px;height:100vh;height:100dvh;padding:12px;overflow:hidden}
   .twin-col {display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0}
   .twin-col-left {grid-area:left;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
   .twin-col-centre {grid-area:centre}
   .twin-col-right {grid-area:right;gap:0}
   .twin-left {flex:1 0 auto}
   .twin-modes {flex:none;align-self:center;max-width:100%}
+  .twin-modes {flex-wrap:wrap;justify-content:center;gap:2px 0;padding:4px 6px}
+  .twin-mode-group {flex-direction:row;align-items:center}
+  .twin-mode-group + .twin-mode-group {margin-left:6px;padding-left:6px;border-left:1px solid var(--tw-line)}
+  .twin-mode-group-name {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .twin-mode {min-height:30px;padding:5px 8px 5px 7px;font-size:12px}
   .twin-scene {flex:1 1 0;min-height:180px}
   .twin-scene .hutch {flex:1;min-height:0}
   .twin-scene .hutch-scroll {flex:1;min-height:0;display:flex;align-items:center}
   .twin-scene .hutch-stage {flex:none}
   .twin-scene .hutch-3d .hutch-stage {flex:1 1 auto;height:auto;min-height:180px}
-  .twin-dock {flex:none;height:clamp(220px,38vh,440px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .twin-dock {flex:none;height:clamp(180px,27vh,330px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  /* Scene only: the side columns and the results step aside */
+  .twin-app.is-cinema {grid-template-columns:minmax(0,1fr);grid-template-areas:"centre"}
+  .twin-app.is-cinema .twin-col-left,.twin-app.is-cinema .twin-col-right,.twin-app.is-cinema .twin-dock {display:none}
   .twin-app.is-enlarged .twin-dock {flex:1;height:auto}
   .twin-col-right .twin-toolbar {border-bottom:0;border-radius:14px 14px 0 0}
   .twin-right {flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;border-top:0;border-radius:0 0 14px 14px}
@@ -336,18 +354,10 @@ body:has(.twin-app) {background:#141d31}
   .twin-app.left-hidden {grid-template-columns:minmax(0,1fr) minmax(320px,350px);grid-template-areas:"centre right"}
   .twin-app.left-hidden .twin-col-left {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
   .twin-app.left-hidden .twin-col-left > :not(.twin-hero) {display:none}
-  .twin-app.right-hidden {grid-template-columns:minmax(290px,330px) minmax(0,1fr) auto}
+  .twin-app.right-hidden {grid-template-columns:minmax(270px,300px) minmax(0,1fr) auto}
   .twin-app.left-hidden.right-hidden {grid-template-columns:minmax(0,1fr) auto}
   .twin-app.right-hidden .twin-right {display:none}
   .twin-app.right-hidden .twin-toolbar {border-bottom:1px solid var(--tw-line);border-radius:14px}
-}
-
-/* Mid widths: each mode group on one line with its name in front, so the bar stays three short rows at most. */
-@media (min-width:1150px) and (max-width:1399.98px) {
-  .twin-modes {flex-direction:column;align-items:stretch;gap:2px;padding:6px 8px}
-  .twin-mode-group {flex-direction:row;align-items:center;gap:4px}
-  .twin-mode-group-name {flex:none;width:64px;padding-left:6px}
-  .twin-mode {min-height:30px;padding:5px 8px 5px 7px}
 }
 
 /* ---------- Phones and narrow windows: one scrolling column ---------- */
@@ -362,7 +372,13 @@ body:has(.twin-app) {background:#141d31}
   .twin-dock {order:5}
   .twin-left {order:6}
   .twin-right {order:7;padding-top:6px}
-  .twin-hero h1 {font-size:40px}
+  .twin-hero h1 {font-size:36px}
+  .twin-intro {display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .twin-hint {display:none}
+  .hutch-3d .hutch-stage {height:clamp(320px,54vh,520px)}
+  .hutch-hud span:nth-child(n+4) {display:none}
+  .twin-app.is-cinema .twin-hero,.twin-app.is-cinema .twin-toolbar,.twin-app.is-cinema .twin-dock,.twin-app.is-cinema .twin-left,.twin-app.is-cinema .twin-right {display:none}
+  .twin-app.is-cinema .hutch-3d .hutch-stage {height:calc(100dvh - 140px)}
   .twin-hero h1 em {display:inline}
   .twin-toolbar .twin-kicker,.twin-rail-toggle,.twin-whole {display:none}
   .twin-app.left-hidden .twin-left,.twin-app.right-hidden .twin-right {display:flex}
@@ -372,6 +388,8 @@ body:has(.twin-app) {background:#141d31}
   /* scroll-padding matches the side padding, so snapping never pushes the first group name out of view. */
   .twin-modes {position:sticky;top:0;z-index:10;flex-wrap:nowrap;justify-content:flex-start;gap:0;margin:0 -16px;padding:6px 16px;scroll-padding-inline:16px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;border-width:0 0 1px;border-radius:0;background:rgb(20 29 49/.95)}
   .twin-modes::-webkit-scrollbar {display:none}
+  /* The fade on the right edge says more modes sit off screen */
+  .twin-modes {padding-right:44px;mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}
   .twin-mode-group {flex:none;flex-direction:row;align-items:center;gap:4px;padding:0 6px}
   .twin-mode-group:first-child {padding-left:0}
   .twin-mode-group-name {padding:0 2px 0 0}

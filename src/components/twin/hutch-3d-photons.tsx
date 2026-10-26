@@ -39,7 +39,7 @@ export function Photons({ setup, animate, seed = 1 }: { setup: PhotonSetup; anim
     };
     const streak = new THREE.CylinderGeometry(0.32, 0.05, 1, 6, 1, true); streak.translate(0, -0.5, 0);
     // Beam packets are spheres; fluorescence and scatter are diamonds, since their energies can sit close to the beam's.
-    return [make(new THREE.SphereGeometry(1, 10, 8), MAX_PACKETS), make(new THREE.OctahedronGeometry(1.5), MAX_PACKETS), make(streak, MAX_PACKETS, 0.55), make(new THREE.SphereGeometry(1, 12, 10), MAX_FLASHES)];
+    return [make(new THREE.SphereGeometry(1, 10, 8), MAX_PACKETS), make(new THREE.OctahedronGeometry(1.5), MAX_PACKETS), make(streak, MAX_PACKETS, 0.4), make(new THREE.SphereGeometry(1, 12, 10), MAX_FLASHES)];
   }, []);
   useLayoutEffect(() => () => [dots, gems, streaks, flashes].forEach(m => { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }), [dots, gems, streaks, flashes]);
 
@@ -51,7 +51,7 @@ export function Photons({ setup, animate, seed = 1 }: { setup: PhotonSetup; anim
     for (const p of sim.packets) {
       if (n >= MAX_PACKETS) break;
       const at = toThree(sim.position(p)), d = sim.direction(p);
-      const white = p.species === 'white', size = (white ? 1.3 : p.species === 'beam' ? 2 : 1.7) * near(at);
+      const white = p.species === 'white', size = (white ? 1.3 : p.species === 'beam' ? 2 : 1.35) * near(at);
       color.setRGB(p.color[0] * GLOW, p.color[1] * GLOW, p.color[2] * GLOW);
       tmp.position.set(...at); tmp.quaternion.identity(); tmp.scale.setScalar(size); tmp.updateMatrix();
       if (p.species === 'fluorescence' || p.species === 'scatter') { gems.setMatrixAt(g, tmp.matrix); gems.setColorAt(g, color); g++; dots.setMatrixAt(n, HIDDEN); }

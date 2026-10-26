@@ -13,8 +13,8 @@ import * as THREE from 'three';
 import { useReducedMotion } from 'motion/react';
 import { Tex } from '../tex';
 import type { TwinState } from '@/lib/twin/types';
-import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
-import { FLOOR, FOV, LABEL3, TIP3, clampToBox, frameFor, toThree, type V3 } from './hutch-3d-layout';
+import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, labelledParts, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
+import { FLOOR, FOV, LABEL3, TABLE, TIP3, clampToBox, frameFor, toThree, type V3 } from './hutch-3d-layout';
 import { YB } from '../scene-kit';
 import { Blk, Bolts, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
 export { texturesReady } from './hutch-3d-kit';
@@ -242,7 +242,7 @@ function Rack({ m, x0, z0, tall }: { m: Mats; x0: number; z0: number; tall: bool
     <Blk x0={x0 + 5} x1={x1 - 5} y0={28} y1={42} z0={z0 - 1} z1={z0 + 2} m={m.panel} r={0.4} />
     <TextPlate at={[x0 + 22, 35, z0 - 1.2]} w={24} h={7} text="+1500 V" fg="#ff6a4a" bg="#140605" mono glow />
     {led(x0 + 48, 35, '#ff5a4a')}
-    {Array.from({ length: 5 }, (_, i) => <Blk key={i} x0={x0 + 5} x1={x1 - 5} y0={-80 + i * 20} y1={-62 + i * 20} z0={z0 - 0.5} z1={z0 + 2} m={m.paint} r={0.4} />)}
+    {Array.from({ length: 5 }, (_, i) => <Blk key={i} x0={x0 + 5} x1={x1 - 5} y0={FLOOR + 6 + i * 18} y1={FLOOR + 22 + i * 18} z0={z0 - 0.5} z1={z0 + 2} m={m.paint} r={0.4} />)}
   </>;
 }
 
@@ -281,40 +281,19 @@ function WallFittings({ m }: { m: Mats }) {
 function Effects({ light, hq, composer }: { light: boolean; hq: boolean; composer: MutableRefObject<EffectComposerImpl | null> }) {
   return <EffectComposer ref={composer} multisampling={hq ? 8 : light ? 0 : 4} enableNormalPass={false}>
     <N8AO aoRadius={24} distanceFalloff={0.8} intensity={2.2} quality={hq ? 'ultra' : light ? 'performance' : 'low'} halfRes={!hq} />
-    <Bloom luminanceThreshold={0.9} luminanceSmoothing={0.2} intensity={0.8} mipmapBlur radius={0.72} />
-    <Vignette offset={0.3} darkness={0.3} />
-    <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+    {/* Bloom only on what is brighter than white: photon packets, lamps and displays */}
+    <Bloom luminanceThreshold={1.15} luminanceSmoothing={0.2} intensity={0.35} mipmapBlur radius={0.4} />
+    <Vignette offset={0.32} darkness={0.22} />
+    <ToneMapping mode={ToneMappingMode.AGX} />
   </EffectComposer>;
-}
-
-/** A faint cyan grid on the floor around the experiment, fading out towards the edges. */
-function FloorGrid() {
-  const texture = useMemo(() => {
-    const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
-    const g = c.getContext('2d')!, cell = 1024 / 40;
-    g.strokeStyle = 'rgba(120,220,255,.75)'; g.lineWidth = 1;
-    for (let x = 0; x <= 1024; x += cell) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 512); g.stroke(); }
-    for (let y = 0; y <= 512; y += cell) { g.beginPath(); g.moveTo(0, y); g.lineTo(1024, y); g.stroke(); }
-    const fade = g.createRadialGradient(512, 256, 30, 512, 256, 440);
-    fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
-    g.globalCompositeOperation = 'destination-in'; g.fillStyle = fade; g.fillRect(0, 0, 1024, 512);
-    const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t;
-  }, []);
-  useLayoutEffect(() => () => texture.dispose(), [texture]);
-  return <mesh rotation-x={-Math.PI / 2} position={toThree([1150, FLOOR + 0.4, -60])} renderOrder={1}>
-    <planeGeometry args={[2000, 1000]} />
-    <meshBasicMaterial map={texture} transparent opacity={0.3} depthWrite={false} toneMapped={false} />
-  </mesh>;
 }
 
 /** What never changes with the instrument: the room, its fittings and the optical table. Memoised, so a slider step
     does not walk it again. */
 const Room = memo(function Room({ m }: { m: Mats }) {
   return <>
-    {/* The hutch: a glossy resin floor, dark composite wall panels with light lines, a light grid on the floor,
-        the concrete shield wall, hazard tape and the floor duct */}
+    {/* The hutch: a graphite resin floor, painted wall panels, the concrete shield wall, hazard tape and the floor duct */}
     <mesh rotation-x={-Math.PI / 2} position={[800, FLOOR, 150]} material={m.floor} receiveShadow><planeGeometry args={[2400, 800]} /></mesh>
-    <FloorGrid />
     <mesh position={[800, 135, -200]} material={m.wall} receiveShadow><planeGeometry args={[2400, 450]} /></mesh>
     <mesh position={[800, 150, -199.3]} material={m.led}><planeGeometry args={[2400, 1.1]} /></mesh>
     {[330, 1700].map(x => <mesh key={x} position={[x, 30, -199.3]} material={m.ledSoft}><planeGeometry args={[1, 240]} /></mesh>)}
@@ -323,8 +302,8 @@ const Room = memo(function Room({ m }: { m: Mats }) {
     <Trefoil at={[1490, 150, 199.5]} />
     {/* The shield wall between the ring tunnel (source and front end) and the optics: the pipe passes through a lead collar */}
     <Blk x0={292} x1={320} y0={FLOOR} y1={170} z0={-140} z1={200} m={m.concrete} r={1} />
-    <mesh rotation-x={-Math.PI / 2} position={toThree([1240, FLOOR + 0.3, -101])} material={m.hazard}><planeGeometry args={[720, 10]} /></mesh>
-    <Blk x0={880} x1={1580} y0={FLOOR} y1={FLOOR + 10} z0={82} z1={98} m={m.duct} />
+    <mesh rotation-x={-Math.PI / 2} position={toThree([(TABLE.x0 + TABLE.x1) / 2, FLOOR + 0.3, -TABLE.z - 22])} material={m.hazard}><planeGeometry args={[TABLE.x1 - TABLE.x0 + 40, 10]} /></mesh>
+    <Blk x0={TABLE.x0} x1={TABLE.x1} y0={FLOOR} y1={FLOOR + 10} z0={TABLE.z + 12} z1={TABLE.z + 28} m={m.duct} />
     <WallFittings m={m} />
     <Rack m={m} x0={985} z0={128} tall />
     <Rack m={m} x0={1455} z0={128} tall={false} />
@@ -334,7 +313,7 @@ const Room = memo(function Room({ m }: { m: Mats }) {
       <mesh position={toThree([x, 201, 190.9])} material={m.lamp}><planeGeometry args={[136, 5]} /></mesh>
     </group>)}
     {/* Pendant light bars over the experiment table, hung on wires */}
-    {[1080, 1380].map(x => <group key={x}>
+    {[1060, 1280].map(x => <group key={x}>
       <Blk x0={x - 120} x1={x + 120} y0={226} y1={232} z0={24} z1={36} m={m.white} r={1.5} />
       <mesh position={toThree([x, 229, 23.9])} material={m.lamp}><planeGeometry args={[232, 2.6]} /></mesh>
       <mesh position={toThree([x, 225.9, 30])} rotation-x={Math.PI / 2} material={m.lamp}><planeGeometry args={[232, 10]} /></mesh>
@@ -363,14 +342,14 @@ const Room = memo(function Room({ m }: { m: Mats }) {
     </group>)}
 
     {/* Experiment table: a thick optical table on pneumatic isolators */}
-    {[[912, 59], [1544, 59], [912, -59], [1544, -59]].map(([x, z]) => <group key={x + ':' + z}>
-      <CylY x={x} z={z} y0={FLOOR} y1={-30} r={9} m={m.isolator} />
-      <CylY x={x} z={z} y0={FLOOR} y1={FLOOR + 10} r={11.5} m={m.dark} />
-      <CylY x={x} z={z} y0={-52} y1={-48} r={10} m={m.dark} />
+    {[[TABLE.x0 + 22, TABLE.z - 11], [TABLE.x1 - 22, TABLE.z - 11], [TABLE.x0 + 22, -TABLE.z + 11], [TABLE.x1 - 22, -TABLE.z + 11]].map(([x, z]) => <group key={x + ':' + z}>
+      <CylY x={x} z={z} y0={FLOOR} y1={-30} r={8} m={m.isolator} />
+      <CylY x={x} z={z} y0={FLOOR} y1={FLOOR + 8} r={10} m={m.dark} />
+      <CylY x={x} z={z} y0={-40} y1={-37} r={9} m={m.dark} />
     </group>)}
-    <Blk x0={890} x1={1560} y0={-26} y1={-0.2} z0={-70} z1={70} m={m.tableSide} r={1.5} />
-    <mesh position={toThree([1225, -23.5, -70.4])} material={m.led}><planeGeometry args={[662, 1.1]} /></mesh>
-    <mesh rotation-x={-Math.PI / 2} position={[1225, 0, 0]} material={m.tableTop} receiveShadow><planeGeometry args={[670, 140]} /></mesh>
+    <Blk x0={TABLE.x0} x1={TABLE.x1} y0={-26} y1={-0.2} z0={-TABLE.z} z1={TABLE.z} m={m.tableSide} r={1.5} />
+    <mesh position={toThree([(TABLE.x0 + TABLE.x1) / 2, -23.5, -TABLE.z - 0.4])} material={m.led}><planeGeometry args={[TABLE.x1 - TABLE.x0 - 8, 0.8]} /></mesh>
+    <mesh rotation-x={-Math.PI / 2} position={[(TABLE.x0 + TABLE.x1) / 2, 0, 0]} material={m.tableTop} receiveShadow><planeGeometry args={[TABLE.x1 - TABLE.x0, 2 * TABLE.z]} /></mesh>
   </>;
 });
 
@@ -424,20 +403,21 @@ function World({ twin, live, animate, hq, setup }: { twin: TwinState; live: Hutc
   const current = useMemo(() => additive('#7fd8cf', 0.5), []);
 
   return <>
-    <color attach="background" args={['#cfd8e3']} />
-    <fogExp2 attach="fog" args={['#cfd8e3', 0.0002]} />
-    <Environment map={m.pano} environmentIntensity={1} />
-    <hemisphereLight args={['#ffffff', '#aab4c0', 0.85]} />
+    {/* Lighting in the metrology palette: a warm 4300 K key from the ceiling, a neutral 5000 K fill from the camera side,
+        a cool 6000 K rim from behind, and a little environment for reflections. */}
+    <color attach="background" args={['#aeb6be']} />
+    <fogExp2 attach="fog" args={['#aeb6be', 0.00022]} />
+    <Environment map={m.pano} environmentIntensity={0.35} />
+    <hemisphereLight args={['#eef2f6', '#3a4048', 0.5]} />
     <primitive object={lightTarget} position={[820, 0, 0]} />
     {spots.map((target, i) => <primitive key={i} object={target} position={[[1230, 560][i], 0, 0]} />)}
-    <spotLight ref={spotRef} target={spots[0]} position={[1180, 560, 80]} angle={0.62} penumbra={0.85} intensity={2.1} decay={0} color="#fffaf2" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
-    <spotLight target={spots[1]} position={[520, 560, 60]} angle={0.6} penumbra={0.9} intensity={1.5} decay={0} color="#fffaf2" />
-    <directionalLight ref={keyRef} target={lightTarget} position={[520, 1000, 650]} intensity={1.3} color="#ffffff" castShadow
+    <spotLight ref={spotRef} target={spots[0]} position={[1170, 560, 80]} angle={0.5} penumbra={0.9} intensity={2.6} decay={0} color="#ffd6ad" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
+    <spotLight target={spots[1]} position={[520, 560, 60]} angle={0.6} penumbra={0.9} intensity={1.7} decay={0} color="#ffd6ad" />
+    <directionalLight ref={keyRef} target={lightTarget} position={[520, 1000, 650]} intensity={1.15} color="#ffe2c4" castShadow
       shadow-mapSize={[2048, 2048]} shadow-bias={-0.0003} shadow-normalBias={0.8}
       shadow-camera-left={-1150} shadow-camera-right={1150} shadow-camera-top={800} shadow-camera-bottom={-800} shadow-camera-near={100} shadow-camera-far={3200} />
-    <directionalLight position={[-600, 300, 900]} intensity={0.3} color="#cfeaff" />
-    <directionalLight position={[900, 260, -900]} intensity={0.45} color="#7fd8ff" />
-    {[1060, 1400].map(x => <pointLight key={x} position={[x, -62, 0]} color="#3fd0ff" intensity={0.35} distance={300} decay={0} />)}
+    <directionalLight position={[-600, 300, 900]} intensity={0.42} color="#ffe9d6" />
+    <directionalLight position={[900, 360, -900]} intensity={0.55} color="#f2f5ff" />
 
     <Room m={m} />
     <StatusScreen mode={mode} energy={live.energy_eV} theta={live.theta_deg} crystal={profile.mono.crystal} transmission={live.sampleTransmission} />
@@ -509,23 +489,31 @@ function World({ twin, live, animate, hq, setup }: { twin: TwinState; live: Hutc
         <group ref={hrmGroup}><Mirror m={m} x0={820} x1={860} top={YB - 1} coating={hrm?.coating ?? 'Si'} /></group>
       </Tank>
     </Part>
-    <Pipe m={m} x0={868} x1={898} y={YB} />
+    <Pipe m={m} x0={868} x1={988} y={YB} />
+    {/* Exit window: the vacuum ends here and the beam enters the air of the experiment table through Kapton */}
+    <CylX x0={988} x1={991} y={YB} r={4} m={m.steel} />
+    <CylX x0={991} x1={991.3} y={YB} r={2.2} m={m.kapton} />
 
     <Part idle={idle('experiment-slits')}>
-      <Blk x0={898} x1={920} y0={0} y1={6} z0={-16} z1={16} m={m.dark} />
-      <Blk x0={905} x1={913} y0={6} y1={YB - 24} z0={-5} z1={5} m={m.alu} />
-      <Blk x0={903} x1={915} y0={YB - 24} y1={YB - 5} z0={-14} z1={14} m={m.tungsten} />
-      <Blk x0={903} x1={915} y0={YB + 5} y1={YB + 22} z0={-14} z1={14} m={m.tungsten} />
-      <Blk x0={903} x1={915} y0={YB - 24} y1={YB + 22} z0={14} z1={18} m={m.alu} />
-      <CylY x={909} y0={YB + 22} y1={YB + 32} r={4} m={m.dark} />
+      {/* Four blade slits at real size: tungsten blades above, below and either side of the beam, with their motors */}
+      <Blk x0={998} x1={1014} y0={0} y1={2} z0={-8} z1={8} m={m.dark} r={0.4} />
+      <Blk x0={1003} x1={1009} y0={2} y1={YB - 9} z0={-3} z1={3} m={m.alu} r={0.4} />
+      <Blk x0={1001} x1={1011} y0={YB - 9} y1={YB - 8} z0={-9} z1={9} m={m.alu} r={0.3} />
+      <Blk x0={1001} x1={1011} y0={YB + 8} y1={YB + 9} z0={-9} z1={9} m={m.alu} r={0.3} />
+      <Blk x0={1001} x1={1011} y0={YB - 9} y1={YB + 9} z0={8} z1={9} m={m.alu} r={0.3} />
+      <Blk x0={1003} x1={1009} y0={YB + 0.6} y1={YB + 7} z0={-5} z1={5} m={m.tungsten} r={0.2} />
+      <Blk x0={1003} x1={1009} y0={YB - 7} y1={YB - 0.6} z0={-5} z1={5} m={m.tungsten} r={0.2} />
+      <Blk x0={1003} x1={1009} y0={YB - 5} y1={YB + 5} z0={1} z1={6} m={m.tungsten} r={0.2} />
+      <Blk x0={1003} x1={1009} y0={YB - 5} y1={YB + 5} z0={-6} z1={-1} m={m.tungsten} r={0.2} />
+      {[1003, 1009].map(x => <CylY key={x} x={x} y0={YB + 9} y1={YB + 15} r={1.6} m={m.black} seg={12} />)}
     </Part>
     <Part idle={idle('helium-path')}>
-      {[940, 986].map(x => <CylY key={x} x={x} y0={0} y1={YB - 8} r={2.5} m={m.steel} />)}
-      <CylX x0={926} x1={1000} y={YB} r={8.5} m={m.alu} />
-      <CylX x0={926} x1={1000} y={YB} r={8.8} m={helium ? m.gas : m.glass} />
-      {[926, 1000].map(x => <CylX key={x} x0={x - 0.6} x1={x + 0.6} y={YB} r={8} m={m.kapton} />)}
-      <TextPlate at={[946, YB, -9.2]} w={14} h={7} text="He" fg="#16191d" bg="rgba(0,0,0,0)" />
-      <Tube points={drapePoints(962, YB + 8.5, 0, 12, 10)} r={1} m={m.gas} />
+      {[1026, 1074].map(x => <CylY key={x} x={x} y0={0} y1={YB - 3} r={1} m={m.steel} seg={12} />)}
+      <CylX x0={1018} x1={1082} y={YB} r={3} m={m.alu} />
+      <CylX x0={1018} x1={1082} y={YB} r={3.15} m={helium ? m.gas : m.glass} />
+      {[1018, 1082].map(x => <CylX key={x} x0={x - 0.4} x1={x + 0.4} y={YB} r={2.8} m={m.kapton} />)}
+      <TextPlate at={[1036, YB, -3.3]} w={6} h={3} text="He" fg="#16191d" bg="rgba(0,0,0,0)" />
+      <Tube points={drapePoints(1050, YB + 3, 0, 10, 6)} r={0.4} m={m.gas} />
     </Part>
 
     {/* Fluorescence detector behind the sample, at 90 degrees to the beam in the horizontal plane */}
@@ -571,14 +559,16 @@ function World({ twin, live, animate, hq, setup }: { twin: TwinState; live: Hutc
     </group></group>
     <Part idle={idle('it')}><Chamber m={m} c={CHAMBERS.It} length={profile.chambers.find(c => c.id === 'It')?.length_cm} readout={live.it ? lcdVolts(live.it.voltage_V, live.it.saturated) : undefined} gas={gas('It')} /></Part>
     <Part idle={idle('reference-foil')}>
-      <Blk x0={1346} x1={1358} y0={0} y1={34} z0={-4} z1={4} m={m.alu} />
-      <Blk x0={1348} x1={1354} y0={34} y1={92} z0={-16} z1={16} m={m.alu} />
-      <Blk x0={1354} x1={1354.8} y0={56} y1={76} z0={-10} z1={10} m={m.foil} r={0.1} />
+      <Blk x0={1222} x1={1234} y0={0} y1={1.5} z0={-6} z1={6} m={m.dark} r={0.3} />
+      <Blk x0={1226.5} x1={1229.5} y0={1.5} y1={YB - 8} z0={-1.5} z1={1.5} m={m.alu} r={0.3} />
+      <Blk x0={1226} x1={1228} y0={YB - 8} y1={YB + 8} z0={-8} z1={8} m={m.alu} r={0.4} />
+      <Blk x0={1225.6} x1={1226} y0={YB - 4} y1={YB + 4} z0={-4} z1={4} m={m.foil} r={0.05} />
     </Part>
     <Part idle={idle('iref')}><Chamber m={m} c={CHAMBERS.Iref} length={profile.chambers.find(c => c.id === 'Iref')?.length_cm} readout={live.iref ? lcdVolts(live.iref.voltage_V, live.iref.saturated) : undefined} gas={gas('Iref')} /></Part>
     <Part idle={idle('beam-stop')}>
-      <Blk x0={1500} x1={1508} y0={0} y1={50} z0={-4} z1={4} m={m.alu} />
-      <Blk x0={1494} x1={1514} y0={50} y1={82} z0={-12} z1={12} m={m.tungsten} />
+      <Blk x0={1290} x1={1302} y0={0} y1={1.5} z0={-6} z1={6} m={m.dark} r={0.3} />
+      <Blk x0={1294} x1={1298} y0={1.5} y1={YB - 5} z0={-2} z1={2} m={m.alu} r={0.3} />
+      <Blk x0={1290} x1={1300} y0={YB - 5} y1={YB + 5} z0={-5} z1={5} m={m.tungsten} r={0.4} />
     </Part>
 
     {/* The detector's acceptance: fluorescence leaves the sample in every direction and only this cone is collected */}
@@ -589,11 +579,11 @@ function World({ twin, live, animate, hq, setup }: { twin: TwinState; live: Hutc
 
     {/* Drain current: the sample is wired to a picoammeter on the floor */}
     <Part idle={idle('drain-current')}>
-      <Blk x0={1110} x1={1162} y0={FLOOR} y1={-66} z0={-80} z1={-58} m={m.dark} r={1.5} />
-      <TextPlate at={[1129, -73, -80.4]} w={28} h={9} text="TEY" fg="#74dcaa" bg="#06130f" mono glow />
-      <Tube points={[[XS - 3, 30, -6], [XS - 20, 14, -50], [1150, -40, -78], [1150, -66, -70]]} r={1.1} m={m.cable} />
+      <Blk x0={1110} x1={1162} y0={FLOOR} y1={FLOOR + 24} z0={-80} z1={-58} m={m.dark} r={1.5} />
+      <TextPlate at={[1129, FLOOR + 14, -80.4]} w={28} h={9} text="TEY" fg="#74dcaa" bg="#06130f" mono glow />
+      <Tube points={[[XS - 3, 30, -6], [XS - 20, 14, -50], [1150, -30, -78], [1150, FLOOR + 24, -70]]} r={1.1} m={m.cable} />
     </Part>
-    {lit('to-ammeter') && <Tube points={[[XS - 3, 30, -6], [XS - 20, 14, -50], [1150, -40, -78], [1150, -66, -70]]} r={1.6} m={current} />}
+    {lit('to-ammeter') && <Tube points={[[XS - 3, 30, -6], [XS - 20, 14, -50], [1150, -30, -78], [1150, FLOOR + 24, -70]]} r={1.6} m={current} />}
   </>;
 }
 
@@ -678,7 +668,7 @@ function Pacer({ animate }: { animate: boolean }) {
 }
 
 /* ---------- Camera and labels ---------- */
-interface Overlay { buttons: Map<PartId, HTMLButtonElement>; leaders: Map<PartId, SVGPathElement>; dots: Map<PartId, SVGCircleElement>; svg: SVGSVGElement | null; tips: Partial<Record<PartId, V3>>; drawn: Map<PartId, string>; widths: Map<PartId, number>; hud: HTMLDivElement | null; hudBox: { right: number; bottom: number } | null }
+interface Overlay { labelled: Set<PartId>; buttons: Map<PartId, HTMLButtonElement>; leaders: Map<PartId, SVGPathElement>; dots: Map<PartId, SVGCircleElement>; svg: SVGSVGElement | null; tips: Partial<Record<PartId, V3>>; drawn: Map<PartId, string>; widths: Map<PartId, number>; hud: HTMLDivElement | null; hudBox: { right: number; bottom: number } | null }
 
 /** Moves the camera to the mode's frame, smoothly unless motion is reduced, and lets the user turn, pan and zoom. */
 function Rig({ mode, whole, focusOn, reset, reduced }: { mode: TwinState['mode']; whole: boolean; focusOn: PartId | null; reset: number; reduced: boolean }) {
@@ -725,13 +715,15 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
     const placed = PARTS.map(part => {
       const tip = project(o.tips[part.id] ?? TIP3[part.id]), label = project(LABEL3[part.id]);
       const near = clampToBox(tip.x, tip.y, w, h), outside = tip.behind || near.outside;
+      // Parts without a label in this close-up sit as markers on their hardware, like the whole-beamline view.
+      const labelled = showLabels && o.labelled.has(part.id);
       let half = 14;
-      if (showLabels && !outside) {
+      if (labelled && !outside) {
         if (!o.widths.has(part.id)) o.widths.set(part.id, o.buttons.get(part.id)?.offsetWidth ?? 0);
         half = Math.max(14, o.widths.get(part.id)! / 2 + 4);
       }
-      const at = outside ? near : clampToBox(showLabels ? label.x : tip.x, showLabels ? label.y : tip.y, w, h, 14, half);
-      return { id: part.id, tip, x: at.x, y: at.y, outside, edge: near.x <= 14 ? 'l' : near.x >= w - 14 ? 'r' : near.y <= 14 ? 't' : 'b' };
+      const at = outside ? near : clampToBox(labelled ? label.x : tip.x, labelled ? label.y : tip.y, w, h, 14, half);
+      return { id: part.id, tip, x: at.x, y: at.y, outside, labelled, edge: near.x <= 14 ? 'l' : near.x >= w - 14 ? 'r' : near.y <= 14 ? 't' : 'b' };
     });
     // The HUD strip in the top left corner: measured once per render, then kept clear of.
     if (!o.hudBox && o.hud) o.hudBox = { right: o.hud.offsetLeft + o.hud.offsetWidth, bottom: o.hud.offsetTop + o.hud.offsetHeight };
@@ -748,7 +740,7 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
     // Labels that would overlap another, higher one move down below it, so every name stays readable.
     if (showLabels) {
       const done: { x: number; y: number; half: number; tall: number }[] = hud ? [{ x: hud.right / 2, y: hud.bottom / 2, half: hud.right / 2 + 4, tall: hud.bottom / 2 }] : [];
-      for (const p of placed.filter(q => !q.outside).sort((a, b) => a.y - b.y)) {
+      for (const p of placed.filter(q => !q.outside && q.labelled).sort((a, b) => a.y - b.y)) {
         const half = (o.widths.get(p.id) ?? 0) / 2 + 3;
         for (let moved = true, guard = 0; moved && guard < 8; guard++) {
           moved = false;
@@ -759,7 +751,7 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
       }
     }
     for (const p of placed) {
-      const key = `${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.tip.x.toFixed(1)} ${p.tip.y.toFixed(1)} ${p.outside} ${showLabels}`;
+      const key = `${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.tip.x.toFixed(1)} ${p.tip.y.toFixed(1)} ${p.outside} ${p.labelled}`;
       if (o.drawn.get(p.id) === key) continue;
       o.drawn.set(p.id, key);
       const button = o.buttons.get(p.id), leader = o.leaders.get(p.id), dot = o.dots.get(p.id);
@@ -768,10 +760,11 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
         button.style.setProperty('--ax', p.x + 'px'); button.style.setProperty('--ay', p.y + 'px');
         button.style.setProperty('--tx', tx + 'px'); button.style.setProperty('--ty', ty + 'px');
         button.toggleAttribute('data-outside', p.outside);
+        button.toggleAttribute('data-marker', !p.outside && !p.labelled && showLabels);
       }
       const below = p.y > p.tip.y;
-      leader?.setAttribute('d', showLabels && !p.outside ? `M${p.x.toFixed(1)} ${(p.y + (below ? -11 : 11)).toFixed(1)}L${p.tip.x.toFixed(1)} ${p.tip.y.toFixed(1)}` : '');
-      if (dot) { dot.setAttribute('cx', p.tip.x.toFixed(1)); dot.setAttribute('cy', p.tip.y.toFixed(1)); dot.setAttribute('r', showLabels && !p.outside ? '2' : '0'); }
+      leader?.setAttribute('d', p.labelled && !p.outside ? `M${p.x.toFixed(1)} ${(p.y + (below ? -11 : 11)).toFixed(1)}L${p.tip.x.toFixed(1)} ${p.tip.y.toFixed(1)}` : '');
+      if (dot) { dot.setAttribute('cx', p.tip.x.toFixed(1)); dot.setAttribute('cy', p.tip.y.toFixed(1)); dot.setAttribute('r', p.labelled && !p.outside ? '2' : '0'); }
     }
   });
   return null;
@@ -780,12 +773,16 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
 /** One significant figure as a power of ten, for the legend: 9.1e10 becomes "9 x 10^10". */
 const power = (value: number) => { const e = Math.floor(Math.log10(value)), m = Math.round(value / 10 ** e); return m === 10 ? `10^{${e + 1}}` : String.raw`${m}\times10^{${e}}`; };
 
-/** What the dots mean: X-rays are invisible, so the colours, the speed and the counts are spelled out. */
+/** What the dots mean: X-rays are invisible, so the colours, the speed and the counts are spelled out. A chip with the
+    energy bar; tap it for the rest. */
 function PhotonLegend({ setup }: { setup: PhotonSetup }) {
+  const [open, setOpen] = useState(false);
   const stops = [0, 0.25, 0.5, 0.75, 1].map(t => { const c = energyColor(COLOR_RANGE_eV[0] * (COLOR_RANGE_eV[1] / COLOR_RANGE_eV[0]) ** t); return `rgb(${c.map(v => Math.round(Math.min(1, v) * 255)).join(' ')}) ${t * 100}%`; });
-  return <div className="hutch-legend" role="note" aria-label="How the photons are drawn">
-    <p className="hutch-legend-bar"><strong>Photons</strong><span>2 keV</span><i style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} /><span>45 keV</span></p>
-    <p>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex> · flash: absorbed</p>
+  return <div className={'hutch-legend' + (open ? ' is-open' : '')} role="note" aria-label="How the photons are drawn">
+    <button type="button" className="hutch-legend-chip" aria-expanded={open} aria-controls="hutch-legend-text" onClick={() => setOpen(!open)}>
+      <strong>Photons</strong><span>2 keV</span><i style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} /><span>45 keV</span>
+    </button>
+    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex> · flash: absorbed</p>
   </div>;
 }
 
@@ -804,7 +801,7 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
   const scene = sceneFor(mode);
   const showLabels = labels && !whole;
   const stage = useRef<HTMLDivElement>(null);
-  const overlay = useRef<Overlay>({ buttons: new Map(), leaders: new Map(), dots: new Map(), svg: null, tips: {}, drawn: new Map(), widths: new Map(), hud: null, hudBox: null });
+  const overlay = useRef<Overlay>({ labelled: new Set(), buttons: new Map(), leaders: new Map(), dots: new Map(), svg: null, tips: {}, drawn: new Map(), widths: new Map(), hud: null, hudBox: null });
   const [visible, setVisible] = useState(true), [focusOn, setFocusOn] = useState<PartId | null>(null), [hq, setHq] = useState(false);
   const composer = useRef<EffectComposerImpl | null>(null);
   useEffect(() => {
@@ -816,6 +813,7 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
   // A new mode, view or reset frames the mode again rather than the last part picked off-screen.
   useEffect(() => setFocusOn(null), [mode, whole, reset]);
   overlay.current.drawn.clear(); overlay.current.widths.clear(); overlay.current.hudBox = null;
+  overlay.current.labelled = new Set(labelledParts(mode, open));
   const tv = drawnBraggDeg(live.theta_deg) * Math.PI / 180;
   overlay.current.tips = { 'second-crystal': [C1 + (YB - YB0) / Math.tan(2 * tv), YB, 0] };
   // What the photon packets do, from the same state and readouts as everything else on the page.

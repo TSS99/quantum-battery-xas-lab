@@ -3,14 +3,16 @@
  * and where the camera looks for each mode. Pure data and arithmetic, so it is unit tested in Node.
  *
  * World coordinates are the diagram's (scene-kit): X along the beam, Y up from the table top (the floor is
- * at Y = -90), Z away from the viewer. three.js has Z towards the viewer, so a point sits at (X, Y, -Z).
+ * at Y = -70, so the beam axis at Y = 66 is 1.36 m above the floor), Z away from the viewer. One unit is a centimetre. three.js has Z towards the viewer, so a point sits at (X, Y, -Z).
  */
 import type { TwinMode } from '@/lib/twin/types';
 import { YB, type V3 } from '../scene-kit';
 import { PARTS, XS, YB0, sceneFor, type PartId } from './hutch-parts';
 
 export type { V3 };
-export const FLOOR = -90;
+export const FLOOR = -70;
+/** The experiment table, centimetres: 3.6 m by 1.2 m. */
+export const TABLE = { x0: 990, x1: 1350, z: 60 } as const;
 
 /** A world point in three.js coordinates. */
 export const toThree = ([x, y, z]: V3): V3 => [x, y, -z];
@@ -25,24 +27,26 @@ export const TIP3: Record<PartId, V3> = {
   'second-crystal': [556, YB, 0],
   'focusing-mirror': [726, YB - 2, -34],
   'harmonic-rejection-mirror': [840, YB - 2, -30],
-  'experiment-slits': [909, YB + 14, -14],
-  'helium-path': [963, YB + 9, -9],
-  i0: [1050, 76, -9],
+  'experiment-slits': [1006, YB + 9, -9],
+  'helium-path': [1050, YB + 3, -3],
+  i0: [1106.5, 76, -9],
   'sample-stage': [XS, 6, -9],
   'sample-environment': [XS, YB + 3.5, -3],
-  'drain-current': [1136, -66, -80],
+  'drain-current': [1136, FLOOR + 24, -80],
   'fluorescence-detector': [XS, YB + 9, 72],
-  it: [1258, 76, -9],
-  'reference-foil': [1352, 76, 0],
-  iref: [1420, 76, -9],
-  'beam-stop': [1504, 82, -12],
+  it: [1196, 76, -9],
+  'reference-foil': [1228, YB + 8, -8],
+  iref: [1258, 76, -9],
+  'beam-stop': [1295, YB + 5, -5],
 };
 
 /** Labels float above their part on the diagram's four shelves, packed closer so the top shelf stays in a close-up of
     the real-size hardware; the two parts below the table have theirs on the floor in front. */
 export const SHELF_GAP = 20.4;
-export const LABEL3: Record<PartId, V3> = Object.fromEntries(PARTS.map(p => [p.id,
-  p.at[1] > 300 ? [p.at[0], FLOOR + 30, -130] : [p.at[0], 104 + (80 - p.at[1]) * SHELF_GAP / 34, 0]])) as Record<PartId, V3>;
+/** The experiment parts sit closer together on the 3D table than in the diagram, so their labels follow them. */
+const LABEL_X3: Partial<Record<PartId, number>> = { 'experiment-slits': 1006, 'helium-path': 1050, i0: 1106, it: 1196, 'reference-foil': 1228, iref: 1258, 'beam-stop': 1300 };
+export const LABEL3: Record<PartId, V3> = Object.fromEntries(PARTS.map(p => { const x = LABEL_X3[p.id] ?? p.at[0]; return [p.id,
+  p.at[1] > 300 ? [x, FLOOR + 30, -130] : [x, 104 + (80 - p.at[1]) * SHELF_GAP / 34, 0]]; })) as Record<PartId, V3>;
 
 export interface Frame { target: V3; position: V3 }
 

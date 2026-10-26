@@ -14,16 +14,16 @@ export const XS = 1150; // sample position
 export const C1 = 512; // first crystal
 export const SOURCE_X = 96; // tangent point of the electron orbit inside the bending magnet
 export const SLITS_X = 250; // front-end slits
-export const FOIL_X = 1354; // reference foil
-export const STOP_X = 1494; // front face of the beam stop
+export const FOIL_X = 1228; // reference foil (3D view)
+export const STOP_X = 1290; // front face of the beam stop (3D view)
 /** Where each mirror sits along the beam, by its job. */
 export const MIRROR_X = { collimating: 398, focusing: 726, 'harmonic-rejection': 840 } as const;
 /** The ion chamber housings along the beam at real size (3D view, centimetres): plates of the profile's active length
     (15 cm for I0, 30 cm for It and Iref) in boxes 6 cm longer, 20 cm tall and 18 cm deep (z is the half depth). */
 export const CHAMBERS = {
-  I0: { x0: 1039, x1: 1060, y0: 56, y1: 76, z: 9 },
-  It: { x0: 1240, x1: 1276, y0: 56, y1: 76, z: 9 },
-  Iref: { x0: 1402, x1: 1438, y0: 56, y1: 76, z: 9 },
+  I0: { x0: 1096, x1: 1117, y0: 56, y1: 76, z: 9 },
+  It: { x0: 1178, x1: 1214, y0: 56, y1: 76, z: 9 },
+  Iref: { x0: 1240, x1: 1276, y0: 56, y1: 76, z: 9 },
 } as const;
 
 /** The viewBox of the scene SVG; label and leader positions are in these units. */
@@ -109,6 +109,34 @@ export const MODE_SCENES: Record<TwinMode, ModeScene> = {
 };
 
 export const sceneFor = (mode: TwinMode) => MODE_SCENES[mode];
+
+/** Most labels a close-up shows at once; the other parts become markers. */
+export const MAX_LABELS = 4;
+/** The four parts each mode names first: what it is about, then what explains it. */
+const MODE_LABELS: Record<TwinMode, readonly PartId[]> = {
+  transmission: ['i0', 'sample-environment', 'it', 'iref'],
+  fluorescence: ['fluorescence-detector', 'sample-environment', 'i0', 'sample-stage'],
+  'electron-yield': ['drain-current', 'sample-environment', 'i0', 'sample-stage'],
+  xrf: ['fluorescence-detector', 'sample-environment', 'i0', 'sample-stage'],
+  mono: ['first-crystal', 'second-crystal', 'monochromator', 'harmonic-rejection-mirror'],
+  calibration: ['reference-foil', 'iref', 'it', 'i0'],
+  'time-resolved': ['sample-stage', 'sample-environment', 'i0', 'it'],
+  damage: ['sample-stage', 'sample-environment', 'i0', 'it'],
+};
+
+/**
+ * The parts that get a label: with a part open, that part and its neighbours along the beam, then the mode's lead
+ * part; otherwise the mode's four. At most MAX_LABELS.
+ */
+export function labelledParts(mode: TwinMode, open: PartId | null): PartId[] {
+  const order = PARTS.map(p => p.id), list: PartId[] = [];
+  if (open) {
+    const i = order.indexOf(open);
+    list.push(open, ...[order[i - 1], order[i + 1]].filter((id): id is PartId => !!id));
+  }
+  for (const id of MODE_LABELS[mode]) list.push(id);
+  return [...new Set(list)].slice(0, MAX_LABELS);
+}
 export const partActive = (mode: TwinMode, id: PartId) => UPSTREAM.includes(id) || MODE_SCENES[mode].downstream.includes(id);
 export const legLit = (mode: TwinMode, leg: Leg) => MODE_SCENES[mode].legs.includes(leg);
 export const hasCue = (mode: TwinMode, cue: Cue) => MODE_SCENES[mode].cues.includes(cue);

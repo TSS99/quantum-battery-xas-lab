@@ -191,6 +191,7 @@ test('3D hutch: shown by default, its parts open their cards, and the diagram ch
   await expect(scene.getByRole('button', { name: 'Monochromator', exact: true })).toHaveAttribute('data-outside', '');
   // The photons are explained where they are drawn: false colour, slowed, and how many photons a dot stands for.
   const legend = page.getByRole('note', { name: 'How the photons are drawn' });
+  await legend.getByRole('button', { name: /Photons/ }).click();
   await expect(legend).toContainText('Invisible in reality');
   await expect(legend).toContainText('1 dot');
   // Save 4K image downloads a 3840 by 2160 PNG of the current view and says so.
@@ -327,6 +328,7 @@ test('the XRF counting window moves by dragging its edge and by the keyboard con
   const to = controls.getByRole('slider', { name: 'Counting window to' });
   const before = Number(await to.inputValue());
   const grip = page.getByRole('tabpanel').locator('[data-band-edge="to"]');
+  await grip.scrollIntoViewIfNeeded();
   const box = (await grip.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();

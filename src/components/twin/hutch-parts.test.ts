@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { TwinMode } from '@/lib/twin/types';
 import { TWIN_MODES } from '@/lib/twin/types';
-import { MODE_SCENES, PARTS, UPSTREAM, VIEW, beamGlow, drawnBraggDeg, lcdVolts, partActive } from './hutch-parts';
+import { MAX_LABELS, MODE_SCENES, PARTS, UPSTREAM, VIEW, beamGlow, drawnBraggDeg, labelledParts, lcdVolts, partActive, sceneFor } from './hutch-parts';
 
 // The scene's minimum width in CSS pixels (.hutch-stage in twin.css) and a generous width per label character.
 const MIN_WIDTH_PX = 1140, CHAR_PX = 6.6, PADDING_PX = 20, CHIP_PX = 24;
@@ -69,5 +70,16 @@ describe('hutch parts', () => {
   it('shows volts on the amplifier display, or OVER once it clips', () => {
     expect(lcdVolts(1.23456, false)).toBe('1.235 V');
     expect(lcdVolts(10, true)).toBe('OVER');
+  });
+
+  it('labels at most four parts in a close-up: the open part and its neighbours, else the mode\'s four', () => {
+    const modes: TwinMode[] = ['transmission', 'fluorescence', 'electron-yield', 'xrf', 'mono', 'calibration', 'time-resolved', 'damage'];
+    for (const mode of modes) {
+      const shown = labelledParts(mode, null);
+      expect(shown).toHaveLength(MAX_LABELS);
+      for (const id of sceneFor(mode).emphasis) expect(shown).toContain(id);
+    }
+    expect(labelledParts('transmission', 'monochromator')).toEqual(['monochromator', 'collimating-mirror', 'first-crystal', 'i0']);
+    expect(labelledParts('transmission', 'i0')).toEqual(['i0', 'helium-path', 'sample-stage', 'sample-environment']);
   });
 });

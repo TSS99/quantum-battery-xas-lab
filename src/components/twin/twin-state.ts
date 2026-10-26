@@ -21,6 +21,8 @@ export const RESULT_TABS: readonly ResultTab[] = ['live', 'mu', 'normalized', 'd
 export interface TwinView {
   labels: boolean;
   enlarged: boolean;
+  /** The scene alone, without the side columns and the results. */
+  cinema: boolean;
   leftHidden: boolean;
   rightHidden: boolean;
   tab: ResultTab;
@@ -42,7 +44,7 @@ export interface TwinStore { twin: TwinState; view: TwinView }
 
 export const INITIAL_STORE: TwinStore = {
   twin: DEFAULT_TWIN,
-  view: { labels: true, enlarged: false, leftHidden: false, rightHidden: false, tab: 'mu', change: null, hashRead: false, acquireRequest: 0, training: false, locked: [], part: null },
+  view: { labels: true, enlarged: false, cinema: false, leftHidden: false, rightHidden: false, tab: 'mu', change: null, hashRead: false, acquireRequest: 0, training: false, locked: [], part: null },
 };
 
 export type TwinAction =
@@ -51,6 +53,7 @@ export type TwinAction =
   | { type: 'energy'; energy_eV: number }
   | { type: 'labels' }
   | { type: 'enlarge'; value?: boolean }
+  | { type: 'cinema'; value?: boolean }
   | { type: 'rail'; side: 'left' | 'right' }
   | { type: 'tab'; tab: ResultTab }
   | { type: 'acquire' }
@@ -176,6 +179,11 @@ export function twinReducer(store: TwinStore, action: TwinAction): TwinStore {
       const enlarged = action.value ?? !view.enlarged;
       if (enlarged === view.enlarged) return store;
       return note(enlarged ? 'Results enlarged in place of the scene. Press X or Escape to shrink them.' : 'Results back to normal size.', { enlarged });
+    }
+    case 'cinema': {
+      const cinema = action.value ?? !view.cinema;
+      if (cinema === view.cinema) return store;
+      return note(cinema ? 'Scene only. Press Escape or the button again to bring the panels back.' : 'Panels back.', { cinema });
     }
     case 'rail': {
       if (action.side === 'left') return note(view.leftHidden ? 'Explanation shown.' : 'Explanation hidden. Press [ to show it again.', { leftHidden: !view.leftHidden });

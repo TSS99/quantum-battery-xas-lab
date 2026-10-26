@@ -1,6 +1,6 @@
 'use client';
 import { memo, useCallback, useDeferredValue, useEffect, useRef, useState, type ComponentType } from 'react';
-import { Box, Camera, Eye, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { Box, Camera, Expand, Eye, Maximize2, Minimize2, RotateCcw, Shrink } from 'lucide-react';
 import { Tex } from '../tex';
 import { HutchScene } from './hutch-scene';
 import { useTwin } from './twin-store';
@@ -75,6 +75,7 @@ export function TwinScene() {
           <Box size={16} aria-hidden="true" /><span className="sr-only">3D view</span>
         </button>}
         {show3d && Three && <button type="button" className="twin-icon" title="Save a 4K image of this view" disabled={shooting} onClick={() => { setShooting(true); setShot(n => n + 1); }}><Camera size={16} aria-hidden="true" /><span className="sr-only">Save 4K image</span></button>}
+        <button type="button" className="twin-icon" aria-pressed={view.cinema} title={view.cinema ? 'Show the panels again (Escape)' : 'Scene only'} onClick={() => dispatch({ type: 'cinema' })}>{view.cinema ? <Shrink size={16} aria-hidden="true" /> : <Expand size={16} aria-hidden="true" />}<span className="sr-only">Scene only</span></button>
         {show3d && Three && <button type="button" className="twin-icon" title="Reset the view" onClick={() => setReset(n => n + 1)}><RotateCcw size={16} aria-hidden="true" /><span className="sr-only">Reset view</span></button>}
         <button type="button" className="twin-icon twin-whole" aria-pressed={whole} title={whole ? 'Close-up on this mode' : 'Whole beamline (labels become dots)'} onClick={() => setWhole(!whole)}>
           {whole ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}<span className="sr-only">Whole beamline</span>

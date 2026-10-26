@@ -63,7 +63,7 @@ export function energyColor(energy_eV: number): V3 {
 /* ---------- The beam's size along the line ---------- */
 
 /** Scene X to distance from the source in metres. The scene shortens the beamline; sizes follow the real distances. */
-const REAL_M: readonly [number, number][] = [[SOURCE_X, 0], [SLITS_X, 14], [MIRROR_X.collimating, 20], [C1, 24], [MIRROR_X.focusing, 28], [MIRROR_X['harmonic-rejection'], 30], [909, 32], [XS, 35], [STOP_X + 30, 38]];
+const REAL_M: readonly [number, number][] = [[SOURCE_X, 0], [SLITS_X, 14], [MIRROR_X.collimating, 20], [C1, 24], [MIRROR_X.focusing, 28], [MIRROR_X['harmonic-rejection'], 30], [1006, 32], [XS, 35], [STOP_X + 30, 38]];
 export function realDistance_m(x: number): number {
   if (x <= REAL_M[0][0]) return 0;
   for (let i = 1; i < REAL_M.length; i++) {
@@ -197,7 +197,7 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
     const x = MIRROR_X[mirror.role];
     stages.push({ id: mirror.id, kind: 'mirror', x0: x, x1: x, remove: per(e => 1 - mirrorReflectivity(mirror.coating, mirror.angle_mrad, e)), photo: per(() => 1) });
   }
-  if (orders.some(o => o.flightPathTransmission < 1)) stages.push({ id: 'helium-path', kind: 'path', x0: 926, x1: 1000, remove: per((_, i) => 1 - orders[i].flightPathTransmission), photo: per(() => 1) });
+  if (orders.some(o => o.flightPathTransmission < 1)) stages.push({ id: 'helium-path', kind: 'path', x0: 1018, x1: 1082, remove: per((_, i) => 1 - orders[i].flightPathTransmission), photo: per(() => 1) });
   const chamber = (id: 'I0' | 'It' | 'Iref') => {
     const config = profile.chambers.find(c => c.id === id), box = CHAMBERS[id];
     if (!config) return;
