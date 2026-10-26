@@ -13,6 +13,18 @@ export const YB0 = 46; // beam height before the fixed-exit monochromator; YB (s
 export const XS = 1150; // sample position
 export const C1 = 512; // first crystal
 export const SOURCE_X = 96; // tangent point of the electron orbit inside the bending magnet
+export const SLITS_X = 250; // front-end slits
+export const FOIL_X = 1354; // reference foil
+export const STOP_X = 1494; // front face of the beam stop
+/** Where each mirror sits along the beam, by its job. */
+export const MIRROR_X = { collimating: 398, focusing: 726, 'harmonic-rejection': 840 } as const;
+/** The ion chamber housings along the beam at real size (3D view, centimetres): plates of the profile's active length
+    (15 cm for I0, 30 cm for It and Iref) in boxes 6 cm longer, 20 cm tall and 18 cm deep (z is the half depth). */
+export const CHAMBERS = {
+  I0: { x0: 1039, x1: 1060, y0: 56, y1: 76, z: 9 },
+  It: { x0: 1240, x1: 1276, y0: 56, y1: 76, z: 9 },
+  Iref: { x0: 1402, x1: 1438, y0: 56, y1: 76, z: 9 },
+} as const;
 
 /** The viewBox of the scene SVG; label and leader positions are in these units. */
 export const VIEW = { x: 0, y: -40, width: 1600, height: 400 } as const;

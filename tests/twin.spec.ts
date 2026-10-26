@@ -189,6 +189,10 @@ test('3D hutch: shown by default, its parts open their cards, and the diagram ch
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Reset view', exact: true }).click();
   await expect(scene.getByRole('button', { name: 'Monochromator', exact: true })).toHaveAttribute('data-outside', '');
+  // The photons are explained where they are drawn: false colour, slowed, and how many photons a dot stands for.
+  const legend = page.getByRole('note', { name: 'How the photons are drawn' });
+  await expect(legend).toContainText('Invisible in reality');
+  await expect(legend).toContainText('1 dot');
   // Save 4K image downloads a 3840 by 2160 PNG of the current view and says so.
   const [image] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }), page.getByRole('button', { name: 'Save 4K image', exact: true }).click()]);
   expect(image.suggestedFilename()).toMatch(/^xas-lab-hutch-transmission-\d+eV-3840x2160\.png$/);

@@ -155,7 +155,16 @@ body:has(.twin-app) {background:#141d31}
 .hutch-3d .hutch-part[data-outside]::before {content:"";width:6px;height:6px;margin:auto;border-radius:50%;background:#a7b1c1;box-shadow:0 0 0 2px rgb(12 18 30/.7)}
 .hutch-3d .hutch-part[data-outside]:hover,.hutch-3d .hutch-part[data-outside]:focus-visible {opacity:1}
 .hutch-3d .hutch-part[data-outside] .hutch-part-text {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.hutch-3d.is-capturing .hutch-parts,.hutch-3d.is-capturing .hutch-leaders-3d,.hutch-3d.is-capturing .hutch-hud {visibility:hidden}
+.hutch-3d.is-capturing .hutch-parts,.hutch-3d.is-capturing .hutch-leaders-3d,.hutch-3d.is-capturing .hutch-hud,.hutch-3d.is-capturing .hutch-legend {visibility:hidden}
+/* What the photon dots mean: bottom left, under the labels' floor */
+.hutch-legend {position:absolute;left:14px;bottom:12px;z-index:1;max-width:min(520px,calc(100% - 28px));padding:6px 9px;border:1px solid rgb(120 220 255/.3);border-radius:3px;background:rgb(6 14 26/.84);font:400 10px/1.4 var(--tw-sans);color:rgb(226 240 255/.9);pointer-events:none}
+.hutch-legend .katex {font-size:1em}
+.hutch-legend p {margin:0}
+.hutch-legend p + p {margin-top:3px}
+.hutch-legend strong {font-weight:600;color:#fff}
+.hutch-legend-bar {display:flex;align-items:center;gap:8px;font:500 10px/1 var(--tw-mono)}
+.hutch-legend-bar i {flex:0 1 150px;height:7px;border-radius:2px}
+@media (max-width:640px) {.hutch-legend {font-size:10px;left:10px;bottom:10px;max-width:calc(100% - 20px)}}
 .hutch-wires {transition:opacity .3s}
 .hutch-wires.is-idle {opacity:.42}
 .hutch [data-part].is-focus {filter:drop-shadow(0 0 4px rgb(140 227 255/.7))}

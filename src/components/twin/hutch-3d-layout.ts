@@ -27,23 +27,27 @@ export const TIP3: Record<PartId, V3> = {
   'harmonic-rejection-mirror': [840, YB - 2, -30],
   'experiment-slits': [909, YB + 14, -14],
   'helium-path': [963, YB + 9, -9],
-  i0: [1050, 102, -10],
-  'sample-stage': [XS - 8, 14, -22],
-  'sample-environment': [XS, 86, 0],
+  i0: [1050, 76, -9],
+  'sample-stage': [XS, 6, -9],
+  'sample-environment': [XS, YB + 3.5, -3],
   'drain-current': [1136, -66, -80],
-  'fluorescence-detector': [XS, YB + 13, 160],
-  it: [1258, 102, -10],
+  'fluorescence-detector': [XS, YB + 9, 72],
+  it: [1258, 76, -9],
   'reference-foil': [1352, 76, 0],
-  iref: [1420, 94, -10],
+  iref: [1420, 76, -9],
   'beam-stop': [1504, 82, -12],
 };
 
-/** Labels float above their part on the diagram's four shelves, packed closer so the top shelf stays in a close-up;
-    the two parts below the table have theirs on the floor in front. */
+/** Labels float above their part on the diagram's four shelves, packed closer so the top shelf stays in a close-up of
+    the real-size hardware; the two parts below the table have theirs on the floor in front. */
+export const SHELF_GAP = 20.4;
 export const LABEL3: Record<PartId, V3> = Object.fromEntries(PARTS.map(p => [p.id,
-  p.at[1] > 300 ? [p.at[0], FLOOR + 30, -130] : [p.at[0], 120 + (80 - p.at[1]) * 0.9, 0]])) as Record<PartId, V3>;
+  p.at[1] > 300 ? [p.at[0], FLOOR + 30, -130] : [p.at[0], 104 + (80 - p.at[1]) * SHELF_GAP / 34, 0]])) as Record<PartId, V3>;
 
 export interface Frame { target: V3; position: V3 }
+
+/** The close-up of a mode: what width and height of the scene it fits (centimetres), and where it looks. */
+export const CLOSE_UP = { wide: 450, narrow: 330, height: 280, y: 56 } as const;
 
 /** The camera's vertical field of view, degrees. A long lens keeps the hardware from looking distorted. */
 export const FOV = 30;
@@ -59,8 +63,8 @@ export const focusX3 = (mode: TwinMode) => { const xs = sceneFor(mode).emphasis.
  * beamline. The distance fits both the width and the height of the box.
  */
 export function frameFor(mode: TwinMode, whole: boolean, aspect: number): Frame {
-  const target: V3 = whole ? [780, 20, 20] : [focusX3(mode), 62, 10];
-  const width = whole ? 1700 : aspect < 1.6 ? 400 : 560, height = whole ? 380 : 340;
+  const target: V3 = whole ? [780, 20, 20] : [focusX3(mode), CLOSE_UP.y, 10];
+  const width = whole ? 1700 : aspect < 1.6 ? CLOSE_UP.narrow : CLOSE_UP.wide, height = whole ? 380 : CLOSE_UP.height;
   const t = Math.tan(FOV / 2 * Math.PI / 180);
   const d = Math.max(width / 2 / (t * Math.max(aspect, 0.3)), height / 2 / t);
   const dir: V3 = [Math.sin(AZIMUTH) * Math.cos(ELEVATION), Math.sin(ELEVATION), -Math.cos(AZIMUTH) * Math.cos(ELEVATION)];

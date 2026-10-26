@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TwinMode } from '@/lib/twin/types';
 import { PARTS, sceneFor } from './hutch-parts';
-import { FLOOR, FOV, LABEL3, TIP3, clampToBox, focusX3, frameFor, toThree } from './hutch-3d-layout';
+import { CLOSE_UP, FLOOR, FOV, LABEL3, SHELF_GAP, TIP3, clampToBox, focusX3, frameFor, toThree } from './hutch-3d-layout';
 
 const MODES: TwinMode[] = ['transmission', 'fluorescence', 'electron-yield', 'xrf', 'mono', 'calibration', 'time-resolved', 'damage'];
 const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -28,7 +28,7 @@ describe('3D hutch layout', () => {
   it('keeps the diagram shelf order and spacing for labels, top shelf highest', () => {
     const heights = [...new Set(PARTS.filter(p => p.at[1] < 300).map(p => LABEL3[p.id][1]))].sort((a, b) => b - a);
     expect(heights).toHaveLength(4);
-    for (let i = 1; i < heights.length; i++) expect(heights[i - 1] - heights[i]).toBeCloseTo(30.6, 5);
+    for (let i = 1; i < heights.length; i++) expect(heights[i - 1] - heights[i]).toBeCloseTo(SHELF_GAP, 5);
   });
 
   it('frames each mode on the parts it is about, from in front, above and a little to the left', () => {
@@ -45,8 +45,8 @@ describe('3D hutch layout', () => {
   it('fits the requested width in a wide box and the height in a tall one, and stands further back for the whole beamline', () => {
     const t = Math.tan(FOV / 2 * Math.PI / 180);
     const wide = frameFor('transmission', false, 2.5), tall = frameFor('transmission', false, 1);
-    expect(dist(wide.position, wide.target)).toBeCloseTo(Math.max(560 / 2 / (t * 2.5), 340 / 2 / t), 6);
-    expect(dist(tall.position, tall.target)).toBeCloseTo(400 / 2 / t, 6);
+    expect(dist(wide.position, wide.target)).toBeCloseTo(Math.max(CLOSE_UP.wide / 2 / (t * 2.5), CLOSE_UP.height / 2 / t), 6);
+    expect(dist(tall.position, tall.target)).toBeCloseTo(CLOSE_UP.narrow / 2 / t, 6);
     const whole = frameFor('transmission', true, 2.5);
     expect(dist(whole.position, whole.target)).toBeGreaterThan(dist(wide.position, wide.target) * 1.5);
     expect(whole.target[0]).toBe(780);

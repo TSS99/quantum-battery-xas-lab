@@ -13,13 +13,15 @@ import * as THREE from 'three';
 import { useReducedMotion } from 'motion/react';
 import { Tex } from '../tex';
 import type { TwinState } from '@/lib/twin/types';
-import { C1, PARTS, SOURCE_X, XS, YB0, beamGlow, drawnBraggDeg, hasCue, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
+import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
 import { FLOOR, FOV, LABEL3, TIP3, clampToBox, frameFor, toThree, type V3 } from './hutch-3d-layout';
 import { YB } from '../scene-kit';
 import { Blk, Bolts, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
 export { texturesReady } from './hutch-3d-kit';
 import type { HutchSceneProps } from './hutch-scene';
 import { modeInfo } from './twin-state';
+import { BeamOutline, Photons } from './hutch-3d-photons';
+import { COLOR_RANGE_eV, WIDTH_SCALE, energyColor, photonSetup, type PhotonSetup } from './photon-sim';
 
 const percent = (fraction: number) => fraction >= 0.9995 ? '100' : fraction < 0.001 ? (fraction * 100).toExponential(1) : (fraction * 100).toFixed(1);
 const short = (value: number) => value.toExponential(1).replace('e+', 'e');
@@ -31,17 +33,13 @@ const LEG_NAMES: Record<Leg, string> = {
   'it-to-iref': 'It chamber through the reference foil', 'iref-to-stop': 'Iref chamber to the beam stop',
   'to-detector': 'sample to the fluorescence detector', 'to-ammeter': 'sample to the drain current ammeter',
 };
-const CHAMBER = {
-  i0: { x0: 1010, x1: 1090, y0: 30, y1: 102, z: 30 },
-  it: { x0: 1215, x1: 1300, y0: 30, y1: 102, z: 30 },
-  iref: { x0: 1390, x1: 1450, y0: 38, y1: 94, z: 24 },
-} as const;
-type ChamberBox = (typeof CHAMBER)[keyof typeof CHAMBER];
-/** The electron orbit: a 300 unit radius arc that curves away from the viewer through the magnet. */
-const ORBIT: V3[] = Array.from({ length: 16 }, (_, i) => { const t = i * 0.5 / 15; return [-20 + 300 * Math.sin(t), YB0, 300 * (1 - Math.cos(t))]; });
+type ChamberBox = (typeof CHAMBERS)[keyof typeof CHAMBERS];
+/** The electron orbit through the magnet: a 300 unit radius arc tangent to the beamline at the source point and
+    curving away from the viewer towards the ring's centre, so the X-ray fan leaves along the tangent, as it must. */
+const ORBIT: V3[] = Array.from({ length: 16 }, (_, i) => { const t = -0.28 + i * 0.52 / 15; return [SOURCE_X + 300 * Math.sin(t), YB0, 300 * (1 - Math.cos(t))]; });
 
 /* ---------- Glow textures, made once ---------- */
-let glowTexture: THREE.Texture | null = null, dashTexture: THREE.Texture | null = null;
+let glowTexture: THREE.Texture | null = null;
 function glow() {
   if (glowTexture) return glowTexture;
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -50,40 +48,8 @@ function glow() {
   g.fillStyle = r; g.fillRect(0, 0, 64, 64);
   return glowTexture = new THREE.CanvasTexture(c);
 }
-function dash() {
-  if (dashTexture) return dashTexture;
-  const c = document.createElement('canvas'); c.width = 4; c.height = 64;
-  const g = c.getContext('2d')!, r = g.createLinearGradient(0, 0, 0, 64);
-  r.addColorStop(0, 'rgba(0,0,0,0)'); r.addColorStop(0.45, 'rgba(255,255,255,1)'); r.addColorStop(0.55, 'rgba(255,255,255,1)'); r.addColorStop(0.62, 'rgba(0,0,0,0)');
-  g.fillStyle = '#000'; g.fillRect(0, 0, 4, 64); g.fillStyle = r; g.fillRect(0, 0, 4, 64);
-  dashTexture = new THREE.CanvasTexture(c); dashTexture.wrapS = dashTexture.wrapT = THREE.RepeatWrapping;
-  return dashTexture;
-}
-
 /* ---------- The beam ---------- */
-const additive = (color: string, opacity: number, map?: THREE.Texture) => new THREE.MeshBasicMaterial({ color, opacity, ...(map ? { map } : {}), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-/** A see-through colour that still shows on a white wall (additive light would wash out there). */
-const tinted = (color: string, opacity: number, alphaMap?: THREE.Texture) => new THREE.MeshBasicMaterial({ color, opacity, ...(alphaMap ? { alphaMap } : {}), transparent: true, depthWrite: false, toneMapped: false });
-const UP = new THREE.Vector3(0, 1, 0);
-
-/** One straight stretch of beam: a saturated core in a tinted halo and a soft glow, with pale pulses running along it
-    while the leg is in use. */
-function BeamSeg({ a, b, color = '#ffa733', core = '#fff6e0', glow: strength, lit = true, flow = true, speed = 1, animate }: { a: V3; b: V3; color?: string; core?: string; glow: number; lit?: boolean; flow?: boolean; speed?: number; animate: boolean }) {
-  const pa = new THREE.Vector3(...toThree(a)), pb = new THREE.Vector3(...toThree(b)), length = pa.distanceTo(pb);
-  const mid = pa.clone().add(pb).multiplyScalar(0.5), q = new THREE.Quaternion().setFromUnitVectors(UP, pb.clone().sub(pa).normalize());
-  const k = strength * (lit ? 1 : 0.16), moving = flow && lit && strength > 0;
-  const mats = useMemo(() => {
-    const map = dash().clone(); map.needsUpdate = true; map.repeat.set(1, Math.max(1, length / 26));
-    return [additive(color, 0.1), tinted(color, 0.3), tinted(color, 0.95), tinted(core, 0.9, map)];
-  }, [color, core, length]);
-  useLayoutEffect(() => () => mats.forEach(m => { m.alphaMap?.dispose(); m.dispose(); }), [mats]);
-  mats[0].opacity = 0.1 * k; mats[1].opacity = 0.3 * k; mats[2].opacity = 0.95 * k; mats[3].opacity = moving ? 0.9 * k : 0;
-  useFrame((_, dt) => { if (moving && animate && mats[3].alphaMap) mats[3].alphaMap.offset.y -= Math.min(dt, 0.1) * 2.3 * speed; });
-  if (length < 0.5) return null;
-  return <group position={mid} quaternion={q}>
-    {[5.5, 2.4, 0.9, 1.2].map((r, i) => <mesh key={i} material={mats[i]} renderOrder={2}><cylinderGeometry args={[r, r, length, 16, 1, true]} /></mesh>)}
-  </group>;
-}
+const additive = (color: string, opacity: number) => new THREE.MeshBasicMaterial({ color, opacity, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
 
 function GlowSprite({ at, size, color, opacity = 1 }: { at: V3; size: number; color: string; opacity?: number }) {
   return <sprite position={toThree(at)} scale={[size, size, 1]} renderOrder={3}>
@@ -144,83 +110,98 @@ function Mirror({ m, x0, x1, top, coating }: { m: Mats; x0: number; x1: number; 
   </>;
 }
 
-/** An ion chamber: aluminium box, Kapton windows at both ends, collector plates seen through a viewport, amplifier display. */
-function Chamber({ m, c, beam, readout, gas }: { m: Mats; c: ChamberBox; beam: number; readout?: string; gas?: Partial<Record<string, number>> }) {
-  const { x0, x1, y0, y1, z } = c, xc = (x0 + x1) / 2, t = 3, half = Math.min(16, y1 - YB - 14), wy0 = YB - half, wy1 = YB + half;
-  const lcdH = Math.min(13, y1 - wy1 - 3);
+/**
+ * An ion chamber at real scale (scene units are centimetres): an aluminium box a few centimetres longer than its
+ * plates, Kapton windows on the beam axis, two parallel collector plates either side of the beam, HV and signal
+ * connectors and gas fittings on top, on a post from the table. The front is drawn as a window so the ionisation
+ * flashes inside can be seen. Its current amplifier stands in front on the table, with the output display and the fill.
+ */
+function Chamber({ m, c, readout, gas, length }: { m: Mats; c: ChamberBox; readout?: string; gas?: Partial<Record<string, number>>; length?: number }) {
+  const { x0, x1, y0, y1, z } = c, xc = (x0 + x1) / 2, t = 1.2;
   return <>
-    <Blk x0={x0 + 6} x1={x1 - 6} y0={0} y1={3} z0={-(z - 4)} z1={z - 4} m={m.alu} />
-    <Blk x0={x0 + 12} x1={x1 - 12} y0={3} y1={y0} z0={-(z - 10)} z1={z - 10} m={m.dark} />
-    <Blk x0={x0} x1={x1} y0={y0} y1={y0 + t} z0={-z} z1={z} m={m.alu} r={1.5} />
-    <Blk x0={x0} x1={x1} y0={y1 - t} y1={y1} z0={-z} z1={z} m={m.alu} r={1.5} />
-    <Blk x0={x0} x1={x1} y0={y0} y1={y1} z0={z - t} z1={z} m={m.alu} r={1.5} />
-    {[[x0, x0 + t], [x1 - t, x1]].map(([a, b]) => <Blk key={a} x0={a} x1={b} y0={y0} y1={y1} z0={-z} z1={z} m={m.alu} r={1.5} />)}
-    <Blk x0={x0} x1={x1} y0={y0} y1={wy0} z0={-z} z1={-z + t} m={m.alu} r={1.5} />
-    <Blk x0={x0} x1={x1} y0={wy1} y1={y1} z0={-z} z1={-z + t} m={m.alu} r={1.5} />
-    {[[x0, x0 + 10], [x1 - 10, x1]].map(([a, b]) => <Blk key={a} x0={a} x1={b} y0={wy0} y1={wy1} z0={-z} z1={-z + t} m={m.alu} r={1} />)}
-    <mesh position={toThree([xc, (y0 + y1) / 2, z - t - 0.2])} material={m.inner}><planeGeometry args={[x1 - x0 - 2 * t, y1 - y0 - 2 * t]} /></mesh>
-    {[YB + 12, YB - 12].map(y => <Blk key={y} x0={x0 + 8} x1={x1 - 8} y0={y - 1} y1={y + 1} z0={-(z - 6)} z1={z - 6} m={m.copper} r={0.3} />)}
-    <mesh position={toThree([xc, YB, 0])} renderOrder={2}>
-      <boxGeometry args={[x1 - x0 - 18, 20, 2 * z - 14]} />
-      <meshBasicMaterial color="#6fb4ff" transparent opacity={0.015 + 0.05 * beam} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-    </mesh>
-    <mesh position={toThree([xc, YB, -z + 1.5])} material={m.glass} renderOrder={1}><planeGeometry args={[x1 - x0 - 20, wy1 - wy0]} /></mesh>
+    {/* Post and base from the table top */}
+    <Blk x0={xc - 6} x1={xc + 6} y0={0} y1={1.5} z0={-6} z1={6} m={m.alu} r={0.4} />
+    <CylY x={xc} y0={1.5} y1={y0} r={1.6} m={m.steel} seg={16} />
+    <Blk x0={xc - 4} x1={xc + 4} y0={y0 - 2} y1={y0} z0={-4} z1={4} m={m.alu} r={0.3} />
+    {/* Box: bottom, top, back and ends; the front is the window */}
+    <Blk x0={x0} x1={x1} y0={y0} y1={y0 + t} z0={-z} z1={z} m={m.alu} r={0.6} />
+    <Blk x0={x0} x1={x1} y0={y1 - t} y1={y1} z0={-z} z1={z} m={m.alu} r={0.6} />
+    <Blk x0={x0} x1={x1} y0={y0} y1={y1} z0={z - t} z1={z} m={m.alu} r={0.6} />
+    {[[x0, x0 + t], [x1 - t, x1]].map(([a, b]) => <Blk key={a} x0={a} x1={b} y0={y0} y1={y1} z0={-z} z1={z} m={m.alu} r={0.6} />)}
+    {[[x0, x0 + 2.4], [x1 - 2.4, x1]].map(([a, b]) => <Blk key={'f' + a} x0={a} x1={b} y0={y0} y1={y1} z0={-z} z1={-z + t} m={m.alu} r={0.5} />)}
+    <mesh position={toThree([xc, (y0 + y1) / 2, z - t - 0.1])} material={m.inner}><planeGeometry args={[x1 - x0 - 2 * t, y1 - y0 - 2 * t]} /></mesh>
+    <mesh position={toThree([xc, (y0 + y1) / 2, -z + 0.6])} material={m.glass} renderOrder={1}><planeGeometry args={[x1 - x0 - 4.8, y1 - y0 - 2 * t]} /></mesh>
+    {/* Collector and HV plates, either side of the beam, on ceramic standoffs */}
+    {[YB + 5, YB - 5].map(y => <group key={y}>
+      <Blk x0={x0 + 3} x1={x1 - 3} y0={y - 0.25} y1={y + 0.25} z0={-(z - 2.5)} z1={z - 2.5} m={m.copper} r={0.1} />
+      {[x0 + 5, x1 - 5].map(x => <CylY key={x} x={x} z={z - 4} y0={y > YB ? y + 0.25 : y0 + t} y1={y > YB ? y1 - t : y - 0.25} r={0.6} m={m.ceramic} seg={8} />)}
+    </group>)}
+    {/* Kapton windows on the beam axis */}
     {[x0, x1].map(x => <group key={x}>
-      <CylX x0={x - 0.8} x1={x + 0.8} y={YB} r={14} m={m.steel} />
-      <CylX x0={x + (x === x0 ? -1.2 : 0.4)} x1={x + (x === x0 ? -0.4 : 1.2)} y={YB} r={10.5} m={m.kapton} />
+      <CylX x0={x - 0.6} x1={x + 0.6} y={YB} r={4.2} m={m.steel} />
+      <CylX x0={x + (x === x0 ? -0.9 : 0.6)} x1={x + (x === x0 ? -0.6 : 0.9)} y={YB} r={3} m={m.kapton} />
     </group>)}
-    {readout !== undefined && <TextPlate at={[xc, (wy1 + y1) / 2, -z - 0.4]} w={54} h={lcdH} text={readout} fg="#74dcaa" bg="#06130f" mono glow />}
-    <mesh position={toThree([xc, y0 + 1.6, -z - 0.45])} material={m.led}><planeGeometry args={[x1 - x0 - 16, 0.9]} /></mesh>
-    <TextPlate at={[x0 + 9, (y0 + wy0) / 2, -z - 0.45]} w={7} h={6} text="⚡" fg="#16191d" bg="#f2c230" />
-    <TextPlate at={[x1 - 11, (y0 + wy0) / 2, -z - 0.45]} w={13} h={4} text={'IC-' + Math.round(x1 - x0)} fg="#3a414b" bg="#f4f6f8" mono />
-    {gas && <TextPlate at={[xc, (y0 + wy0) / 2, -z - 0.4]} w={40} h={8} text={gasText(gas)} bg="#16191d" fg="#cfd6de" />}
-    {[x0 + 14, x1 - 14].map(x => <group key={x}>
-      <CylY x={x} y0={y1} y1={y1 + 9} r={4} m={m.steel} />
-      <CylY x={x} y0={y1 + 9} y1={y1 + 16} r={3} m={m.black} />
-      <Tube points={drapePoints(x, y1 + 15)} r={1.5} m={m.cable} />
+    {/* SHV and BNC connectors with their cables, gas fittings with their lines */}
+    {[x0 + 4, x1 - 4].map((x, i) => <group key={x}>
+      <CylY x={x} z={-2} y0={y1} y1={y1 + 2.5} r={1.1} m={i ? m.steel : m.red} seg={12} />
+      <Tube points={drapePoints(x, y1 + 2.4, -2, 10, 6)} r={0.45} m={i ? m.cable : m.hv} />
     </group>)}
-    {[xc - 10, xc + 10].map(x => <group key={x}>
-      <CylY x={x} z={14} y0={y1} y1={y1 + 5} r={2.6} m={m.brass} seg={12} />
-      <Tube points={drapePoints(x, y1 + 4.5, 14, 16, 8)} r={1} m={m.gas} />
+    {[xc - 3, xc + 3].map(x => <group key={x}>
+      <CylY x={x} z={4} y0={y1} y1={y1 + 1.8} r={0.8} m={m.brass} seg={10} />
+      <Tube points={drapePoints(x, y1 + 1.7, 4, 12, 5)} r={0.35} m={m.gas} />
     </group>)}
+    {/* The current amplifier in front, on the table: output display, fill and active length */}
+    <Blk x0={xc - 14} x1={xc + 14} y0={0} y1={9} z0={-z - 22} z1={-z - 10} m={m.panel} r={0.6} />
+    {readout !== undefined && <TextPlate at={[xc - 4, 5.6, -z - 22.15]} w={16} h={4.4} text={readout} fg="#74dcaa" bg="#06130f" mono glow />}
+    {[xc + 7, xc + 11].map(x => <CylZ key={x} x={x} y={5.6} z0={-z - 23.2} z1={-z - 22} r={1} m={m.black} seg={12} />)}
+    {gas && <TextPlate at={[xc - 4, 1.9, -z - 22.15]} w={20} h={2.2} text={gasText(gas) + (length ? ` · ${length} cm` : '')} bg="#16191d" fg="#cfd6de" />}
+    <Tube points={[[xc + 10, 9, -z - 16], [xc + 10, 14, -z - 8], [xc + 6, y0 + 4, -z + 1], [x1 - 4, y1 + 2.5, -2]]} r={0.4} m={m.cable} />
   </>;
 }
 
-/** The sample environment on top of the stage; the sample face sits at XS. */
+/** Height of the stage's rotation table: the sample holder rises from here to the beam. */
+const STAGE_TOP = YB - 12;
+
+/**
+ * The sample and its environment at real size (scene units are centimetres), centred on the beam at the sample
+ * position: a 13 mm pellet in a small holder, a closed-cycle cryostat tail with Kapton windows, a compact furnace, an
+ * operando coin cell holder or a liquid cell with its tubing.
+ */
 function Environment3D({ m, kind }: { m: Mats; kind: TwinState['environment']['kind'] }) {
   switch (kind) {
     case 'cryostat': return <>
-      <CylY x={XS} y0={26} y1={38} r={24} m={m.steel} />
-      <CylY x={XS} y0={38} y1={96} r={18} m={m.steel} />
-      <CylY x={XS} y0={YB - 8} y1={YB + 8} r={18.4} m={m.kapton} />
-      <CylY x={XS} y0={96} y1={104} r={20} m={m.steel} />
-      <CylY x={XS} y0={104} y1={138} r={11} m={m.steel} />
-      <CylY x={XS} y0={138} y1={148} r={5} m={m.brass} />
-      <Tube points={[[XS + 5, 140, 0], [XS + 20, 150, 20], [XS + 40, 130, 70], [XS + 44, 6, 86], [XS + 44, -82, 90]]} r={2.6} m={m.steel} />
+      <CylY x={XS} y0={STAGE_TOP} y1={YB - 6} r={5} m={m.steel} />
+      <CylY x={XS} y0={YB - 6} y1={YB + 8} r={4.2} m={m.steel} />
+      <CylY x={XS} y0={YB - 2.2} y1={YB + 2.2} r={4.3} m={m.kapton} />
+      <CylY x={XS} y0={YB + 8} y1={YB + 10} r={6.5} m={m.steel} />
+      <CylY x={XS} y0={YB + 10} y1={YB + 34} r={5.5} m={m.steel} />
+      <CylY x={XS} y0={YB + 34} y1={YB + 40} r={3} m={m.brass} />
+      {[2, -2].map(dz => <Tube key={dz} points={[[XS + 2, YB + 38, dz], [XS + 10, YB + 46, 10 + dz], [XS + 22, YB + 30, 50], [XS + 26, 4, 70], [XS + 26, -82, 80]]} r={1.1} m={m.steel} />)}
     </>;
     case 'furnace': return <>
-      <Blk x0={XS - 24} x1={XS + 24} y0={26} y1={102} z0={-24} z1={24} m={m.ceramic} r={3} />
-      <mesh position={toThree([XS - 9, YB, -24.5])}><planeGeometry args={[30, 34]} /><meshBasicMaterial color="#ff8a3d" toneMapped={false} /></mesh>
-      <GlowSprite at={[XS - 9, YB, -30]} size={60} color="#ff7a3d" opacity={0.7} />
-      {[90, 80].map(y => <Tube key={y} points={[[XS + 24, y, 0], [XS + 40, y + 6, 30], [XS + 46, 30, 76], [XS + 46, -82, 90]]} r={1.6} m={m.gas} />)}
+      <Blk x0={XS - 7} x1={XS + 7} y0={STAGE_TOP} y1={YB + 9} z0={-7} z1={7} m={m.ceramic} r={1} />
+      <mesh position={toThree([XS - 7.05, YB, 0])} rotation-y={-Math.PI / 2}><circleGeometry args={[2.4, 24]} /><meshBasicMaterial color="#ff7a2d" toneMapped={false} /></mesh>
+      <GlowSprite at={[XS - 8, YB, 0]} size={14} color="#ff6a2a" opacity={0.6} />
+      {[YB + 6, YB + 3].map(y => <Tube key={y} points={[[XS + 7, y, 0], [XS + 14, y + 3, 12], [XS + 18, 10, 60], [XS + 18, -82, 80]]} r={0.6} m={m.gas} />)}
     </>;
     case 'operando-cell': return <>
-      <Blk x0={XS - 3} x1={XS + 3} y0={26} y1={98} z0={-22} z1={22} m={m.alu} />
-      <CylX x0={XS - 4} x1={XS - 3} y={YB} r={13} m={m.steel} />
-      <CylX x0={XS - 4.4} x1={XS - 3.6} y={YB} r={7} m={m.kapton} />
-      <Tube points={[[XS + 3, 90, 10], [XS + 18, 96, 30], [XS + 30, 40, 76], [XS + 30, -82, 90]]} r={1.2} m={m.hv} />
-      <Tube points={[[XS + 3, 84, 10], [XS + 20, 88, 34], [XS + 34, 36, 78], [XS + 34, -82, 90]]} r={1.2} m={m.cable} />
+      <Blk x0={XS - 0.8} x1={XS + 1.6} y0={STAGE_TOP} y1={YB + 5} z0={-4} z1={4} m={m.alu} r={0.3} />
+      <CylX x0={XS - 1.2} x1={XS - 0.8} y={YB} r={2.2} m={m.steel} />
+      <CylX x0={XS - 1.4} x1={XS - 1.2} y={YB} r={0.9} m={m.kapton} />
+      <Tube points={[[XS + 1.6, YB + 3, 2], [XS + 8, YB + 6, 10], [XS + 14, 20, 50], [XS + 14, -82, 80]]} r={0.35} m={m.hv} />
+      <Tube points={[[XS + 1.6, YB + 1, -2], [XS + 9, YB + 4, 12], [XS + 16, 18, 52], [XS + 16, -82, 80]]} r={0.35} m={m.cable} />
     </>;
     case 'liquid-cell': return <>
-      <Blk x0={XS - 5} x1={XS + 5} y0={26} y1={98} z0={-20} z1={20} m={m.peek} />
-      <CylX x0={XS - 5.6} x1={XS - 4.8} y={YB} r={9} m={m.glass} />
-      <mesh position={toThree([XS - 5.2, YB, 0])} rotation={[0, Math.PI / 2, 0]}><circleGeometry args={[8.6, 24]} /><meshStandardMaterial color="#7fb8e8" transparent opacity={0.55} roughness={0.1} /></mesh>
-      {[78, 58].map(y => <Tube key={y} points={[[XS + 5, y, 0], [XS + 20, y + 4, 24], [XS + 32, 30, 74], [XS + 32, -82, 90]]} r={1.4} m={m.gas} />)}
+      <Blk x0={XS - 1} x1={XS + 1.5} y0={STAGE_TOP} y1={YB + 5} z0={-3.5} z1={3.5} m={m.peek} r={0.3} />
+      <CylX x0={XS - 1.3} x1={XS - 1} y={YB} r={1.6} m={m.glass} />
+      <mesh position={toThree([XS - 1.15, YB, 0])} rotation={[0, Math.PI / 2, 0]}><circleGeometry args={[1.5, 24]} /><meshStandardMaterial color="#7fb8e8" transparent opacity={0.55} roughness={0.1} /></mesh>
+      {[YB + 4, YB - 2].map(y => <Tube key={y} points={[[XS + 1.5, y, 0], [XS + 8, y + 2, 10], [XS + 14, 16, 50], [XS + 14, -82, 80]]} r={0.4} m={m.gas} />)}
     </>;
     default: return <>
-      <Blk x0={XS - 3} x1={XS + 3} y0={26} y1={44} z0={-4} z1={4} m={m.alu} />
-      <Blk x0={XS - 3} x1={XS + 3} y0={44} y1={90} z0={-18} z1={18} m={m.alu} />
-      <CylX x0={XS - 4.5} x1={XS - 3} y={YB} r={10} m={m.pellet} />
+      {/* A pellet holder: a rod from the rotation table and a small aluminium frame holding a 13 mm pellet */}
+      <CylY x={XS + 0.5} y0={STAGE_TOP} y1={YB - 3} r={0.6} m={m.steel} seg={12} />
+      <Blk x0={XS} x1={XS + 1} y0={YB - 3.2} y1={YB + 3.2} z0={-3.2} z1={3.2} m={m.alu} r={0.3} />
+      <CylX x0={XS - 0.2} x1={XS} y={YB} r={0.65} m={m.pellet} seg={24} />
     </>;
   }
 }
@@ -340,7 +321,8 @@ const Room = memo(function Room({ m }: { m: Mats }) {
     <Blk x0={-400} x1={2000} y0={FLOOR} y1={FLOOR + 14} z0={194} z1={200} m={m.dark} cast={false} />
     <mesh position={[800, FLOOR + 14.6, -193.6]} material={m.ledSoft}><planeGeometry args={[2400, 0.9]} /></mesh>
     <Trefoil at={[1490, 150, 199.5]} />
-    <Blk x0={196} x1={216} y0={FLOOR} y1={170} z0={-140} z1={200} m={m.concrete} r={1} />
+    {/* The shield wall between the ring tunnel (source and front end) and the optics: the pipe passes through a lead collar */}
+    <Blk x0={292} x1={320} y0={FLOOR} y1={170} z0={-140} z1={200} m={m.concrete} r={1} />
     <mesh rotation-x={-Math.PI / 2} position={toThree([1240, FLOOR + 0.3, -101])} material={m.hazard}><planeGeometry args={[720, 10]} /></mesh>
     <Blk x0={880} x1={1580} y0={FLOOR} y1={FLOOR + 10} z0={82} z1={98} m={m.duct} />
     <WallFittings m={m} />
@@ -393,7 +375,7 @@ const Room = memo(function Room({ m }: { m: Mats }) {
 });
 
 /** Everything in the hutch. */
-function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean }) {
+function World({ twin, live, animate, hq, setup }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean; setup: PhotonSetup | null }) {
   const m = useMaterials();
   const { mode, environment, profile } = twin;
   const idle = (id: PartId) => !partActive(mode, id);
@@ -402,14 +384,17 @@ function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneP
   const hrm = profile.mirrors.find(r => r.role === 'harmonic-rejection');
   const collimating = profile.mirrors.find(r => r.role === 'collimating'), focusing = profile.mirrors.find(r => r.role === 'focusing');
   const helium = live.energy_eV < 5000;
-  const afterI0 = beamGlow(live.afterI0), afterSample = beamGlow(live.afterSample), afterIt = beamGlow(live.afterIt), afterFoil = beamGlow(live.afterFoil);
   const fluorescing = hasCue(mode, 'cone') && (live.fluorescence_per_s ?? 0) > 0;
-  const focused = hasCue(mode, 'focused'), fast = hasCue(mode, 'fast'), rocking = hasCue(mode, 'rocking');
+  const fast = hasCue(mode, 'fast'), rocking = hasCue(mode, 'rocking');
+  // In fluorescence and electron yield the sample turns to its incidence angle, facing between the beam and the detector.
+  const turn = setup?.sample.rotation ?? 0;
+  // The beam's footprint on the sample face: its size at the focus, longer across the face when the sample is turned.
+  const spot = setup ? { w: Math.max(0.3, setup.envelope.real(XS).width_mm / 10 * WIDTH_SCALE) / Math.cos(turn), h: Math.max(0.2, setup.envelope.real(XS).height_mm / 10 * WIDTH_SCALE), color: setup.orders[0].color } : null;
   const tv = drawnBraggDeg(live.theta_deg) * Math.PI / 180, c2x = C1 + (YB - YB0) / Math.tan(2 * tv);
 
-  // Moving parts: crystals rocking, the harmonic rejection mirror sliding, electrons going round, the detector and heat glows pulsing.
+  // Moving parts: crystals rocking, the harmonic rejection mirror sliding, electrons going round.
   const crystal1 = useRef<THREE.Group>(null), crystal2 = useRef<THREE.Group>(null), hrmGroup = useRef<THREE.Group>(null);
-  const electrons = useRef<THREE.Group>(null), pulse = useRef<THREE.Group>(null);
+  const electrons = useRef<THREE.Group>(null);
   const orbit = useMemo(() => new THREE.CatmullRomCurve3(ORBIT.map(p => new THREE.Vector3(...toThree(p)))), []);
   const hrmY = hrm?.inserted ? 0 : -16;
   useFrame(({ clock }, dt) => {
@@ -418,7 +403,6 @@ function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneP
     if (crystal2.current) crystal2.current.rotation.z = tv + rock(rocking);
     if (hrmGroup.current) hrmGroup.current.position.y += (hrmY - hrmGroup.current.position.y) * (animate ? Math.min(1, dt * 5) : 1);
     electrons.current?.children.forEach((e, i) => e.position.copy(orbit.getPointAt(((animate ? t * 0.7 : 0) + i / 6) % 1)));
-    if (pulse.current) pulse.current.children.forEach(s => { ((s as THREE.Sprite).material as THREE.SpriteMaterial).opacity = animate ? 0.55 + 0.45 * Math.abs(Math.sin(t * 2.2)) : 0.9; });
   });
   const gl = useThree(state => state.gl), invalidate = useThree(state => state.invalidate);
   // Shadows are redrawn once a change settles rather than on every slider step: what moves meanwhile (the crystals,
@@ -438,11 +422,6 @@ function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneP
   }, [hq, gl]);
   const lightTarget = useMemo(() => new THREE.Object3D(), []), spots = useMemo(() => [new THREE.Object3D(), new THREE.Object3D()], []);
   const current = useMemo(() => additive('#7fd8cf', 0.5), []);
-  const fan = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute([...toThree([SOURCE_X, YB0, 0]), ...toThree([250, YB0, -16]), ...toThree([250, YB0, 16])], 3));
-    return g;
-  }, []);
 
   return <>
     <color attach="background" args={['#cfd8e3']} />
@@ -475,9 +454,6 @@ function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneP
       <TextPlate at={[86, 22, -26.4]} w={34} h={8} text="DIPOLE" bg="#16191d" fg="#cfd6de" />
     </Part>
     <group ref={electrons}>{Array.from({ length: 6 }, (_, i) => <mesh key={i}><sphereGeometry args={[1.6, 10, 8]} /><meshBasicMaterial color="#9ef0ff" toneMapped={false} /></mesh>)}</group>
-    <mesh geometry={fan} renderOrder={2}>
-      <meshBasicMaterial color="#f4f1ea" transparent opacity={0.22} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-    </mesh>
     <GlowSprite at={[SOURCE_X, YB0, 0]} size={18} color="#fff1d6" />
 
     {/* Front end and the optics, joined by vacuum pipes */}
@@ -488,17 +464,22 @@ function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneP
       <CylY x={250} y0={YB0 + 16} y1={YB0 + 30} r={6} m={m.dark} />
       <CylZ x={250} y={YB0} z0={-26} z1={-16} r={5} m={m.dark} />
     </Part>
-    <Pipe m={m} x0={262} x1={344} y={YB0} bellows={[312, 334]} />
+    <Pipe m={m} x0={262} x1={344} y={YB0} bellows={[324, 340]} />
+    {/* Front-end photon shutter, raised (open): a cooled copper block that drops into the beam before anyone enters */}
+    <Blk x0={270} x1={284} y0={YB0 + 7} y1={YB0 + 24} z0={-9} z1={9} m={m.copper} r={1} />
+    <CylY x={277} y0={YB0 + 24} y1={YB0 + 44} r={3.2} m={m.alu} />
+    {/* Lead collar where the pipe passes through the shield wall */}
+    <CylX x0={290} x1={322} y={YB0} r={11} m={m.dark} />
     {/* Ion pump hanging under the pipe */}
     <Blk x0={277} x1={283} y0={YB0 - 12} y1={YB0 - 5} z0={-3} z1={3} m={m.steel} />
     <Blk x0={270} x1={290} y0={YB0 - 42} y1={YB0 - 12} z0={-12} z1={12} m={m.dark} />
     <Blk x0={266} x1={270} y0={YB0 - 38} y1={YB0 - 16} z0={-10} z1={10} m={m.magnet} />
     <Tube points={[[290, YB0 - 30, 0], [298, YB0 - 34, -4], [300, YB0 - 80, -6], [300, FLOOR + 1, -8]]} r={1.5} m={m.hv} />
-    <Part idle={idle('collimating-mirror')}>
-      <Tank m={m} x0={344} x1={452} y1={YB0 + 40} z={34} win={[YB0 - 26, YB0 + 26]} plate={'M1 ' + (collimating?.coating ?? '')}>
-        <Mirror m={m} x0={356} x1={440} top={YB0 - 1} coating={collimating?.coating ?? 'Si'} />
+    {collimating ? <Part idle={idle('collimating-mirror')}>
+      <Tank m={m} x0={344} x1={452} y1={YB0 + 40} z={34} win={[YB0 - 26, YB0 + 26]} plate={collimating.id + ' ' + collimating.coating}>
+        <Mirror m={m} x0={356} x1={440} top={YB0 - 1} coating={collimating.coating} />
       </Tank>
-    </Part>
+    </Part> : <Pipe m={m} x0={344} x1={452} y={YB0} />}
     <Pipe m={m} x0={452} x1={480} y={YB0} />
     <Part idle={idle('monochromator')}>
       <Tank m={m} x0={480} x1={640} y1={100} z={40} win={[16, 92]} plate={profile.mono.crystal.replace(/Si(\d+)/, 'Si($1)')}>
@@ -549,66 +530,62 @@ function World({ twin, live, animate, hq }: { twin: TwinState; live: HutchSceneP
 
     {/* Fluorescence detector behind the sample, at 90 degrees to the beam in the horizontal plane */}
     <Part idle={idle('fluorescence-detector')}>
-      <CylY x={XS} z={110} y0={FLOOR} y1={YB - 14} r={4} m={m.steel} />
-      <Blk x0={XS - 14} x1={XS + 14} y0={FLOOR} y1={FLOOR + 3} z0={96} z1={124} m={m.dark} />
-      <Blk x0={XS - 6} x1={XS + 6} y0={YB - 14} y1={YB - 10} z0={102} z1={118} m={m.dark} />
-      <Blk x0={XS - 12} x1={XS + 12} y0={YB - 13} y1={YB + 13} z0={150} z1={178} m={m.alu} r={2} />
-      <CylZ x={XS} y={YB} z0={74} z1={150} r={14} m={m.steel} />
-      <CylZ x={XS} y={YB} z0={32} z1={74} r={6.5} m={m.steel} />
-      <CylZ x={XS} y={YB} z0={31.4} z1={32} r={4.5} m={m.black} />
-      {profile.sdd.soller && Array.from({ length: 5 }, (_, i) => <Blk key={i} x0={XS - 6.3 + 3 * i} x1={XS - 5.7 + 3 * i} y0={YB - 6} y1={YB + 6} z0={26} z1={31} m={m.tungsten} r={0.1} />)}
-      {profile.sdd.filter && <CylZ x={XS} y={YB} z0={30} z1={30.6} r={6} m={m.copper} />}
-      <TextPlate at={[XS, YB + 6, 149.5]} w={22} h={8} text={live.fluorescence_per_s === null ? '—' : short(live.fluorescence_per_s) + '/s'} fg="#74dcaa" bg="#06130f" mono glow />
-      <Tube points={[[XS + 8, YB + 13, 172], [XS + 12, YB + 26, 182], [XS + 20, YB + 8, 190], [XS + 20, FLOOR + 1, 192]]} r={1.6} m={m.cable} />
+      {/* A silicon drift detector at real scale: snout, housing and electronics about 55 cm long, on a post from the table */}
+      <CylY x={XS} z={58} y0={0} y1={YB - 8} r={1.8} m={m.steel} seg={16} />
+      <Blk x0={XS - 7} x1={XS + 7} y0={0} y1={1.5} z0={51} z1={65} m={m.alu} r={0.4} />
+      <Blk x0={XS - 5} x1={XS + 5} y0={YB - 9} y1={YB - 7} z0={50} z1={66} m={m.dark} r={0.3} />
+      <CylZ x={XS} y={YB} z0={31.4} z1={44} r={3.2} m={m.steel} />
+      <CylZ x={XS} y={YB} z0={31.2} z1={31.4} r={2.6} m={m.black} />
+      <CylZ x={XS} y={YB} z0={44} z1={72} r={7} m={m.steel} />
+      <Blk x0={XS - 8} x1={XS + 8} y0={YB - 7} y1={YB + 9} z0={72} z1={86} m={m.alu} r={1.2} />
+      {profile.sdd.soller && Array.from({ length: 5 }, (_, i) => <Blk key={i} x0={XS - 2.6 + 1.3 * i} x1={XS - 2.4 + 1.3 * i} y0={YB - 2.6} y1={YB + 2.6} z0={27} z1={31} m={m.tungsten} r={0.05} />)}
+      {profile.sdd.filter && <CylZ x={XS} y={YB} z0={30.4} z1={30.8} r={3} m={m.copper} />}
+      <TextPlate at={[XS - 8.15, YB + 1, 79]} w={12} h={4} text={live.fluorescence_per_s === null ? '—' : short(live.fluorescence_per_s) + '/s'} fg="#74dcaa" bg="#06130f" mono glow />
+      <Tube points={[[XS + 4, YB + 9, 82], [XS + 8, YB + 18, 90], [XS + 14, YB + 4, 96], [XS + 16, -82, 98]]} r={0.8} m={m.cable} />
     </Part>
 
-    {/* The beam: white before the monochromator, one energy after it; each leg dims by what the element before it absorbed */}
-    <BeamSeg a={[SOURCE_X, YB0, 0]} b={[C1, YB0, 0]} color="#8fb8ff" core="#ffffff" glow={1} animate={animate} />
-    <BeamSeg a={[C1, YB0, 0]} b={[c2x, YB, 0]} glow={1} animate={animate} speed={fast ? 3 : 1} />
-    <BeamSeg a={[c2x, YB, 0]} b={[1090, YB, 0]} glow={1} animate={animate} speed={fast ? 3 : 1} />
-    <BeamSeg a={[1090, YB, 0]} b={[XS - 3, YB, 0]} glow={afterI0} lit={lit('i0-to-sample')} animate={animate} speed={fast ? 3 : 1} />
-    <BeamSeg a={[XS + 3, YB, 0]} b={[1300, YB, 0]} glow={afterSample} lit={lit('sample-to-it')} animate={animate} speed={fast ? 3 : 1} />
-    <BeamSeg a={[1300, YB, 0]} b={[1354, YB, 0]} glow={afterIt} lit={lit('it-to-iref')} animate={animate} />
-    <BeamSeg a={[1354, YB, 0]} b={[1450, YB, 0]} glow={afterFoil} lit={lit('it-to-iref')} animate={animate} />
-    <BeamSeg a={[1450, YB, 0]} b={[1500, YB, 0]} glow={afterFoil} lit={lit('iref-to-stop')} animate={animate} />
+    {/* The beam: invisible in reality. Its outline (real width, three times enlarged) and photon packets whose every
+        absorption, reflection and emission follows the twin's numbers; see photon-sim.ts. */}
+    {setup && <BeamOutline setup={setup} />}
+    {setup && <Photons setup={setup} animate={animate} seed={twin.seed} />}
 
-    <Part idle={idle('i0')}><Chamber m={m} c={CHAMBER.i0} beam={1} readout={live.i0 ? lcdVolts(live.i0.voltage_V, live.i0.saturated) : undefined} gas={gas('I0')} /></Part>
+    <Part idle={idle('i0')}><Chamber m={m} c={CHAMBERS.I0} length={profile.chambers.find(c => c.id === 'I0')?.length_cm} readout={live.i0 ? lcdVolts(live.i0.voltage_V, live.i0.saturated) : undefined} gas={gas('I0')} /></Part>
     <Part idle={idle('sample-stage')}>
-      <Blk x0={XS - 26} x1={XS + 26} y0={0} y1={8} z0={-28} z1={28} m={m.dark} />
-      <Blk x0={XS - 20} x1={XS + 20} y0={8} y1={18} z0={-22} z1={22} m={m.alu} />
-      <Blk x0={XS + 20} x1={XS + 33} y0={9} y1={17} z0={-6} z1={6} m={m.black} />
-      <CylX x0={XS + 33} x1={XS + 36} y={13} r={3} m={m.steel} />
-      <Blk x0={XS - 6} x1={XS + 6} y0={1} y1={8} z0={-42} z1={-28} m={m.black} />
-      <CylY x={XS} y0={18} y1={26} r={17} m={m.dark} seg={40} />
-      <Tube points={drapePoints(XS + 30, 17, 0, 6)} r={1.4} m={m.cable} />
-      <Tube points={[[XS - 6, 4, -36], [XS - 16, 4, -52], [XS - 18, 0, -71], [XS - 18, -26, -73], [XS - 20, FLOOR + 1, -78]]} r={1.4} m={m.cable} />
+      {/* Motorised stages at real size: base plate, X and Z translations with steppers, a lift column and the rotation table */}
+      <Blk x0={XS - 12} x1={XS + 12} y0={0} y1={1.5} z0={-12} z1={12} m={m.dark} r={0.4} />
+      <Blk x0={XS - 9} x1={XS + 9} y0={1.5} y1={5} z0={-9} z1={9} m={m.alu} r={0.4} />
+      <Blk x0={XS + 9} x1={XS + 15} y0={1.8} y1={4.8} z0={-2.5} z1={2.5} m={m.black} r={0.3} />
+      <Blk x0={XS - 8} x1={XS + 8} y0={5} y1={8.5} z0={-8} z1={8} m={m.alu} r={0.4} />
+      <Blk x0={XS - 2.5} x1={XS + 2.5} y0={5.3} y1={8.2} z0={-14} z1={-8} m={m.black} r={0.3} />
+      <Blk x0={XS - 4} x1={XS + 4} y0={8.5} y1={STAGE_TOP - 2} z0={-4} z1={4} m={m.dark} r={0.4} />
+      <CylY x={XS} y0={STAGE_TOP - 2} y1={STAGE_TOP} r={5.5} m={m.alu} seg={40} />
+      <Tube points={[[XS + 15, 3.3, 0], [XS + 20, 5, 6], [XS + 24, 3, 30], [XS + 24, -82, 60]]} r={0.45} m={m.cable} />
+      <Tube points={[[XS, 6.7, -14], [XS - 4, 6, -22], [XS - 6, 0.5, -40], [XS - 8, -26, -60], [XS - 10, FLOOR + 1, -66]]} r={0.45} m={m.cable} />
     </Part>
-    <Part idle={idle('sample-environment')}><Environment3D m={m} kind={environment.kind} /></Part>
-    <Part idle={idle('it')}><Chamber m={m} c={CHAMBER.it} beam={afterSample} readout={live.it ? lcdVolts(live.it.voltage_V, live.it.saturated) : undefined} gas={gas('It')} /></Part>
+    <group position={toThree([XS, YB, 0])} rotation-y={-turn}><group position={[-XS, -YB, 0]}>
+      <Part idle={idle('sample-environment')}><Environment3D m={m} kind={environment.kind} /></Part>
+      {spot && environment.kind === 'ambient' && <mesh position={toThree([XS - 0.25, YB, 0])} rotation-y={-Math.PI / 2} renderOrder={3}>
+        <planeGeometry args={[spot.w, spot.h]} />
+        <meshBasicMaterial color={new THREE.Color(spot.color[0] * 1.6, spot.color[1] * 1.6, spot.color[2] * 1.6)} toneMapped={false} />
+      </mesh>}
+    </group></group>
+    <Part idle={idle('it')}><Chamber m={m} c={CHAMBERS.It} length={profile.chambers.find(c => c.id === 'It')?.length_cm} readout={live.it ? lcdVolts(live.it.voltage_V, live.it.saturated) : undefined} gas={gas('It')} /></Part>
     <Part idle={idle('reference-foil')}>
       <Blk x0={1346} x1={1358} y0={0} y1={34} z0={-4} z1={4} m={m.alu} />
       <Blk x0={1348} x1={1354} y0={34} y1={92} z0={-16} z1={16} m={m.alu} />
       <Blk x0={1354} x1={1354.8} y0={56} y1={76} z0={-10} z1={10} m={m.foil} r={0.1} />
     </Part>
-    <Part idle={idle('iref')}><Chamber m={m} c={CHAMBER.iref} beam={afterFoil} readout={live.iref ? lcdVolts(live.iref.voltage_V, live.iref.saturated) : undefined} gas={gas('Iref')} /></Part>
+    <Part idle={idle('iref')}><Chamber m={m} c={CHAMBERS.Iref} length={profile.chambers.find(c => c.id === 'Iref')?.length_cm} readout={live.iref ? lcdVolts(live.iref.voltage_V, live.iref.saturated) : undefined} gas={gas('Iref')} /></Part>
     <Part idle={idle('beam-stop')}>
       <Blk x0={1500} x1={1508} y0={0} y1={50} z0={-4} z1={4} m={m.alu} />
       <Blk x0={1494} x1={1514} y0={50} y1={82} z0={-12} z1={12} m={m.tungsten} />
     </Part>
 
-    {/* What the sample does with the beam */}
-    <GlowSprite at={[XS - 3, YB, 0]} size={focused ? 9 : 16} color="#ffd08a" />
-    <group ref={pulse}>
-      {focused && <GlowSprite at={[XS - 3, YB, -2]} size={40} color="#ff7a3d" />}
-      {hasCue(mode, 'spectrum') && <GlowSprite at={[XS, YB, 31]} size={30} color="#74dcaa" />}
-    </group>
-    {fluorescing && <group>
-      <mesh position={toThree([XS - 1.5, YB, 16])} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
-        <coneGeometry args={[6.5, 30, 24, 1, true]} />
-        <meshBasicMaterial color="#74dcaa" transparent opacity={lit('to-detector') ? 0.22 : 0.04} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
-      </mesh>
-      <BeamSeg a={[XS - 3, YB, 0]} b={[XS, YB, 31]} color="#74dcaa" core="#c9ffe6" glow={0.8} lit={lit('to-detector')} animate={animate} />
-    </group>}
+    {/* The detector's acceptance: fluorescence leaves the sample in every direction and only this cone is collected */}
+    {fluorescing && <mesh position={toThree([XS, YB, 16])} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
+      <coneGeometry args={[2.6, 31, 24, 1, true]} />
+      <meshBasicMaterial color="#74dcaa" transparent opacity={lit('to-detector') ? 0.12 : 0.03} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
+    </mesh>}
 
     {/* Drain current: the sample is wired to a picoammeter on the floor */}
     <Part idle={idle('drain-current')}>
@@ -800,6 +777,18 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
   return null;
 }
 
+/** One significant figure as a power of ten, for the legend: 9.1e10 becomes "9 x 10^10". */
+const power = (value: number) => { const e = Math.floor(Math.log10(value)), m = Math.round(value / 10 ** e); return m === 10 ? `10^{${e + 1}}` : String.raw`${m}\times10^{${e}}`; };
+
+/** What the dots mean: X-rays are invisible, so the colours, the speed and the counts are spelled out. */
+function PhotonLegend({ setup }: { setup: PhotonSetup }) {
+  const stops = [0, 0.25, 0.5, 0.75, 1].map(t => { const c = energyColor(COLOR_RANGE_eV[0] * (COLOR_RANGE_eV[1] / COLOR_RANGE_eV[0]) ** t); return `rgb(${c.map(v => Math.round(Math.min(1, v) * 255)).join(' ')}) ${t * 100}%`; });
+  return <div className="hutch-legend" role="note" aria-label="How the photons are drawn">
+    <p className="hutch-legend-bar"><strong>Photons</strong><span>2 keV</span><i style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} /><span>45 keV</span></p>
+    <p>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex> · flash: absorbed</p>
+  </div>;
+}
+
 export interface Hutch3DProps extends HutchSceneProps {
   /** Bumped by the Reset view button. */
   reset: number;
@@ -829,6 +818,8 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
   overlay.current.drawn.clear(); overlay.current.widths.clear(); overlay.current.hudBox = null;
   const tv = drawnBraggDeg(live.theta_deg) * Math.PI / 180;
   overlay.current.tips = { 'second-crystal': [C1 + (YB - YB0) / Math.tan(2 * tv), YB, 0] };
+  // What the photon packets do, from the same state and readouts as everything else on the page.
+  const setup = useMemo(() => { try { return photonSetup(twin, live, tv); } catch { return null; } }, [twin, live, tv]);
 
   const partClass = (id: PartId) => (partActive(mode, id) ? '' : 'is-idle') + (scene.emphasis.includes(id) ? ' is-focus' : '');
   const cues = scene.cues.map(cue => ' cue-' + cue).join('');
@@ -840,7 +831,7 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
       <div className="hutch-canvas" role="img" aria-label={label}>
         <Canvas shadows dpr={coarse ? [1, 1.5] : [1, 2]} frameloop={visible || hq ? 'demand' : 'never'} camera={{ fov: FOV, near: 10, far: 9000, position: [700, 600, 2400] }}
           gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMappingExposure = 1; gl.shadowMap.autoUpdate = false; }}>
-          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} /></Suspense>
+          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} setup={setup} /></Suspense>
           <Rig mode={mode} whole={whole} focusOn={focusOn} reset={reset} reduced={reduced} />
           <Effects light={coarse} hq={hq} composer={composer} />
           <Snapshot shot={shot} light={coarse} onShot={onShot} setHq={setHq} composer={composer} />
@@ -869,6 +860,7 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
       <div className="hutch-hud" aria-hidden="true" ref={el => { overlay.current.hud = el; }}>
         <span className="hutch-hud-live">Live</span><span>{modeInfo(mode).name}</span><span>{live.energy_eV.toFixed(1)} eV</span><span>{twin.profile.mono.crystal.replace(/Si(\d+)/, 'Si($1)')}</span>
       </div>
+      {setup && <PhotonLegend setup={setup} />}
       <ul className="sr-only" aria-label="Beam path">
         {LEGS.map(leg => <li key={leg} data-leg={leg} className={'hutch-leg' + (legLit(mode, leg) ? ' is-lit' : '')}>Beam from the {LEG_NAMES[leg]}: {legLit(mode, leg) ? 'in use' : 'not used in this mode'}</li>)}
       </ul>
