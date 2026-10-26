@@ -1,6 +1,6 @@
 'use client';
 import { memo, useCallback, useDeferredValue, useEffect, useRef, useState, type ComponentType } from 'react';
-import { Box, Camera, Expand, Eye, Maximize2, Minimize2, RotateCcw, Shrink } from 'lucide-react';
+import { Box, Camera, Expand, Eye, Maximize2, Minimize2, Play, RotateCcw, Shrink, Square, Video } from 'lucide-react';
 import { Tex } from '../tex';
 import { HutchScene } from './hutch-scene';
 import { useTwin } from './twin-store';
@@ -44,6 +44,23 @@ export function TwinScene() {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     dispatch({ type: 'note', text: `Saved a ${width} by ${height} pixel image of the hutch.` });
   }, [dispatch]);
+  // The guided tour plays in the scene; recorded, it downloads as a video when it ends. Recording needs MediaRecorder
+  // and a canvas stream, which every current desktop browser has.
+  const [tour, setTour] = useState<'play' | 'record' | null>(null), [canRecord, setCanRecord] = useState(false);
+  const touring = useRef(tour);
+  useEffect(() => { touring.current = tour; });
+  useEffect(() => setCanRecord(typeof MediaRecorder !== 'undefined' && 'captureStream' in HTMLCanvasElement.prototype), []);
+  const onTour = useCallback((end: 'stopped' | 'done', video: Blob | null) => {
+    const recording = touring.current === 'record';
+    setTour(null);
+    if (!recording) return;
+    if (end === 'stopped') { dispatch({ type: 'note', text: 'Recording stopped. No video was saved.' }); return; }
+    if (!video) { dispatch({ type: 'note', text: 'The tour could not be recorded in this browser.' }); return; }
+    const url = URL.createObjectURL(video), a = document.createElement('a');
+    a.href = url; a.download = 'xas-lab-beamline-tour.' + (video.type.includes('mp4') ? 'mp4' : 'webm'); a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    dispatch({ type: 'note', text: 'Saved the guided tour as a video.' });
+  }, [dispatch]);
   const { webgl, show3d, toggle } = useHutchView();
   const failed = tables === 'failed' || typeof live === 'string';
   // The diagram shows as soon as the X-ray tables are in; the 3D view loads after them (so it never delays the first
@@ -64,7 +81,7 @@ export function TwinScene() {
   const props = shownLive && typeof shownLive !== 'string' ? { twin: shownTwin, live: shownLive, labels: view.labels, whole, part: view.part, onPart } : null;
   return <section className={'twin-scene' + (view.labels ? '' : ' no-labels')} aria-labelledby="twin-scene-title" hidden={view.enlarged} aria-busy={!!props && show3d && !three}>
     <h2 id="twin-scene-title" className="sr-only">Beamline</h2>
-    {props ? show3d && Three ? <Three {...props} reset={reset} shot={shot} onShot={onShot} /> : <Diagram {...props} />
+    {props ? show3d && Three ? <Three {...props} reset={reset} shot={shot} onShot={onShot} tour={tour} onTour={onTour} /> : <Diagram {...props} />
       : <div className="twin-scene-wait" role={failed ? 'alert' : undefined}>{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : typeof live === 'string' ? 'The beamline could not be computed: ' + live : 'Loading the X-ray tables…'}</div>}
     <div className="twin-scene-foot">
       <details className="twin-note"><summary>About the drawing</summary>{show3d && Three
@@ -73,6 +90,12 @@ export function TwinScene() {
       <div className="twin-scene-tools">
         {webgl && <button type="button" className="twin-icon" aria-pressed={show3d} title={show3d ? 'Show the diagram' : 'Show the 3D view'} onClick={toggle}>
           <Box size={16} aria-hidden="true" /><span className="sr-only">3D view</span>
+        </button>}
+        {show3d && Three && <button type="button" className="twin-icon" aria-pressed={tour === 'play'} title={tour === 'play' ? 'Stop the tour (Escape)' : 'Guided tour'} disabled={tour === 'record'} onClick={() => setTour(tour === 'play' ? null : 'play')}>
+          {tour === 'play' ? <Square size={15} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}<span className="sr-only">Guided tour</span>
+        </button>}
+        {show3d && Three && canRecord && <button type="button" className="twin-icon" aria-pressed={tour === 'record'} title={tour === 'record' ? 'Stop recording (Escape)' : 'Record the tour as a video'} disabled={tour === 'play'} onClick={() => tour === 'record' ? onTour('stopped', null) : setTour('record')}>
+          {tour === 'record' ? <Square size={15} aria-hidden="true" /> : <Video size={16} aria-hidden="true" />}<span className="sr-only">Record the tour</span>
         </button>}
         {show3d && Three && <button type="button" className="twin-icon" title="Save a 4K image of this view" disabled={shooting} onClick={() => { setShooting(true); setShot(n => n + 1); }}><Camera size={16} aria-hidden="true" /><span className="sr-only">Save 4K image</span></button>}
         <button type="button" className="twin-icon" aria-pressed={view.cinema} title={view.cinema ? 'Show the panels again (Escape)' : 'Scene only'} onClick={() => dispatch({ type: 'cinema' })}>{view.cinema ? <Shrink size={16} aria-hidden="true" /> : <Expand size={16} aria-hidden="true" />}<span className="sr-only">Scene only</span></button>

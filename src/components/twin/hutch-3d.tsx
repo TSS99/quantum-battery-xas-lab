@@ -3,7 +3,7 @@
    in WebGL. The labels stay page buttons: every frame projects each part's anchor to the screen and moves its button
    and leader line there, so they keep working with the keyboard, screen readers and the part cards. Loaded only on
    the twin page, and only when the browser has WebGL 2. */
-import { Suspense, memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
+import { Suspense, memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, OrbitControls } from '@react-three/drei';
 import { Bloom, EffectComposer, N8AO, ToneMapping, Vignette } from '@react-three/postprocessing';
@@ -16,6 +16,7 @@ import type { TwinState } from '@/lib/twin/types';
 import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, labelledParts, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
 import { FLOOR, FOV, LABEL3, TABLE, TIP3, clampToBox, frameFor, toThree, type V3 } from './hutch-3d-layout';
 import { YB } from '../scene-kit';
+import { tourPose, tourStops, tourTimeline, type TourStop, type TourTimeline } from './hutch-tour';
 import { Blk, Bolts, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
 export { texturesReady } from './hutch-3d-kit';
 import type { HutchSceneProps } from './hutch-scene';
@@ -354,10 +355,11 @@ const Room = memo(function Room({ m }: { m: Mats }) {
 });
 
 /** Everything in the hutch. */
-function World({ twin, live, animate, hq, setup }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean; setup: PhotonSetup | null }) {
+function World({ twin, live, animate, hq, setup, touring }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean; setup: PhotonSetup | null; touring: boolean }) {
   const m = useMaterials();
   const { mode, environment, profile } = twin;
-  const idle = (id: PartId) => !partActive(mode, id);
+  // The tour shows every part solid, since its captions visit hardware this mode does not read.
+  const idle = (id: PartId) => !touring && !partActive(mode, id);
   const lit = (leg: Leg) => legLit(mode, leg);
   const gas = (id: 'I0' | 'It' | 'Iref') => profile.chambers.find(c => c.id === id)?.gas;
   const hrm = profile.mirrors.find(r => r.role === 'harmonic-rejection');
@@ -671,14 +673,14 @@ function Pacer({ animate }: { animate: boolean }) {
 interface Overlay { labelled: Set<PartId>; buttons: Map<PartId, HTMLButtonElement>; leaders: Map<PartId, SVGPathElement>; dots: Map<PartId, SVGCircleElement>; svg: SVGSVGElement | null; tips: Partial<Record<PartId, V3>>; drawn: Map<PartId, string>; widths: Map<PartId, number>; hud: HTMLDivElement | null; hudBox: { right: number; bottom: number } | null }
 
 /** Moves the camera to the mode's frame, smoothly unless motion is reduced, and lets the user turn, pan and zoom. */
-function Rig({ mode, whole, focusOn, reset, reduced }: { mode: TwinState['mode']; whole: boolean; focusOn: PartId | null; reset: number; reduced: boolean }) {
+function Rig({ mode, whole, focusOn, reset, reduced, touring }: { mode: TwinState['mode']; whole: boolean; focusOn: PartId | null; reset: number; reduced: boolean; touring: boolean }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const { camera, size, gl, invalidate } = useThree();
   const aspect = size.width / Math.max(1, size.height);
   const tween = useRef<{ from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t: number } | null>(null), placed = useRef(false);
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   useEffect(() => {
-    const c = controls.current; if (!c || size.width < 2 || size.height < 2) return;
+    const c = controls.current; if (!c || touring || size.width < 2 || size.height < 2) return;
     const f = frameFor(mode, whole, aspect);
     let target = new THREE.Vector3(...toThree(f.target)), position = new THREE.Vector3(...toThree(f.position));
     if (focusOn) { const tip = new THREE.Vector3(...toThree(TIP3[focusOn])); position.add(tip.clone().sub(target)); target = tip; }
@@ -686,7 +688,7 @@ function Rig({ mode, whole, focusOn, reset, reduced }: { mode: TwinState['mode']
     tween.current = { from: [camera.position.clone(), c.target.clone()], to: [position, target], t: 0 };
     invalidate();
   // Re-framed when the box changes shape, not on every size change: a 4K capture keeps the shape.
-  }, [mode, whole, focusOn, reset, Math.round(aspect * 50), reduced, camera, invalidate]);
+  }, [mode, whole, focusOn, reset, Math.round(aspect * 50), reduced, touring, camera, invalidate]);
   // One finger scrolls the page on phones; two fingers turn and zoom the hutch.
   useEffect(() => { if (coarse) gl.domElement.style.touchAction = 'pan-y'; });
   useFrame((_, dt) => {
@@ -699,6 +701,85 @@ function Rig({ mode, whole, focusOn, reset, reduced }: { mode: TwinState['mode']
   return <OrbitControls ref={controls} makeDefault enableDamping={!reduced} dampingFactor={0.12} minDistance={120} maxDistance={4800}
     minPolarAngle={0.25} maxPolarAngle={1.47} minAzimuthAngle={-1.1} maxAzimuthAngle={1.1} screenSpacePanning
     {...(coarse ? { touches: { ONE: -1 as THREE.TOUCH, TWO: THREE.TOUCH.DOLLY_ROTATE } } : {})} onStart={() => { tween.current = null; }} />;
+}
+
+/* ---------- Guided tour ---------- */
+export interface TourRun { timeline: TourTimeline; record: boolean }
+interface Tape { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; recorder: MediaRecorder; chunks: Blob[]; font: string }
+
+/** Records a copy of the canvas, at most 1920 pixels wide, as MP4 where the browser can make it and WebM otherwise. */
+function startTape(source: HTMLCanvasElement): Tape {
+  const scale = Math.min(1, 1920 / source.width), canvas = document.createElement('canvas');
+  canvas.width = Math.round(source.width * scale / 2) * 2; canvas.height = Math.round(source.height * scale / 2) * 2;
+  const mimeType = ['video/mp4;codecs=avc1.640028', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) ?? '';
+  const recorder = new MediaRecorder(canvas.captureStream(30), { mimeType, videoBitsPerSecond: 8e6 }), chunks: Blob[] = [];
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.start(1000);
+  const font = getComputedStyle(source).getPropertyValue('--tw-sans').trim() || 'system-ui, sans-serif';
+  return { canvas, ctx: canvas.getContext('2d')!, recorder, chunks, font };
+}
+
+/** The frame on the tape: the hutch, the site's name, and the stop's caption in a box at the bottom left. */
+function paintFrame({ canvas: { width: w, height: h }, ctx, font }: Tape, source: HTMLCanvasElement, stop: TourStop, count: string) {
+  const s = h / 1080, x = 48 * s, pad = 28 * s, wrap = Math.min(w * 0.5, 820 * s);
+  ctx.drawImage(source, 0, 0, w, h);
+  ctx.font = `600 ${20 * s}px ${font}`; ctx.fillStyle = 'rgba(226,240,255,.85)'; ctx.fillText('XAS LAB · BEAMLINE TWIN', x, 64 * s);
+  ctx.font = `400 ${28 * s}px ${font}`;
+  const lines: string[] = [];
+  for (const word of stop.caption.split(' ')) {
+    const line = lines.length ? lines[lines.length - 1] + ' ' + word : word;
+    if (lines.length && ctx.measureText(line).width <= wrap) lines[lines.length - 1] = line; else lines.push(word);
+  }
+  const lead = 40 * s, boxH = pad * 2 + 30 * s + 50 * s + lines.length * lead, y = h - 48 * s - boxH;
+  ctx.fillStyle = 'rgba(8,14,26,.8)'; ctx.fillRect(x, y, wrap + pad * 2, boxH);
+  ctx.strokeStyle = 'rgba(120,220,255,.35)'; ctx.lineWidth = 2 * s; ctx.strokeRect(x, y, wrap + pad * 2, boxH);
+  ctx.font = `600 ${18 * s}px ${font}`; ctx.fillStyle = '#8ce3ff'; ctx.fillText(count, x + pad, y + pad + 18 * s);
+  ctx.font = `600 ${38 * s}px ${font}`; ctx.fillStyle = '#ffffff'; ctx.fillText(stop.title, x + pad, y + pad + 30 * s + 40 * s);
+  ctx.font = `400 ${28 * s}px ${font}`; ctx.fillStyle = '#e6f4ff';
+  lines.forEach((line, i) => ctx.fillText(line, x + pad, y + pad + 30 * s + 50 * s + (i + 0.75) * lead));
+}
+
+/**
+ * Flies the camera along the tour, easing in from wherever it was, and tells the page which stop it is on. When the
+ * tour is recorded, each frame is copied with its caption onto the tape after the effects have drawn it.
+ */
+function Tour({ run, onStep, onEnd, bar }: { run: TourRun; onStep: (index: number) => void; onEnd: (video: Blob | null) => void; bar: RefObject<HTMLElement | null> }) {
+  const { camera, size, invalidate, controls, gl } = useThree();
+  const clock = useRef({ t: 0, index: -1, ended: false, from: [new THREE.Vector3(), new THREE.Vector3()] });
+  const tape = useRef<Tape | null>(null), at = useMemo(() => [new THREE.Vector3(), new THREE.Vector3()], []);
+  useEffect(() => {
+    const c = controls as unknown as OrbitControlsImpl | null; if (!c) return;
+    clock.current = { t: 0, index: -1, ended: false, from: [camera.position.clone(), c.target.clone()] };
+    c.enabled = false;
+    if (run.record) tape.current = startTape(gl.domElement);
+    invalidate();
+    return () => {
+      c.enabled = true;
+      const t = tape.current; tape.current = null;
+      if (t && t.recorder.state !== 'inactive') { t.recorder.onstop = null; t.recorder.stop(); }
+    };
+  }, [run, controls, camera, gl, invalidate]);
+  useFrame((_, dt) => {
+    const k = clock.current, c = controls as unknown as OrbitControlsImpl | null; if (!c || k.ended) return;
+    k.t += Math.min(dt, 0.1);
+    const pose = tourPose(run.timeline, k.t, size.width / Math.max(1, size.height));
+    at[0].set(...toThree(pose.position)); at[1].set(...toThree(pose.target));
+    if (!run.timeline.reduced && k.t < 1.2) { const e = k.t / 1.2, s = e * e * (3 - 2 * e); at[0].lerpVectors(k.from[0], at[0], s); at[1].lerpVectors(k.from[1], at[1], s); }
+    camera.position.copy(at[0]); c.target.copy(at[1]); c.update();
+    if (pose.index !== k.index) { k.index = pose.index; onStep(pose.index); }
+    if (bar.current) bar.current.style.transform = `scaleX(${Math.min(1, k.t / run.timeline.length)})`;
+    if (!pose.done) { invalidate(); return; }
+    k.ended = true;
+    const t = tape.current; tape.current = null;
+    if (!t) { onEnd(null); return; }
+    t.recorder.onstop = () => onEnd(t.chunks.length ? new Blob(t.chunks, { type: t.recorder.mimeType }) : null);
+    t.recorder.stop();
+  });
+  useFrame(() => {
+    const t = tape.current, k = clock.current; if (!t || k.index < 0) return;
+    paintFrame(t, gl.domElement, run.timeline.items[k.index].stop, `${k.index + 1} / ${run.timeline.items.length}`);
+  }, 3);
+  return null;
 }
 
 /**
@@ -792,14 +873,29 @@ export interface Hutch3DProps extends HutchSceneProps {
   /** Bumped by the Save 4K image button; the image comes back through onShot. */
   shot: number;
   onShot: (image: Blob | null, width: number, height: number) => void;
+  /** The guided tour, played or recorded; onTour hears when it is stopped or done, with the video of a recording. */
+  tour: 'play' | 'record' | null;
+  onTour: (end: 'stopped' | 'done', video: Blob | null) => void;
 }
 
-function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot }: Hutch3DProps) {
+function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot, tour, onTour }: Hutch3DProps) {
   const reduced = !!useReducedMotion();
   const coarse = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
   const { mode } = twin;
   const scene = sceneFor(mode);
-  const showLabels = labels && !whole;
+  // The tour is laid out when it starts, from the mirrors this beamline has; the camera flies it on its own clock.
+  const collimating = twin.profile.mirrors.some(r => r.role === 'collimating');
+  const harmonicRejectionIn = !!twin.profile.mirrors.find(r => r.role === 'harmonic-rejection')?.inserted;
+  const run = useMemo<TourRun | null>(() => tour && { timeline: tourTimeline(tourStops({ collimating, harmonicRejectionIn }), reduced), record: tour === 'record' }, [tour, reduced, collimating, harmonicRejectionIn]);
+  const [step, setStep] = useState(0), bar = useRef<HTMLSpanElement>(null);
+  useEffect(() => setStep(0), [run]);
+  useEffect(() => {
+    if (!run) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onTour('stopped', null); };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [run, onTour]);
+  const showLabels = labels && !whole && !run;
   const stage = useRef<HTMLDivElement>(null);
   const overlay = useRef<Overlay>({ labelled: new Set(), buttons: new Map(), leaders: new Map(), dots: new Map(), svg: null, tips: {}, drawn: new Map(), widths: new Map(), hud: null, hudBox: null });
   const [visible, setVisible] = useState(true), [focusOn, setFocusOn] = useState<PartId | null>(null), [hq, setHq] = useState(false);
@@ -824,13 +920,15 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
   const label = `Beamline drawing, 3D view, ${modeInfo(mode).name.toLowerCase()} mode. The monochromator passes ${live.energy_eV.toFixed(1)} eV` +
     (live.sampleTransmission === null ? '.' : ` and the sample passes ${percent(live.sampleTransmission)}% of the beam.`);
 
-  return <div className={'hutch hutch-3d mode-' + mode + cues + (showLabels ? '' : ' no-labels') + (hq ? ' is-capturing' : '')}>
+  return <div className={'hutch hutch-3d mode-' + mode + cues + (showLabels ? '' : ' no-labels') + (hq ? ' is-capturing' : '') + (run ? ' is-touring' : '')}>
     <div className="hutch-stage" ref={stage}>
-      <div className="hutch-canvas" role="img" aria-label={label}>
+      {/* Taking hold of the hutch during the tour ends it. */}
+      <div className="hutch-canvas" role="img" aria-label={label} onPointerDown={run ? () => onTour('stopped', null) : undefined}>
         <Canvas shadows dpr={coarse ? [1, 1.5] : [1, 2]} frameloop={visible || hq ? 'demand' : 'never'} camera={{ fov: FOV, near: 10, far: 9000, position: [700, 600, 2400] }}
           gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMappingExposure = 1; gl.shadowMap.autoUpdate = false; }}>
-          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} setup={setup} /></Suspense>
-          <Rig mode={mode} whole={whole} focusOn={focusOn} reset={reset} reduced={reduced} />
+          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} setup={setup} touring={!!run} /></Suspense>
+          <Rig mode={mode} whole={whole} focusOn={focusOn} reset={reset} reduced={reduced} touring={!!run} />
+          {run && <Tour run={run} onStep={setStep} onEnd={video => onTour('done', video)} bar={bar} />}
           <Effects light={coarse} hq={hq} composer={composer} />
           <Snapshot shot={shot} light={coarse} onShot={onShot} setHq={setHq} composer={composer} />
           <Pacer animate={!reduced && visible} />
@@ -859,6 +957,14 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
         <span className="hutch-hud-live">Live</span><span>{modeInfo(mode).name}</span><span>{live.energy_eV.toFixed(1)} eV</span><span>{twin.profile.mono.crystal.replace(/Si(\d+)/, 'Si($1)')}</span>
       </div>
       {setup && <PhotonLegend setup={setup} />}
+      {run && <div className="hutch-tour" role="status">
+        <div key={step}>
+          <p className="hutch-tour-count">{step + 1} / {run.timeline.items.length}{run.record ? ' · Recording' : ''}</p>
+          <strong>{run.timeline.items[Math.min(step, run.timeline.items.length - 1)].stop.title}</strong>
+          <p>{run.timeline.items[Math.min(step, run.timeline.items.length - 1)].stop.caption}</p>
+        </div>
+        <span className="hutch-tour-bar" aria-hidden="true"><i ref={bar} /></span>
+      </div>}
       <ul className="sr-only" aria-label="Beam path">
         {LEGS.map(leg => <li key={leg} data-leg={leg} className={'hutch-leg' + (legLit(mode, leg) ? ' is-lit' : '')}>Beam from the {LEG_NAMES[leg]}: {legLit(mode, leg) ? 'in use' : 'not used in this mode'}</li>)}
       </ul>

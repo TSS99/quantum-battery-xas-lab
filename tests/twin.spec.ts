@@ -213,6 +213,34 @@ test('3D hutch: shown by default, its parts open their cards, and the diagram ch
   expect(errors).toEqual([]);
 });
 
+test('3D hutch: the guided tour flies the camera with captions, Escape stops it, and a recording can be stopped', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page);
+  const scene = page.locator('.hutch-3d'), tour = page.getByRole('button', { name: 'Guided tour', exact: true });
+  await tour.click();
+  await expect(tour).toHaveAttribute('aria-pressed', 'true');
+  const caption = scene.locator('.hutch-tour[role="status"]');
+  await expect(caption).toContainText(/^1 \/ 1[12]/);
+  await expect(caption).toContainText('The beamline');
+  // The labels step aside while the camera flies, and the captions follow it down the beamline.
+  await expect(scene.locator('.hutch-parts')).toBeHidden();
+  await expect(caption).toContainText(/^2 \/ 1[12]/, { timeout: 15_000 });
+  await expect(caption).toContainText('The source');
+  await page.keyboard.press('Escape');
+  await expect(caption).toHaveCount(0);
+  await expect(tour).toHaveAttribute('aria-pressed', 'false');
+  await expect(scene.getByRole('button', { name: 'It chamber', exact: true })).not.toHaveAttribute('data-outside');
+  // Recording shows on the caption; stopping it early saves nothing and says so.
+  const record = page.getByRole('button', { name: 'Record the tour', exact: true });
+  await record.click();
+  await expect(caption).toContainText('Recording');
+  await expect(tour).toBeDisabled();
+  await record.click();
+  await expect(changed(page)).toContainText('Recording stopped. No video was saved.');
+  await expect(caption).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('Acquire runs a scan in the worker: points build up, the acquisition is stored and downloads as XDI', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page, '#mode=transmission&seed=7');
