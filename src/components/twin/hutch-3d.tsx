@@ -11,7 +11,6 @@ import { ToneMappingMode, type EffectComposer as EffectComposerImpl } from 'post
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { useReducedMotion } from 'motion/react';
-import { Play, Square } from 'lucide-react';
 import { Tex } from '../tex';
 import type { TwinState } from '@/lib/twin/types';
 import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, labelledParts, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
@@ -897,11 +896,10 @@ export interface Hutch3DProps extends HutchSceneProps {
   onShot: (image: Blob | null, width: number, height: number) => void;
   /** The guided tour, played or recorded; onTour hears when it is stopped or done, with the video of a recording. */
   tour: 'play' | 'record' | null;
-  onPlayTour: () => void;
   onTour: (end: 'stopped' | 'done', video: Blob | null) => void;
 }
 
-function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot, tour, onTour, onPlayTour }: Hutch3DProps) {
+function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot, tour, onTour }: Hutch3DProps) {
   const reduced = !!useReducedMotion();
   const coarse = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
   const { mode } = twin;
@@ -980,9 +978,6 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
         <span className="hutch-hud-live">Live</span><span>{modeInfo(mode).name}</span><span>{live.energy_eV.toFixed(1)} eV</span><span>{twin.profile.mono.crystal.replace(/Si(\d+)/, 'Si($1)')}</span>
       </div>
       {setup && <PhotonLegend setup={setup} />}
-      <button type="button" className="hutch-play" aria-keyshortcuts={run ? 'Escape' : undefined} onClick={run ? () => onTour('stopped', null) : onPlayTour}>
-        {run ? <Square size={13} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}{run ? (run.record ? 'Stop recording' : 'Stop tour') : 'Play tour'}
-      </button>
       {run && <div className="hutch-tour" role="status">
         <div key={step}>
           <p className="hutch-tour-count">{step + 1} / {run.timeline.items.length}{run.record ? ' · Recording' : ''}</p>

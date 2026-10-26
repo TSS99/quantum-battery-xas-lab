@@ -232,11 +232,9 @@ test('3D hutch is the default: a diagram chosen before v1.9.1 no longer wins, an
 test('3D hutch: the guided tour flies the camera with captions, Escape stops it, and a recording can be stopped', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page);
-  const scene = page.locator('.hutch-3d');
-  // The tour's button sits on the scene with a label, so it is seen.
-  await scene.getByRole('button', { name: 'Play tour', exact: true }).click();
-  const stop = scene.getByRole('button', { name: 'Stop tour', exact: true });
-  await expect(stop).toBeVisible();
+  const scene = page.locator('.hutch-3d'), tour = page.getByRole('button', { name: 'Guided tour', exact: true });
+  await tour.click();
+  await expect(tour).toHaveAttribute('aria-pressed', 'true');
   const caption = scene.locator('.hutch-tour[role="status"]');
   await expect(caption).toContainText(/^1 \/ 1[12]/);
   await expect(caption).toContainText('The beamline');
@@ -246,14 +244,14 @@ test('3D hutch: the guided tour flies the camera with captions, Escape stops it,
   await expect(caption).toContainText('The source');
   await page.keyboard.press('Escape');
   await expect(caption).toHaveCount(0);
-  await expect(scene.getByRole('button', { name: 'Play tour', exact: true })).toBeVisible();
+  await expect(tour).toHaveAttribute('aria-pressed', 'false');
   await expect(scene.getByRole('button', { name: 'It chamber', exact: true })).not.toHaveAttribute('data-outside');
   // Recording shows on the caption; stopping it early saves nothing and says so.
   const record = page.getByRole('button', { name: 'Record the tour', exact: true });
   await record.click();
   await expect(caption).toContainText('Recording');
-  await expect(scene.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
-  await scene.getByRole('button', { name: 'Stop recording', exact: true }).click();
+  await expect(tour).toBeDisabled();
+  await record.click();
   await expect(changed(page)).toContainText('Recording stopped. No video was saved.');
   await expect(caption).toHaveCount(0);
   expect(errors).toEqual([]);

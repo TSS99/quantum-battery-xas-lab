@@ -1,6 +1,6 @@
 'use client';
 import { memo, useCallback, useDeferredValue, useEffect, useRef, useState, type ComponentType } from 'react';
-import { Box, Camera, Expand, Eye, Maximize2, Minimize2, RotateCcw, Shrink, Square, Video } from 'lucide-react';
+import { Box, Camera, Expand, Eye, Maximize2, Minimize2, Play, RotateCcw, Shrink, Square, Video } from 'lucide-react';
 import { Tex } from '../tex';
 import { HutchScene } from './hutch-scene';
 import { useTwin } from './twin-store';
@@ -63,7 +63,6 @@ export function TwinScene() {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     dispatch({ type: 'note', text: 'Saved the guided tour as a video.' });
   }, [dispatch]);
-  const playTour = useCallback(() => setTour('play'), []);
   const { webgl, diagram, show3d, toggle } = useHutchView();
   const failed = tables === 'failed' || typeof live === 'string';
   // The 3D view is the default: its code and textures load alongside the X-ray tables, and a still of the hutch stands
@@ -85,7 +84,7 @@ export function TwinScene() {
   return <section className={'twin-scene' + (view.labels ? '' : ' no-labels')} aria-labelledby="twin-scene-title" hidden={view.enlarged} aria-busy={!!props && show3d && !three}>
     <h2 id="twin-scene-title" className="sr-only">Beamline</h2>
     {failed ? <div className="twin-scene-wait" role="alert">{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : 'The beamline could not be computed: ' + live}</div>
-      : props && show3d && Three ? <Three {...props} reset={reset} shot={shot} onShot={onShot} tour={tour} onTour={onTour} onPlayTour={playTour} />
+      : props && show3d && Three ? <Three {...props} reset={reset} shot={shot} onShot={onShot} tour={tour} onTour={onTour} />
       : props && useDiagram ? <Diagram {...props} />
       : <div className="twin-scene-poster" role="img" aria-label="The 3D hutch is loading">
         <img src={POSTER} alt="" width={1280} height={720} decoding="async" fetchPriority="high" />
@@ -98,6 +97,9 @@ export function TwinScene() {
       <div className="twin-scene-tools">
         {webgl && <button type="button" className="twin-icon" aria-pressed={show3d} title={show3d ? 'Show the diagram' : 'Show the 3D view'} onClick={toggle}>
           <Box size={16} aria-hidden="true" /><span className="sr-only">3D view</span>
+        </button>}
+        {show3d && Three && <button type="button" className="twin-icon" aria-pressed={tour === 'play'} title={tour === 'play' ? 'Stop the tour (Escape)' : 'Guided tour'} disabled={tour === 'record'} onClick={() => setTour(tour === 'play' ? null : 'play')}>
+          {tour === 'play' ? <Square size={15} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}<span className="sr-only">Guided tour</span>
         </button>}
         {show3d && Three && canRecord && <button type="button" className="twin-icon" aria-pressed={tour === 'record'} title={tour === 'record' ? 'Stop recording (Escape)' : 'Record the tour as a video'} disabled={tour === 'play'} onClick={() => tour === 'record' ? onTour('stopped', null) : setTour('record')}>
           {tour === 'record' ? <Square size={15} aria-hidden="true" /> : <Video size={16} aria-hidden="true" />}<span className="sr-only">Record the tour</span>
