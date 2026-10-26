@@ -11,10 +11,11 @@ import { ToneMappingMode, type EffectComposer as EffectComposerImpl } from 'post
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { useReducedMotion } from 'motion/react';
+import { Play, Square } from 'lucide-react';
 import { Tex } from '../tex';
 import type { TwinState } from '@/lib/twin/types';
 import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, labelledParts, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
-import { FLOOR, FOV, LABEL3, TABLE, TIP3, clampToBox, frameFor, toThree, type V3 } from './hutch-3d-layout';
+import { FLOOR, FOV, LABEL3, TABLE, TIP3, clampToBox, frameFor, swayAngle, toThree, type V3 } from './hutch-3d-layout';
 import { YB } from '../scene-kit';
 import { tourPose, tourStops, tourTimeline, type TourStop, type TourTimeline } from './hutch-tour';
 import { Blk, Bolts, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
@@ -672,13 +673,25 @@ function Pacer({ animate }: { animate: boolean }) {
 /* ---------- Camera and labels ---------- */
 interface Overlay { labelled: Set<PartId>; buttons: Map<PartId, HTMLButtonElement>; leaders: Map<PartId, SVGPathElement>; dots: Map<PartId, SVGCircleElement>; svg: SVGSVGElement | null; tips: Partial<Record<PartId, V3>>; drawn: Map<PartId, string>; widths: Map<PartId, number>; hud: HTMLDivElement | null; hudBox: { right: number; bottom: number } | null }
 
-/** Moves the camera to the mode's frame, smoothly unless motion is reduced, and lets the user turn, pan and zoom. */
+/**
+ * Moves the camera to the mode's frame, smoothly unless motion is reduced, and lets the user turn, pan and zoom. Left
+ * alone for a few seconds, the view sways slowly so the hutch never sits still; any touch, key or scroll stops it.
+ */
 function Rig({ mode, whole, focusOn, reset, reduced, touring }: { mode: TwinState['mode']; whole: boolean; focusOn: PartId | null; reset: number; reduced: boolean; touring: boolean }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const { camera, size, gl, invalidate } = useThree();
   const aspect = size.width / Math.max(1, size.height);
   const tween = useRef<{ from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t: number } | null>(null), placed = useRef(false);
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  const sway = useRef({ since: 0, applied: 0 }), offset = useMemo(() => new THREE.Vector3(), []);
+  useEffect(() => {
+    // The camera stays where the sway left it; the next sway starts from there.
+    const wake = () => { sway.current = { since: performance.now(), applied: 0 }; };
+    wake();
+    const types = ['pointerdown', 'keydown', 'wheel'];
+    types.forEach(t => window.addEventListener(t, wake, { capture: true, passive: true }));
+    return () => types.forEach(t => window.removeEventListener(t, wake, { capture: true }));
+  }, []);
   useEffect(() => {
     const c = controls.current; if (!c || touring || size.width < 2 || size.height < 2) return;
     const f = frameFor(mode, whole, aspect);
@@ -692,7 +705,16 @@ function Rig({ mode, whole, focusOn, reset, reduced, touring }: { mode: TwinStat
   // One finger scrolls the page on phones; two fingers turn and zoom the hutch.
   useEffect(() => { if (coarse) gl.domElement.style.touchAction = 'pan-y'; });
   useFrame((_, dt) => {
-    const tw = tween.current, c = controls.current; if (!tw || !c) return;
+    const tw = tween.current, c = controls.current; if (!c) return;
+    if (!tw) {
+      const s = sway.current;
+      if (reduced || touring) { s.since = performance.now(); s.applied = 0; return; }
+      const a = swayAngle(performance.now() - s.since); if (a === s.applied) return;
+      offset.subVectors(camera.position, c.target).applyAxisAngle(THREE.Object3D.DEFAULT_UP, a - s.applied);
+      camera.position.copy(c.target).add(offset); s.applied = a; c.update();
+      return;
+    }
+    sway.current = { since: performance.now(), applied: 0 };
     tw.t = Math.min(1, tw.t + dt / 0.9);
     const e = 1 - Math.pow(1 - tw.t, 3);
     camera.position.lerpVectors(tw.from[0], tw.to[0], e); c.target.lerpVectors(tw.from[1], tw.to[1], e); c.update();
@@ -875,10 +897,11 @@ export interface Hutch3DProps extends HutchSceneProps {
   onShot: (image: Blob | null, width: number, height: number) => void;
   /** The guided tour, played or recorded; onTour hears when it is stopped or done, with the video of a recording. */
   tour: 'play' | 'record' | null;
+  onPlayTour: () => void;
   onTour: (end: 'stopped' | 'done', video: Blob | null) => void;
 }
 
-function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot, tour, onTour }: Hutch3DProps) {
+function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot, tour, onTour, onPlayTour }: Hutch3DProps) {
   const reduced = !!useReducedMotion();
   const coarse = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
   const { mode } = twin;
@@ -957,6 +980,9 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
         <span className="hutch-hud-live">Live</span><span>{modeInfo(mode).name}</span><span>{live.energy_eV.toFixed(1)} eV</span><span>{twin.profile.mono.crystal.replace(/Si(\d+)/, 'Si($1)')}</span>
       </div>
       {setup && <PhotonLegend setup={setup} />}
+      <button type="button" className="hutch-play" aria-keyshortcuts={run ? 'Escape' : undefined} onClick={run ? () => onTour('stopped', null) : onPlayTour}>
+        {run ? <Square size={13} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}{run ? (run.record ? 'Stop recording' : 'Stop tour') : 'Play tour'}
+      </button>
       {run && <div className="hutch-tour" role="status">
         <div key={step}>
           <p className="hutch-tour-count">{step + 1} / {run.timeline.items.length}{run.record ? ' · Recording' : ''}</p>

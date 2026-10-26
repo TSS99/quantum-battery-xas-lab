@@ -75,6 +75,16 @@ export function frameFor(mode: TwinMode, whole: boolean, aspect: number): Frame 
   return { target, position: [target[0] + d * dir[0], target[1] + d * dir[1], target[2] + d * dir[2]] };
 }
 
+/** The idle sway: after a few seconds without input the view swings slowly left and right about its target, easing in. */
+export const SWAY = { idle_ms: 5000, ramp_ms: 3000, amplitude_deg: 6, period_ms: 20000 } as const;
+
+/** The sway angle, radians, after idle_ms without input: zero at first, then a slow sine that grows to its full swing. */
+export function swayAngle(idle_ms: number): number {
+  const t = idle_ms - SWAY.idle_ms; if (t <= 0) return 0;
+  const r = Math.min(1, t / SWAY.ramp_ms), grow = r * r * (3 - 2 * r);
+  return SWAY.amplitude_deg * Math.PI / 180 * grow * Math.sin(2 * Math.PI * t / SWAY.period_ms);
+}
+
 /** Keeps a projected point inside the box (a label by its half width), so a part out of view is still a button at the nearest edge. */
 export function clampToBox(x: number, y: number, w: number, h: number, margin = 14, mx = margin): { x: number; y: number; outside: boolean } {
   const cx = Math.min(w - mx, Math.max(mx, x)), cy = Math.min(h - margin, Math.max(margin, y));

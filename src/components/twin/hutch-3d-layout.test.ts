@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TwinMode } from '@/lib/twin/types';
 import { PARTS, sceneFor } from './hutch-parts';
-import { CLOSE_UP, FLOOR, FOV, LABEL3, SHELF_GAP, TIP3, clampToBox, focusX3, frameFor, toThree } from './hutch-3d-layout';
+import { CLOSE_UP, FLOOR, FOV, LABEL3, SHELF_GAP, SWAY, TIP3, clampToBox, focusX3, frameFor, swayAngle, toThree } from './hutch-3d-layout';
 
 const MODES: TwinMode[] = ['transmission', 'fluorescence', 'electron-yield', 'xrf', 'mono', 'calibration', 'time-resolved', 'damage'];
 const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -59,5 +59,22 @@ describe('3D hutch layout', () => {
 
   it('turns world coordinates into three.js ones by flipping the depth', () => {
     expect(toThree([1, 2, 3])).toEqual([1, 2, -3]);
+  });
+
+  it('sways the idle view only after a pause, easing in, never past its swing, and smoothly', () => {
+    expect(swayAngle(0)).toBe(0);
+    expect(swayAngle(SWAY.idle_ms)).toBe(0);
+    const max = SWAY.amplitude_deg * Math.PI / 180;
+    let peak = 0, last = 0;
+    for (let ms = SWAY.idle_ms; ms < SWAY.idle_ms + 3 * SWAY.period_ms; ms += 1000 / 30) {
+      const a = swayAngle(ms);
+      expect(Math.abs(a)).toBeLessThanOrEqual(max + 1e-12);
+      // At 30 frames a second the view turns well under a tenth of a degree per frame.
+      expect(Math.abs(a - last)).toBeLessThan(0.1 * Math.PI / 180);
+      peak = Math.max(peak, Math.abs(a)); last = a;
+    }
+    expect(peak).toBeCloseTo(max, 3);
+    // The quarter period after the ramp is the full swing.
+    expect(swayAngle(SWAY.idle_ms + SWAY.period_ms * 1.25)).toBeCloseTo(max, 9);
   });
 });

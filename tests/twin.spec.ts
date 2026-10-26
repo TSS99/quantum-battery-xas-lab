@@ -213,12 +213,30 @@ test('3D hutch: shown by default, its parts open their cards, and the diagram ch
   expect(errors).toEqual([]);
 });
 
+test('3D hutch is the default: a diagram chosen before v1.9.1 no longer wins, and a still stands in while the 3D loads', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.addInitScript(() => localStorage.setItem('xaslab-twin-hutch-view', 'diagram'));
+  // Hold the textures back for a moment, so the still is seen before the model.
+  await page.route('**/images/twin/hutch-pano.webp', async route => { await new Promise(r => setTimeout(r, 2_500)); await route.continue(); });
+  await page.goto('./twin/');
+  const poster = page.getByRole('img', { name: 'The 3D hutch is loading' });
+  await expect(poster).toBeVisible();
+  await expect(poster).toContainText(/Loading the (X-ray tables|3D hutch)/);
+  await expect(page.locator('.hutch:not(.hutch-3d)')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /^Beamline drawing, 3D view/ })).toBeVisible({ timeout: 30_000 });
+  await expect(poster).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '3D view', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(errors).toEqual([]);
+});
+
 test('3D hutch: the guided tour flies the camera with captions, Escape stops it, and a recording can be stopped', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page);
-  const scene = page.locator('.hutch-3d'), tour = page.getByRole('button', { name: 'Guided tour', exact: true });
-  await tour.click();
-  await expect(tour).toHaveAttribute('aria-pressed', 'true');
+  const scene = page.locator('.hutch-3d');
+  // The tour's button sits on the scene with a label, so it is seen.
+  await scene.getByRole('button', { name: 'Play tour', exact: true }).click();
+  const stop = scene.getByRole('button', { name: 'Stop tour', exact: true });
+  await expect(stop).toBeVisible();
   const caption = scene.locator('.hutch-tour[role="status"]');
   await expect(caption).toContainText(/^1 \/ 1[12]/);
   await expect(caption).toContainText('The beamline');
@@ -228,17 +246,31 @@ test('3D hutch: the guided tour flies the camera with captions, Escape stops it,
   await expect(caption).toContainText('The source');
   await page.keyboard.press('Escape');
   await expect(caption).toHaveCount(0);
-  await expect(tour).toHaveAttribute('aria-pressed', 'false');
+  await expect(scene.getByRole('button', { name: 'Play tour', exact: true })).toBeVisible();
   await expect(scene.getByRole('button', { name: 'It chamber', exact: true })).not.toHaveAttribute('data-outside');
   // Recording shows on the caption; stopping it early saves nothing and says so.
   const record = page.getByRole('button', { name: 'Record the tour', exact: true });
   await record.click();
   await expect(caption).toContainText('Recording');
-  await expect(tour).toBeDisabled();
-  await record.click();
+  await expect(scene.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
+  await scene.getByRole('button', { name: 'Stop recording', exact: true }).click();
   await expect(changed(page)).toContainText('Recording stopped. No video was saved.');
   await expect(caption).toHaveCount(0);
   expect(errors).toEqual([]);
+});
+
+test('3D hutch: left alone, the view sways slowly; with reduced motion it holds still', async ({ page }) => {
+  // A label follows its part on screen, so its position shows whether the camera moves.
+  const where = () => page.locator('.hutch-3d').getByRole('button', { name: 'It chamber', exact: true }).evaluate(el => getComputedStyle(el).getPropertyValue('--tx'));
+  for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+    await page.emulateMedia({ reducedMotion });
+    await openTwin(page);
+    await page.waitForTimeout(7_000);
+    const before = await where();
+    await page.waitForTimeout(2_000);
+    if (reducedMotion === 'reduce') expect(await where()).toBe(before);
+    else expect(await where()).not.toBe(before);
+  }
 });
 
 test('Acquire runs a scan in the worker: points build up, the acquisition is stored and downloads as XDI', async ({ page }) => {

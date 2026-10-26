@@ -25,7 +25,7 @@ const box = await page.locator('.hutch-stage').boundingBox();
 const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) };
 const enc = spawn(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', '30', '-c:v', 'mjpeg', '-i', '-',
   '-vf', `scale=${width}:-2:flags=lanczos:in_range=pc:out_range=tv,setsar=1,format=yuv420p`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-profile:v', 'high', '-movflags', '+faststart', out], { stdio: ['pipe', 'inherit', 'inherit'] });
-await page.getByRole('button', { name: 'Guided tour', exact: true }).click();
+await page.getByRole('button', { name: 'Play tour', exact: true }).click();
 let frames = 0; const t0 = Date.now();
 for (;;) {
   await page.evaluate(() => window.__step(1000 / 30));

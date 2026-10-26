@@ -103,6 +103,11 @@ body:has(.twin-app) {background:#141d31}
 .twin-scene-foot {display:flex;align-items:flex-start;gap:12px}
 .twin-scene-tools {display:flex;flex:none;gap:6px}
 .twin-scene-wait {display:grid;place-items:center;flex:1;min-height:180px;padding:16px;color:var(--tw-muted);font-size:14px;text-align:center}
+/* A still of the 3D hutch while its code and textures load */
+.twin-scene-poster {position:relative;flex:1;min-height:180px;overflow:hidden;border-radius:12px;background:#aeb6be}
+.twin-scene-poster img {position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.twin-scene-poster span {position:absolute;left:12px;top:12px;padding:6px 10px;border-radius:4px;background:rgb(8 14 26/.8);color:#e6f4ff;font:500 12px/1.3 var(--tw-mono);letter-spacing:.06em}
+@media (max-width:1149.98px) {.twin-scene-poster {flex:none;height:clamp(320px,54vh,520px)}}
 .twin-note {flex:1;min-width:0;padding:0 6px;font-size:11.5px;line-height:1.45;color:var(--tw-muted)}
 .twin-note summary {display:inline-flex;align-items:center;min-height:36px;color:var(--tw-body);cursor:pointer}
 .twin-note p {max-width:none;margin:0 0 4px}
@@ -168,7 +173,7 @@ body:has(.twin-app) {background:#141d31}
 .hutch-legend p {margin:0}
 .hutch-legend p + p {margin-top:3px}
 .hutch-legend strong {font-weight:600;color:#fff}
-@media (max-width:640px) {.hutch-legend {left:8px;bottom:8px;max-width:calc(100% - 16px)} .hutch-legend-chip i {width:72px}}
+@media (max-width:640px) {.hutch-legend {left:8px;bottom:8px;max-width:calc(100% - 16px)} .hutch-legend-chip i {width:44px} .hutch-play {right:8px;bottom:8px} .hutch-3d.is-touring .hutch-play {top:8px}}
 /* Guided tour: the caption box replaces the labels, the readout strip and the photon key */
 .hutch-3d.is-touring .hutch-parts,.hutch-3d.is-touring .hutch-leaders,.hutch-3d.is-touring .hutch-hud,.hutch-3d.is-touring .hutch-legend {display:none}
 .hutch-tour {position:absolute;left:16px;bottom:16px;z-index:3;max-width:min(440px,calc(100% - 32px));padding:12px 16px 15px;overflow:hidden;border:1px solid rgb(120 220 255/.32);border-radius:6px;background:rgb(8 14 26/.82);color:#e6f4ff;font:400 13.5px/1.5 var(--tw-sans);pointer-events:none}
@@ -179,6 +184,16 @@ body:has(.twin-app) {background:#141d31}
 .hutch-tour-bar {position:absolute;left:0;right:0;bottom:0;height:2px;background:rgb(120 220 255/.15)}
 .hutch-tour-bar i {display:block;height:100%;background:var(--tw-accent);transform:scaleX(0);transform-origin:left}
 @keyframes hutch-tour-in {from {opacity:0;transform:translateY(4px)}}
+/* Play tour: on the scene at the bottom right, beside the photon key; at the top right while the tour runs */
+.hutch-play {position:absolute;right:12px;bottom:12px;z-index:3;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px 0 12px;border:1px solid rgb(140 227 255/.55);border-radius:20px;background:rgb(10 40 60/.9);color:#fff;font:600 13px/1 var(--tw-sans);cursor:pointer;box-shadow:0 0 0 0 rgb(140 227 255/.5);animation:hutch-play-call 2.4s ease-out 1s 3}
+.hutch-play svg {flex:none;width:14px;height:14px}
+.hutch-play {white-space:nowrap}
+.hutch-play:hover {border-color:var(--tw-accent);background:rgb(14 56 84/.95)}
+.hutch-play:focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
+.hutch-3d.is-touring .hutch-play {top:12px;bottom:auto;animation:none}
+.hutch-legend.is-open ~ .hutch-play {display:none}
+@keyframes hutch-play-call {0% {box-shadow:0 0 0 0 rgb(140 227 255/.5)} 70%,100% {box-shadow:0 0 0 12px rgb(140 227 255/0)}}
+@media (prefers-reduced-motion: reduce) {.hutch-play {animation:none}}
 @media (prefers-reduced-motion: reduce) {.hutch-tour > div {animation:none}}
 @media (max-width:640px) {.hutch-tour {left:8px;right:8px;bottom:8px;max-width:none;font-size:12.5px} .hutch-tour strong {font-size:15px}}
 /* Parts without a label in a close-up: a marker on the hardware, named on hover and for screen readers */
