@@ -228,6 +228,20 @@ body:has(.twin-app) {background:#141d31}
 .twin-tabpanel p {margin:0;font-size:13.5px}
 .twin-tabpanel > p:first-child {font-size:12.5px;color:var(--tw-muted)}
 .twin-tabpanel .twin-empty {font-size:13.5px;color:var(--tw-muted)}
+/* Live scope: a sweeping trace of the chamber outputs, and the readings under it */
+.twin-scope {display:flex;flex-direction:column;gap:6px;margin:0}
+.twin-scope figcaption {display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+.twin-scope figcaption > span {font:500 10.5px/1.5 var(--tw-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-muted)}
+.twin-scope-live {display:inline-flex;align-items:center;gap:6px;margin-right:4px;color:#5dff9a}
+.twin-scope-live::before {content:'';width:7px;height:7px;border-radius:50%;background:#5dff9a;box-shadow:0 0 6px #5dff9a;animation:twin-scope-pulse 1.4s ease-in-out infinite}
+@keyframes twin-scope-pulse {50% {opacity:.35}}
+@media (prefers-reduced-motion: reduce) {.twin-scope-live::before {animation:none}}
+.twin-scope canvas {display:block;width:100%;height:clamp(140px,22vh,220px);border:1px solid var(--tw-line);border-radius:8px;background:#060b14}
+.twin-scope-values {display:flex;flex-wrap:wrap;gap:2px 14px;margin:0}
+.twin-scope-values div {display:flex;align-items:baseline;gap:6px}
+.twin-scope-values dt {display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tw-muted)}
+.twin-scope-values dt i {width:10px;height:3px;border-radius:2px}
+.twin-scope-values dd {margin:0;font:500 13px/1.4 var(--tw-mono);color:var(--tw-text);font-variant-numeric:tabular-nums}
 .twin-progress {display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;font-size:12.5px;color:var(--tw-muted)}
 .twin-progress [role="progressbar"] {flex:1 1 160px;height:4px;border-radius:2px;background:var(--tw-line);overflow:hidden}
 .twin-progress [role="progressbar"] span {display:block;height:100%;background:var(--tw-accent);box-shadow:0 0 8px var(--tw-accent);transition:width .1s linear}
@@ -360,7 +374,9 @@ body:has(.twin-app) {background:#141d31}
   .twin-scene .hutch-scroll {flex:1;min-height:0;display:flex;align-items:center}
   .twin-scene .hutch-stage {flex:none}
   .twin-scene .hutch-3d .hutch-stage {flex:1 1 auto;height:auto;min-height:180px}
-  .twin-dock {flex:none;height:clamp(180px,27vh,330px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .twin-app {--dock-h:clamp(200px,30vh,360px)}
+  .twin-dock {flex:none;height:var(--dock-h);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .twin-dock .twin-scope canvas {height:clamp(96px,calc(var(--dock-h) - 150px),210px)}
   /* Scene only: the side columns and the results step aside */
   .twin-app.is-cinema {grid-template-columns:minmax(0,1fr);grid-template-areas:"centre"}
   .twin-app.is-cinema .twin-col-left,.twin-app.is-cinema .twin-col-right,.twin-app.is-cinema .twin-dock {display:none}

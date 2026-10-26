@@ -271,6 +271,23 @@ test('3D hutch: left alone, the view sways slowly; with reduced motion it holds 
   }
 });
 
+test('the live scope runs without Acquire and follows a control at once', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page);
+  // Live channels is the first view: the chamber outputs are read ten times a second at the current energy.
+  await expect(page.getByRole('tab', { name: 'Live channels', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('img', { name: /^Oscilloscope/ })).toBeVisible();
+  const it = page.locator('.twin-scope-values [data-v="it"]');
+  await expect(it).toHaveText(/^\d+\.\d{3} V$/);
+  const before = parseFloat(await it.innerText());
+  // A thicker sample passes less: the It reading drops while the slider moves, with no scan.
+  const thickness = page.getByRole('complementary', { name: 'Controls' }).getByRole('slider', { name: 'Thickness', exact: true });
+  await thickness.focus();
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => parseFloat(await it.innerText())).toBeLessThan(before * 0.95);
+  expect(errors).toEqual([]);
+});
+
 test('Acquire runs a scan in the worker: points build up, the acquisition is stored and downloads as XDI', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page, '#mode=transmission&seed=7');

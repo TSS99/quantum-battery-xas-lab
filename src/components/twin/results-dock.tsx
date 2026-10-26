@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import dynamic from 'next/dynamic';
 import { useReducedMotion } from 'motion/react';
 import { Aperture, Download, ExternalLink, Maximize2, Minimize2, Pause, Play, Square, Upload } from 'lucide-react';
 import { Num, Tex, Unit } from '../tex';
@@ -27,9 +28,12 @@ import { storedAcquisition, useTwin, type StoredAcquisition } from './twin-store
 import { TexProse } from './tex-prose';
 import { useTwinScan } from './use-twin-worker';
 
+// The scope's drawing code loads after the page, keeping the first load within its budget.
+const LiveScope = dynamic(() => import('./live-scope').then(m => m.LiveScope), { ssr: false, loading: () => <p className="twin-empty">Starting the live scope…</p> });
+
 /** Tab labels: `name` is the accessible name, `tex` the typeset label when it has maths, `shows` what the tab is for. */
 const TABS: Record<ResultTab, { name: string; tex?: string; shows: string }> = {
-  live: { name: 'Live channels', shows: String.raw`The amplifier outputs of $I_0$, $I_t$ and $I_\mathrm{ref}$ against scan time, with saturation and gain warnings.` },
+  live: { name: 'Live channels', shows: String.raw`The amplifier outputs of $I_0$, $I_t$ and $I_\mathrm{ref}$ as they are read now, with saturation warnings; during a scan, against scan time.` },
   mu: { name: 'μ(E)', tex: String.raw`\mu(E)`, shows: String.raw`The absorption $\mu(E)$, built point by point as the scan runs.` },
   normalized: { name: 'Normalized', shows: String.raw`$\mu(E)$ scaled to an edge step of 1, with the edge energy $E_0$ and the step marked.` },
   derivative: { name: 'Derivative', shows: String.raw`$d\mu/dE$, whose first peak marks $E_0$ and the energy calibration point.` },
@@ -291,7 +295,8 @@ export function ResultsDock() {
   const panelFor = (tab: ResultTab) => {
     switch (tab) {
       case 'live': {
-        if (!points.length) return <Empty>Press Acquire to start a scan; the chamber outputs appear here as it runs.</Empty>;
+        // Between scans the scope runs live at the current energy; during one it shows the scan as it is read.
+        if (!replaying || !points.length) return <LiveScope twin={twin} />;
         const volts = (counts: number, i: number) => counts / READOUT_DEFAULTS.v2fFullScale_Hz / (scanState!.times[i] - (scanState!.times[i - 1] ?? 0) - (scanState!.twin.scan.kind === 'step' ? scanState!.twin.scan.settle_s : 0)) * READOUT_DEFAULTS.fullScale_V;
         const x = points.map((_, i) => scanState!.times[i]);
         const series: Series[] = [
@@ -389,7 +394,8 @@ export function ResultsDock() {
       </button>)}
     </div>
     <div className="twin-tabpanel" role="tabpanel" id="twin-result-panel" aria-labelledby={`twin-tab-${view.tab}`} tabIndex={0}>
-      <p><TexProse>{TABS[view.tab].shows}</TexProse></p>
+      {/* The live scope's caption says what it shows, so its description gives the room to the trace. */}
+      {(view.tab !== 'live' || replaying) && <p><TexProse>{TABS[view.tab].shows}</TexProse></p>}
       {panel}
     </div>
     <section className="twin-gallery" aria-labelledby="twin-gallery-title">

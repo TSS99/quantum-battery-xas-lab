@@ -44,7 +44,7 @@ export interface TwinStore { twin: TwinState; view: TwinView }
 
 export const INITIAL_STORE: TwinStore = {
   twin: DEFAULT_TWIN,
-  view: { labels: true, enlarged: false, cinema: false, leftHidden: false, rightHidden: false, tab: 'mu', change: null, hashRead: false, acquireRequest: 0, training: false, locked: [], part: null },
+  view: { labels: true, enlarged: false, cinema: false, leftHidden: false, rightHidden: false, tab: 'live', change: null, hashRead: false, acquireRequest: 0, training: false, locked: [], part: null },
 };
 
 export type TwinAction =
