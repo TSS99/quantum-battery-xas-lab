@@ -109,6 +109,7 @@ export function LiveScope({ twin }: { twin: TwinState }) {
     return () => { cancelAnimationFrame(frame); observer?.disconnect(); };
   }, [reduced]);
 
+  const gains = CHANNELS.map(c => { const g = twin.profile.chambers.find(x => x.id.toLowerCase() === c.id)?.gain_V_per_A; return g ? String.raw`${c.tex}\ 10^{${Math.round(Math.log10(g))}}` : null; }).filter(Boolean).join(String.raw`,\ `);
   return <figure className="twin-scope">
     <figcaption>
       <span><span className="twin-scope-live">Live</span> at {twin.energy_eV.toFixed(1)} eV, ten readings a second{twin.realistic ? ', with counting noise' : ''}</span>
@@ -120,6 +121,7 @@ export function LiveScope({ twin }: { twin: TwinState }) {
       </dl>
     </figcaption>
     <canvas ref={canvas} role="img" aria-label={`Oscilloscope: the I0, It and Iref amplifier outputs over the last ${LIVE_WINDOW_S} seconds, redrawn as they are read.`} />
+    <p className="twin-scope-note">Gains <Tex plain>{gains}</Tex> V/A. The volts depend on each chamber&apos;s gas and gain, so <Tex plain>{'I_t'}</Tex> can read above <Tex plain>{'I_0'}</Tex> and <Tex plain>{String.raw`\ln(I_0/I_t)`}</Tex> can be negative: only how it changes with energy is the sample&apos;s absorption.</p>
     <p ref={warning} className="twin-warning" role="alert" hidden />
   </figure>;
 }

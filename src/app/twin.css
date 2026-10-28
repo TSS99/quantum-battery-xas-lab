@@ -242,6 +242,7 @@ body:has(.twin-app) {background:#141d31}
 @keyframes twin-scope-pulse {50% {opacity:.35}}
 @media (prefers-reduced-motion: reduce) {.twin-scope-live::before {animation:none}}
 .twin-scope canvas {display:block;width:100%;height:clamp(140px,22vh,220px);border:1px solid var(--tw-line);border-radius:8px;background:#060b14}
+.twin-scope-note {margin:0;font-size:12px;line-height:1.5;color:var(--tw-muted)}
 .twin-scope-values {display:flex;flex-wrap:wrap;gap:2px 14px;margin:0}
 .twin-scope-values div {display:flex;align-items:baseline;gap:6px}
 .twin-scope-values dt {display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tw-muted)}
