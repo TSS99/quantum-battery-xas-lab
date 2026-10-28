@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Atom, ChevronDown, Github, Menu, X } from 'lucide-react';
-import { MotionConfig, useReducedMotion } from 'motion/react';
+import { MotionConfig } from 'motion/react';
 import { useLab } from './lab-context';
 import { InstallApp } from './install-app';
 import { Chevron } from './chevron';
@@ -26,7 +26,7 @@ const routes = [
 const consoles = [['/twin/', 'Beamline twin', 'Operate a working XAS beamline, full screen']] as const;
 
 export function Shell({ children, elementNames, trails }: { children: React.ReactNode; elementNames: Record<string, string>; trails: Record<string, [string, string][]> }) {
-  const pathname = usePathname(), { state, set, notice, canUndo, undoPreset } = useLab(), reducedMotion = useReducedMotion();
+  const pathname = usePathname(), { state, set, notice, canUndo, undoPreset } = useLab();
   const [consoleOpen, setConsoleOpen] = useState(false), [consoleLoaded, setConsoleLoaded] = useState(false);
   const [scrolled, setScrolled] = useState(false), [labMenu, setLabMenu] = useState(false), [mobileMenu, setMobileMenu] = useState(false);
   const labMenuRef = useRef<HTMLDivElement>(null);
@@ -83,7 +83,7 @@ export function Shell({ children, elementNames, trails }: { children: React.Reac
   const home = current[0] === '/';
   const expanded = home && !scrolled;
 
-  const overlays = <>{consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}{reducedMotion && <MotionNotice />}{notice && <div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</>;
+  const overlays = <>{consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}<MotionNotice />{notice && <div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</>;
   // Consoles run full screen, like an instrument: no site header, module bar or footer.
   if (fullScreen) return <MotionConfig reducedMotion="user"><a className="skip-link" href="#main">Skip to laboratory</a>
     <main id="main" tabIndex={-1} className="bare-main">{children}</main>{overlays}</MotionConfig>;
