@@ -404,7 +404,7 @@ export function ResultsDock() {
     </div>
     <section className="twin-gallery" aria-labelledby="twin-gallery-title">
       <div className="twin-gallery-head"><h3 id="twin-gallery-title">Acquisitions</h3>
-        <input ref={importInput} className="sr-only" type="file" accept=".xdi,.txt,.dat,.csv,text/plain" aria-label="Acquisition data file" onChange={loadData} />
+        <input ref={importInput} name="acquisition-file" className="sr-only" type="file" accept=".xdi,.txt,.dat,.csv,text/plain" aria-label="Acquisition data file" onChange={loadData} />
         <button type="button" className="button secondary small" onClick={() => importInput.current?.click()}><Upload size={14} aria-hidden="true" />Import data</button>
       </div>
       {stored.length ? <ol>{stored.map(s => <li key={s.n}>
@@ -430,7 +430,7 @@ export function ResultsDock() {
     {popUp && createPortal(<>
       <header className="twin-popout-head">
         <h1 className="twin-kicker"><span className={'twin-dot' + (replaying ? ' is-live' : '')} aria-hidden="true" />Results · Beamline twin</h1>
-        <label className="twin-popout-view">View <select value={popTab} onChange={e => setPopTab(e.target.value as ResultTab)}>
+        <label className="twin-popout-view">View <select name="view" value={popTab} onChange={e => setPopTab(e.target.value as ResultTab)}>
           {RESULT_TABS.map(tab => <option key={tab} value={tab}>{TABS[tab].name}</option>)}
         </select></label>
       </header>

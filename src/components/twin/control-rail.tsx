@@ -55,7 +55,7 @@ function EnergyControls() {
   return <>
     <Range label="Photon energy" value={twin.energy_eV} min={lo} max={hi} step={0.5} digits={1} unit="eV" onChange={energy_eV => dispatch({ type: 'energy', energy_eV })} />
     <label className="twin-field"><span>Type an energy in <Unit>eV</Unit></span>
-      <input type="number" inputMode="decimal" min={lo} max={hi} step={0.1} value={draft ?? twin.energy_eV.toFixed(1)} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key === 'Enter') commit(); }} />
+      <input type="number" name="energy" inputMode="decimal" min={lo} max={hi} step={0.1} value={draft ?? twin.energy_eV.toFixed(1)} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key === 'Enter') commit(); }} />
     </label>
     <Rows rows={[[<>Bragg angle <Tex plain>{'\\theta'}</Tex></>, theta === null ? 'out of range' : <Tex plain>{`${theta.toFixed(3)}^\\circ`}</Tex>]]} />
   </>;
@@ -71,10 +71,10 @@ function AnySample({ twin, run }: { twin: TwinState; run: (c: TwinCommand) => vo
   const edges = useMemo(() => { try { return elementInfo(absorber).edges.filter(e => e.energy_eV >= lo && e.energy_eV <= hi).map(e => e.edge); } catch { return []; } }, [absorber, lo, hi]);
   const valid = parsed !== null && parsed.includes(absorber) && edges.includes(edge) && Number(density) > 0;
   return <div className="twin-any">
-    <label className="twin-field">Formula<input value={formula} onChange={e => { setFormula(e.target.value); }} aria-invalid={parsed === null} spellCheck={false} /></label>
-    <label className="twin-field"><span>Density in <Unit>g/cm³</Unit></span><input type="number" min={0.0001} step={0.01} value={density} onChange={e => setDensity(e.target.value)} /></label>
-    <label className="twin-field">Absorber<select value={absorber} onChange={e => { setAbsorber(e.target.value); setEdge(''); }}>{(parsed ?? [absorber]).map(el => <option key={el}>{el}</option>)}</select></label>
-    <label className="twin-field">Edge<select value={edge} onChange={e => setEdge(e.target.value)}><option value="" disabled>Choose an edge</option>{edges.map(e => <option key={e}>{e}</option>)}</select></label>
+    <label className="twin-field">Formula<input name="formula" value={formula} onChange={e => { setFormula(e.target.value); }} aria-invalid={parsed === null} spellCheck={false} /></label>
+    <label className="twin-field"><span>Density in <Unit>g/cm³</Unit></span><input type="number" name="density" min={0.0001} step={0.01} value={density} onChange={e => setDensity(e.target.value)} /></label>
+    <label className="twin-field">Absorber<select name="absorber" value={absorber} onChange={e => { setAbsorber(e.target.value); setEdge(''); }}>{(parsed ?? [absorber]).map(el => <option key={el}>{el}</option>)}</select></label>
+    <label className="twin-field">Edge<select name="edge" value={edge} onChange={e => setEdge(e.target.value)}><option value="" disabled>Choose an edge</option>{edges.map(e => <option key={e}>{e}</option>)}</select></label>
     {edges.length === 0 && <p className="twin-soon">No {absorber} edge falls inside this profile&apos;s range.</p>}
     <button type="button" className="button secondary small" disabled={!valid} onClick={() => run({ type: 'sample', patch: { formula, density: Number(density), absorber, edge } })}>Use this sample</button>
   </div>;
@@ -106,7 +106,7 @@ export function ControlRail() {
       <button type="button" aria-label="Realistic" aria-pressed={twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: true })}><strong>Realistic</strong><span>Counting noise, drift, glitches</span></button>
     </div>
     <label className="twin-field">Beamline profile
-      <select value={p.preset} onChange={e => run({ type: 'profile', id: e.target.value })} disabled={locked('profile')}>
+      <select name="profile" value={p.preset} onChange={e => run({ type: 'profile', id: e.target.value })} disabled={locked('profile')}>
         {PROFILE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
       </select>
     </label>
@@ -132,7 +132,7 @@ export function ControlRail() {
 
     <Fold id="twin-c-mono" title="Monochromator" desktopOpen>
       <label className="twin-field">Crystals
-        <select value={p.mono.crystal} onChange={e => run({ type: 'crystal', crystal: e.target.value as Crystal })} disabled={locked('mono')}>
+        <select name="crystal" value={p.mono.crystal} onChange={e => run({ type: 'crystal', crystal: e.target.value as Crystal })} disabled={locked('mono')}>
           {(['Si111', 'Si311', 'Si220'] as const).map(c => <option key={c} value={c}>Si({c.slice(2)})</option>)}
         </select>
       </label>
@@ -148,13 +148,13 @@ export function ControlRail() {
         return <fieldset key={c.id} className="twin-chamber">
           <legend><Tex plain>{chamberTex(c.id)}</Tex>, {q(c.length_cm, 'cm')}</legend>
           <label className="twin-field">Gas
-            <select value={fill} onChange={e => { const f = FILLS.find(x => x.id === e.target.value); if (f) run({ type: 'gas', chamber: c.id, gas: f.gas }); }}>
+            <select name="gas" value={fill} onChange={e => { const f = FILLS.find(x => x.id === e.target.value); if (f) run({ type: 'gas', chamber: c.id, gas: f.gas }); }}>
               {fill === 'custom' && <option value="custom">Custom mix</option>}
               {FILLS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
             </select>
           </label>
           <label className="twin-field">Amplifier gain
-            <select value={Math.round(Math.log10(c.gain_V_per_A))} onChange={e => run({ type: 'gain', chamber: c.id, gain_V_per_A: 10 ** Number(e.target.value) })}>
+            <select name="gain" value={Math.round(Math.log10(c.gain_V_per_A))} onChange={e => run({ type: 'gain', chamber: c.id, gain_V_per_A: 10 ** Number(e.target.value) })}>
               {GAINS.map(g => <option key={g} value={g}>{power(g)} V/A</option>)}
             </select>
           </label>
@@ -199,7 +199,7 @@ export function ControlRail() {
     <Fold id="twin-c-sdd" title="Fluorescence detector">
       <Range label="Distance from the sample" value={p.sdd.distance_mm} min={5} max={500} step={1} unit="mm" onChange={distance_mm => run({ type: 'sdd', patch: { distance_mm } })} />
       <label className="twin-field">Peaking time
-        <select value={p.sdd.peaking_us} onChange={e => run({ type: 'sdd', patch: { peaking_us: Number(e.target.value) } })}>
+        <select name="peaking-time" value={p.sdd.peaking_us} onChange={e => run({ type: 'sdd', patch: { peaking_us: Number(e.target.value) } })}>
           {/* A dead time applied from Calibrate from data can fall between the standard settings; it is listed too. */}
           {[...new Set([...PEAKING, p.sdd.peaking_us])].sort((a, b) => a - b).map(t => <option key={t} value={t}>{PEAKING.includes(t) ? `${t} μs` : `${+t.toFixed(3)} μs (fitted)`}</option>)}
         </select>
@@ -214,7 +214,7 @@ export function ControlRail() {
 
     <Fold id="twin-c-scan" title="Scan">
       <label className="twin-field">Plan
-        <select value={planId} onChange={e => { const x = plans.find(pl => pl.id === e.target.value); if (x) run({ type: 'scan', plan: { ...x.plan, repeats: scan.repeats, kind: scan.kind } }); }} disabled={!plans.length}>
+        <select name="scan-plan" value={planId} onChange={e => { const x = plans.find(pl => pl.id === e.target.value); if (x) run({ type: 'scan', plan: { ...x.plan, repeats: scan.repeats, kind: scan.kind } }); }} disabled={!plans.length}>
           {planId === 'custom' && <option value="custom">Custom</option>}
           {plans.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
         </select>

@@ -168,7 +168,7 @@ export function Training() {
           <label className="twin-check"><input type="radio" name="twin-record" checked={!record} onChange={() => setRecord(false)} />Do not record</label>
           <label className="twin-check"><input type="radio" name="twin-record" checked={record} onChange={() => setRecord(true)} />Record this run on this device for the replay (never uploaded)</label>
           {record && <label className="twin-field">Your XAS experience (optional)
-            <select value={experience} onChange={e => setExperience(e.target.value as TelemetryLog['experience'])}>
+            <select name="experience" value={experience} onChange={e => setExperience(e.target.value as TelemetryLog['experience'])}>
               <option value="unstated">Rather not say</option><option value="new">New to XAS</option><option value="some">Some beamtimes</option><option value="expert">Expert</option>
             </select>
           </label>}
@@ -184,7 +184,7 @@ export function Training() {
         <details className="twin-details twin-class">
           <summary>For instructors: class links and results</summary>
           <p className="twin-note">A class link opens one task with one seed for everyone, so the whole class meets the same hidden fault. After the reveal each student downloads a result file; load the files here to see the class together. The files stay in this browser. <Link href="/instructors/">Guide for instructors</Link></p>
-          <input ref={resultFiles} className="sr-only" type="file" multiple accept=".json,application/json" aria-label="Student result files" onChange={e => loadResults(e.target.files)} />
+          <input ref={resultFiles} name="result-files" className="sr-only" type="file" multiple accept=".json,application/json" aria-label="Student result files" onChange={e => loadResults(e.target.files)} />
           <div className="twin-task-actions">
             <button type="button" className="button secondary small" onClick={() => resultFiles.current?.click()}><Upload size={14} aria-hidden="true" />Load result files</button>
             {classResults.length > 0 && <button type="button" className="button secondary small" onClick={() => download('twin-class-results.csv', classCsv(classResults), 'text/csv')}><Download size={14} aria-hidden="true" />Download CSV</button>}

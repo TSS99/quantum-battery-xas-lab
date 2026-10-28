@@ -53,7 +53,7 @@ export function SessionDialog({ open, onClose }: { open: boolean; onClose: () =>
       <p className="twin-dialog-copy">Session files keep the instrument, sample, scan settings and every acquisition. Share links keep settings only. Files stay in this browser.</p>
       <div className="twin-dialog-actions">
         <button type="button" className="button cta" onClick={save}><Download size={15} aria-hidden="true" />Save session</button>
-        <input ref={fileInput} className="sr-only" type="file" accept=".json,application/json" aria-label="Session file" onChange={load} />
+        <input ref={fileInput} name="session-file" className="sr-only" type="file" accept=".json,application/json" aria-label="Session file" onChange={load} />
         <button type="button" className="button secondary small" onClick={() => fileInput.current?.click()}><Upload size={15} aria-hidden="true" />Load session</button>
         <button type="button" className="button secondary small" onClick={copy}><Copy size={15} aria-hidden="true" />Copy share link</button>
       </div>

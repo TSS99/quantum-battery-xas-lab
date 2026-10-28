@@ -13,7 +13,7 @@ export const WORKFLOW = [
 ] as const;
 export function WorkflowRail() {
   const {progress}=useLab();
-  return <section className="workflow-section"><h2>Follow the research workflow</h2><p className="muted">{progress.length} of 8 steps explored</p><nav aria-label="Research workflow"><ol className="workflow-rail">{WORKFLOW.map(([id,title,href],i)=><li key={id} className={progress.includes(id)?'done':''}><Link href={href} aria-label={progress.includes(id)?`${title}, completed`:title}><span aria-hidden="true">{progress.includes(id)?'✓':i+1}</span>{title}</Link></li>)}</ol></nav></section>;
+  return <section className="workflow-section"><h2>Follow the research workflow</h2><p className="muted">{progress.length} of 8 steps explored</p><nav aria-label="Research workflow"><ol className="workflow-rail">{WORKFLOW.map(([id,title,href],i)=><li key={id} className={progress.includes(id)?'done':''}><Link href={href} aria-label={`${i+1} ${title}`+(progress.includes(id)?', completed':'')}><span aria-hidden="true">{i+1}</span>{title}</Link></li>)}</ol></nav></section>;
 }
 export function WorkflowNext({steps,done}:{steps:string[];done:boolean}) {
   const index=WORKFLOW.findIndex(([id])=>steps.includes(id));

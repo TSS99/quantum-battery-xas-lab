@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Download, Upload, X } from 'lucide-react';
 import { download } from '../ui';
 import { Num, Tex, Unit } from '../tex';
@@ -14,16 +14,18 @@ import { useTwin } from './twin-store';
 const cloneProfile = (profile: TwinProfile): TwinProfile => JSON.parse(JSON.stringify(profile)) as TwinProfile;
 const GAS: ChamberGas[] = ['N2', 'He', 'Ar', 'Kr'];
 
+/** A labelled field; its control is named after the label, which also lets the browser tell the fields apart. */
 function Field({ label, unit, children }: { label: string; unit?: string; children: ReactNode }) {
-  return <label className="twin-profile-field"><span>{label}{unit && <small><Unit>{unit}</Unit></small>}</span>{children}</label>;
+  const control = isValidElement<{ name?: string }>(children) ? cloneElement(children, { name: label.toLowerCase().replace(/[^a-z0-9]+/g, '-') }) : children;
+  return <label className="twin-profile-field"><span>{label}{unit && <small><Unit>{unit}</Unit></small>}</span>{control}</label>;
 }
 
-function Numeric({ value, min, max, step = 'any', onChange }: { value: number; min: number; max: number; step?: number | 'any'; onChange: (value: number) => void }) {
-  return <><input type="number" value={String(value)} min={min} max={max} step={step} title={`Allowed range: ${min} to ${max}`} onChange={event => onChange(Number(event.target.value))} /><small className="twin-field-range">Range <Num>{String(min)}</Num> to <Num>{String(max)}</Num></small></>;
+function Numeric({ value, min, max, step = 'any', name, onChange }: { value: number; min: number; max: number; step?: number | 'any'; name?: string; onChange: (value: number) => void }) {
+  return <><input type="number" name={name} value={String(value)} min={min} max={max} step={step} title={`Allowed range: ${min} to ${max}`} onChange={event => onChange(Number(event.target.value))} /><small className="twin-field-range">Range <Num>{String(min)}</Num> to <Num>{String(max)}</Num></small></>;
 }
 
-function OptionalNumeric({ value, min, max, step = 'any', placeholder, onChange }: { value?: number; min: number; max: number; step?: number | 'any'; placeholder: string; onChange: (value: number | undefined) => void }) {
-  return <><input type="number" value={value ?? ''} min={min} max={max} step={step} placeholder={placeholder} title={`Allowed range: ${min} to ${max}`} onChange={event => onChange(event.target.value === '' ? undefined : Number(event.target.value))} /><small className="twin-field-range">Range <Num>{String(min)}</Num> to <Num>{String(max)}</Num></small></>;
+function OptionalNumeric({ value, min, max, step = 'any', placeholder, name, onChange }: { value?: number; min: number; max: number; step?: number | 'any'; placeholder: string; name?: string; onChange: (value: number | undefined) => void }) {
+  return <><input type="number" name={name} value={value ?? ''} min={min} max={max} step={step} placeholder={placeholder} title={`Allowed range: ${min} to ${max}`} onChange={event => onChange(event.target.value === '' ? undefined : Number(event.target.value))} /><small className="twin-field-range">Range <Num>{String(min)}</Num> to <Num>{String(max)}</Num></small></>;
 }
 
 function ProfileEditor({ profile, onChange }: { profile: TwinProfile; onChange: (profile: TwinProfile) => void }) {
@@ -202,7 +204,7 @@ export function CalibrateDialog({ open, onClose }: { open: boolean; onClose: () 
           <Field label="SDD elements"><OptionalNumeric value={overrides.elements} min={1} max={128} step={1} placeholder={`From XDI or ${twin.profile.sdd.elements}`} onChange={value => setOverrides(current => ({ ...current, elements: value }))} /></Field>
         </div>
         <div className="twin-dialog-actions">
-          <input ref={fileInput} className="sr-only" type="file" accept=".xdi,.txt,.dat,.csv,text/plain" aria-label="Calibration data file" onChange={loadCalibration} />
+          <input ref={fileInput} name="calibration-file" className="sr-only" type="file" accept=".xdi,.txt,.dat,.csv,text/plain" aria-label="Calibration data file" onChange={loadCalibration} />
           <button type="button" className="button cta" onClick={() => fileInput.current?.click()}><Upload size={15} aria-hidden="true" />Load data file</button>
           <Field label="Mystery seed"><Numeric value={seed} min={0} max={4294967295} step={1} onChange={setSeed} /></Field>
           <button type="button" className="button secondary small" onClick={tryMystery}>Try mystery instrument</button>
@@ -217,7 +219,7 @@ export function CalibrateDialog({ open, onClose }: { open: boolean; onClose: () 
       </> : <>
         <p className="twin-dialog-copy">All profile values show their stored units and accepted ranges. JSON imports are rejected if any field is missing or outside its range.</p>
         <div className="twin-dialog-actions">
-          <input ref={profileInput} className="sr-only" type="file" accept=".json,application/json" aria-label="Instrument profile file" onChange={loadProfile} />
+          <input ref={profileInput} name="instrument-profile" className="sr-only" type="file" accept=".json,application/json" aria-label="Instrument profile file" onChange={loadProfile} />
           <button type="button" className="button secondary small" onClick={() => profileInput.current?.click()}><Upload size={15} aria-hidden="true" />Import JSON</button>
           <button type="button" className="button secondary small" onClick={() => download('xaslab-twin-profile.json', profileToJson(draft))}><Download size={15} aria-hidden="true" />Export JSON</button>
           <button type="button" className="button cta" onClick={applyProfile}>Apply profile</button>

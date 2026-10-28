@@ -156,7 +156,7 @@ body:has(.twin-app) {background:#141d31}
 .hutch-3d .hutch-canvas {position:absolute;inset:0}
 .hutch-3d .hutch-canvas canvas {display:block}
 .hutch-3d .hutch-stage svg.hutch-leaders-3d {position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.hutch-3d .hutch-part[data-outside] {left:var(--ax);top:var(--ay);width:20px;height:20px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;opacity:.75}
+.hutch-3d .hutch-part[data-outside] {left:var(--ax);top:var(--ay);width:24px;height:24px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;opacity:.75}
 .hutch-3d .hutch-part[data-outside]::before {content:"";width:6px;height:6px;margin:auto;border-radius:50%;background:#a7b1c1;box-shadow:0 0 0 2px rgb(12 18 30/.7)}
 .hutch-3d .hutch-part[data-outside]:hover,.hutch-3d .hutch-part[data-outside]:focus-visible {opacity:1}
 .hutch-3d .hutch-part[data-outside] .hutch-part-text {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
@@ -192,7 +192,7 @@ body:has(.twin-app) {background:#141d31}
 @media (prefers-reduced-motion: reduce) {.hutch-tour > div {animation:none}}
 @media (max-width:640px) {.hutch-tour {left:8px;right:8px;bottom:8px;max-width:none;font-size:12.5px} .hutch-tour strong {font-size:15px}}
 /* Parts without a label in a close-up: a marker on the hardware, named on hover and for screen readers */
-.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]) {left:var(--tx);top:var(--ty);width:20px;height:20px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;opacity:.62}
+.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]) {left:var(--tx);top:var(--ty);width:24px;height:24px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;opacity:.62}
 .hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside])::before {content:'';width:6px;height:6px;margin:auto;border-radius:50%;background:var(--tw-accent);box-shadow:0 0 0 2px rgb(12 18 30/.55)}
 .hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]).is-idle::before {background:#7d8a99}
 .hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]):hover,.hutch-3d:not(.no-labels) .hutch-part[data-marker]:not([data-outside]):focus-visible {opacity:1}
