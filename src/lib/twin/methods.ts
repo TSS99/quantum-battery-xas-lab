@@ -192,6 +192,15 @@ export const TWIN_METHODS: readonly TwinMethod[] = [
     tests: [twin('xdi', 'round-trips a simulated scan: header fields, column names and every value'), twin('xdi', 'follows the XDI rules: required fields, energy first, integer column tags in order')],
   },
   {
+    quantity: 'Compton scattering in the 3D photons',
+    model: String.raw`Share of scattering that is Compton, $\mu_\mathrm{incoh}/(\mu_\mathrm{coh}+\mu_\mathrm{incoh})$, weighted over the sample's elements; directions from the polarised Klein-Nishina cross section; $E' = E/[1 + (E/m_ec^2)(1-\cos\theta)]$. Elastic scatter keeps the Thomson dipole pattern (no form factor)`,
+    data: 'xraydb coherent and incoherent cross sections (Elam), H to Cf, 1 to 100 keV',
+    checked: 'xraydb off the table grid; the dipole limit; the SDD Compton energy',
+    tolerance: String.raw`share within $0.002$; energy exact`,
+    provenance: 'tabulated',
+    tests: [{ file: 'src/lib/twin/compton.test.ts', name: 'matches xraydb Compton shares off the table grid within 0.002' }, { file: 'src/lib/twin/compton.test.ts', name: 'draws the polarised Klein-Nishina pattern' }, { file: 'src/components/twin/photon-sim.test.ts', name: 'Compton scatters the share the tables give, each photon at the energy its angle sets' }],
+  },
+  {
     quantity: 'Agreement with a measured spectrum',
     model: String.raw`The twin scans the energies of a measured Cu foil with its own 7 $\mu$m foil; both go through the same normalization and AUTOBK, and $k^2\chi(k)$ is compared over $k = 3$ to $15\ \mathring{\mathrm{A}}^{-1}$`,
     data: 'Cu foil, transmission, APS 13-ID, 2001 (Larch examples)',

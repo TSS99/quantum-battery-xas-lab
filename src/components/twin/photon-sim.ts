@@ -13,8 +13,12 @@
  *   so harmonics punch through thick samples just as they do in the data.
  * - A photon absorbed by the probed edge emits its fluorescence line in a random direction (fluorescence is
  *   isotropic), from a depth that follows the beam's attenuation, and gets out only if it crosses the sample on its
- *   way out: the self absorption that flattens thick concentrated samples. A scattered one leaves with the dipole pattern of a horizontally polarised beam, so almost none reach
- *   the detector at 90 degrees in the horizontal plane.
+ *   way out: the self absorption that flattens thick concentrated samples.
+ * - A scattered photon is Compton (incoherent) scattered in the tabulated share for the sample (src/lib/twin/compton.ts):
+ *   it leaves along the polarised Klein-Nishina pattern and loses energy with angle, so it is drawn a little redder.
+ *   The rest scatter elastically with the dipole pattern of a horizontally polarised beam (Thomson; the atomic form
+ *   factor, which bends real Rayleigh scattering forwards, is not drawn). Either way almost none reach the detector at
+ *   90 degrees in the horizontal plane.
  *
  * Pure data and arithmetic: no React and no DOM, unit tested in Node once the X-ray and optics tables are loaded.
  */
@@ -29,6 +33,7 @@ import { edgeEnergy, foilTransmission } from '@/lib/twin/acquire';
 import { monoTrueEnergy_eV } from '@/lib/twin/mono';
 import { solidAngle } from '@/lib/twin/sdd';
 import { mu } from '@/lib/xraydata';
+import { comptonShare, comptonShifted, kleinNishinaDirection } from '@/lib/twin/compton';
 import { YB } from '../scene-kit';
 import { C1, CHAMBERS, FOIL_X, MIRROR_X, SLITS_X, SOURCE_X, STOP_X, XS, YB0 } from './hutch-parts';
 
@@ -166,6 +171,8 @@ export interface PhotonSetup {
     /** Fluorescence line photons per photoabsorption in the sample, for each order. */
     fluorescence: number[];
     line: { energy_eV: number; group: string; color: V3 } | null;
+    /** Compton share of the sample's scattering at each order's energy. */
+    compton: number[];
     /** Packets emitted per fluorescence or scatter event in the drawing, from `boost`. */
     fluorescenceBoost: number;
     scatterBoost: number;
@@ -290,6 +297,7 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
     envelope: beamEnvelope(state),
     sample: {
       fluorescence, line,
+      compton: per(e => { try { return comptonShare(sample.formula, e); } catch { return 0; } }),
       fluorescenceBoost: boost(fluorescenceRate, FLUORESCENCE_TARGET),
       scatterBoost: boost(scatterRate, SCATTER_TARGET),
       rotation: TILTED.has(state.mode) ? Math.PI / 2 - sample.incidence_deg * Math.PI / 180 : 0,
@@ -471,9 +479,11 @@ export class PhotonSim {
     const line = kind === 'fluorescence' ? setup.sample.line : null;
     // The front face's outward normal: towards the source, turned towards the detector by the sample rotation.
     const normal: V3 = [-Math.cos(rotation), 0, Math.sin(rotation)];
+    // Scatter is taken out at the beam's attenuation: a Compton loss of a few percent in energy barely changes it.
     const muOut = kind === 'fluorescence' ? slab.muLine : slab.muIn[order] ?? 0;
     for (let n = 0; n < count; n++) {
-      let dir = kind === 'fluorescence' ? isotropic(random) : dipoleScatter(random);
+      const compton = kind === 'scatter' && random() < (setup.sample.compton[order] ?? 0);
+      let dir = kind === 'fluorescence' ? isotropic(random) : compton ? kleinNishinaDirection(random, energy_eV) : dipoleScatter(random);
       let limit = FLIGHT;
       // Inside the detector's acceptance (its real solid angle): fly into the entrance and stop there.
       if (dir[2] > Math.cos(setup.detector.halfAngle)) {
@@ -484,7 +494,8 @@ export class PhotonSim {
       }
       const cosOut = dir[0] * normal[0] + dir[1] * normal[1] + dir[2] * normal[2];
       if (!(random() < escapeChance(depth_cm, slab.thickness_cm, cosOut, muOut))) { this.selfAbsorbed++; continue; }
-      const e = line?.energy_eV ?? energy_eV;
+      // A Compton photon's energy follows the direction it finally takes (beam along X, so cos theta is dir[0]).
+      const e = line?.energy_eV ?? (compton ? comptonShifted(energy_eV, dir[0]) : energy_eV);
       this.packets.push({ species: kind, energy_eV: e, color: line?.color ?? energyColor(e), x: XS, u: 0, v: 0, order: -1, endX: 0, end: null, origin: at, dir, travelled: 0, limit });
     }
   }

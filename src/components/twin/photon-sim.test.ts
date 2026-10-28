@@ -4,6 +4,7 @@ import { seededRandom } from '@/lib/xas';
 import { loadOptics, mirrorReflectivity } from '@/lib/twin/tables';
 import { DEFAULT_STATE, applyCommand, status } from '@/lib/twin/twin';
 import type { TwinState } from '@/lib/twin/types';
+import { comptonShifted } from '@/lib/twin/compton';
 import { XS } from './hutch-parts';
 import { COLOR_RANGE_eV, PhotonSim, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
 
@@ -185,6 +186,29 @@ describe('photon packets in the 3D hutch', () => {
     expect(framesWithLight).toBeGreaterThanOrEqual(39);
     expect(framesWithLight).toBeLessThanOrEqual(41);
     expect(Math.abs(total - 10 * WHITE_RATE)).toBeLessThan(WHITE_RATE / 4 + 1);
+  });
+
+  it('Compton scatters the share the tables give, each photon at the energy its angle sets', () => {
+    // Fe in 2 mm of water: the scatter comes mostly from the water, so about a quarter of it is Compton at 7 keV.
+    const state = applyCommand(DEFAULT_STATE, { type: 'samplePreset', id: 'fe-2mm-water' }).state;
+    const { setup } = setupFor(state), sim = new PhotonSim(setup, seededRandom(8));
+    let compton = 0, elastic = 0;
+    const seen = new Set<object>();
+    for (let t = 0; t < 300; t += 1 / 30) {
+      sim.step(1 / 30);
+      for (const p of sim.packets) {
+        if (p.species !== 'scatter' || seen.has(p)) continue;
+        seen.add(p);
+        // Each order (the fundamental or a harmonic) scatters at its own energy.
+        if (setup.orders.some(o => Math.abs(p.energy_eV - o.energy_eV) < 1e-6)) elastic++;
+        else { compton++; expect(setup.orders.some(o => Math.abs(p.energy_eV - comptonShifted(o.energy_eV, p.dir[0])) < 1e-6)).toBe(true); }
+      }
+    }
+    const n = compton + elastic, share = setup.sample.compton[0];
+    expect(share).toBeGreaterThan(0.2);
+    expect(n).toBeGreaterThan(200);
+    // Harmonics also scatter, so allow their small part on top of counting error.
+    expect(Math.abs(compton / n - share)).toBeLessThan(4 * Math.sqrt(share * (1 - share) / n) + 0.03);
   });
 
   it('boosts rare events by a round factor and says so', () => {
