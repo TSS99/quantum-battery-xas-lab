@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Atom, ChevronDown, Github, Menu, X } from 'lucide-react';
-import { MotionConfig } from 'motion/react';
+import { MotionConfig, useReducedMotion } from 'motion/react';
 import { useLab } from './lab-context';
 import { InstallApp } from './install-app';
 import { Chevron } from './chevron';
@@ -82,7 +82,7 @@ export function Shell({ children, elementNames, trails }: { children: React.Reac
   const home = current[0] === '/';
   const expanded = home && !scrolled;
 
-  const overlays = <>{consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}{notice && <div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</>;
+  const overlays = <>{consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}<MotionNotice />{notice &&<div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</>;
   // Consoles run full screen, like an instrument: no site header, module bar or footer.
   if (fullScreen) return <MotionConfig reducedMotion="user"><a className="skip-link" href="#main">Skip to laboratory</a>
     <main id="main" tabIndex={-1} className="bare-main">{children}</main>{overlays}</MotionConfig>;
@@ -135,4 +135,20 @@ export function Shell({ children, elementNames, trails }: { children: React.Reac
       </footer>
     </div>
     {overlays}</MotionConfig>;
+}
+
+/**
+ * When the device asks for reduced motion, the scenes hold still and the camera cuts instead of flying. Say so once,
+ * so a still page does not look broken; the note goes for good when dismissed.
+ */
+function MotionNotice() {
+  const reduced = useReducedMotion();
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => { try { setDismissed(localStorage.getItem('xaslab-motion-notice') === 'dismissed'); } catch { setDismissed(false); } }, []);
+  if (!reduced || dismissed) return null;
+  const dismiss = () => { setDismissed(true); try { localStorage.setItem('xaslab-motion-notice', 'dismissed'); } catch { /* Private browsing can disallow storage. */ } };
+  return <div className="motion-notice" role="status">
+    <p>Animations are paused because this device is set to reduce motion. Turn on animation effects in the system settings to see them move.</p>
+    <button type="button" className="button secondary small" onClick={dismiss}>Got it</button>
+  </div>;
 }
