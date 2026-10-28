@@ -62,4 +62,5 @@ jobs:
         with:
           releaseId: ${{ github.event.release.id }}
           tagName: ${{ github.event.release.tag_name || inputs.tag }}
+          tauriScript: npx tauri
           args: ${{ matrix.args }}
