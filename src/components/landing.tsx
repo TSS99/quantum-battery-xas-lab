@@ -65,8 +65,8 @@ export function LandingHero() {
       <RevealText as="h1" id="landing-title" text="The X-ray absorption lab that runs in your browser" inView={false} delay={.3} className="hero-title" />
       <motion.p className="hero-sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .8, delay: .9 }}>Plan samples for any material, follow the beam through a real beamline, process and fit spectra, and see the quantum workflow behind XAS.</motion.p>
       <motion.div className="hero-actions" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7, delay: 1.1, ease }}>
-        <Link className="button cta" href="/crystal/">Start with a sample<Chevron /></Link>
-        <Link className="button secondary" href="/twin/">Operate the beamline twin</Link>
+        <Link className="button cta" href="/twin/">Operate the beamline twin<Chevron /></Link>
+        <Link className="button secondary" href="/crystal/">Start with a sample</Link>
         <Link className="button secondary" href="/validation/">How it is checked</Link>
       </motion.div>
     </div>
@@ -80,8 +80,8 @@ export function StatementBand({ text }: { text: string }) {
 
 export function CtaBand() {
   return <section className="cta-band">
-    <RevealText text="Measure smarter before your next beamtime" />
-    <p>Free, open source and private: nothing you type or import leaves your computer.</p>
-    <Link className="button cta" href="/crystal/">Open the lab<Chevron /></Link>
+    <RevealText text="Rehearse your next beamtime first" />
+    <p>Free, open source and private: nothing you type or import leaves your computer. A simulator for practice and planning, not a substitute for facility training or measured data.</p>
+    <Link className="button cta" href="/twin/">Operate the beamline twin<Chevron /></Link>
   </section>;
 }

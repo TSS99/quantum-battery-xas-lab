@@ -30,6 +30,7 @@ export function Beamline() {
   const result = transmission(coefficient, state.thickness, state.photons), counts = sampleCounts(coefficient, state.thickness, state.photons, state.seed);
   const curve = (values: number[]) => view === 'mu' ? values : values.map(v => transmission(v, state.thickness, state.photons).transmittance);
   return <>
+    <p className="callout">This page shows one idea: what a sample does to the beam at each energy. To run the whole instrument, with the mirrors, the monochromator, the detectors and real scans, <Link href="/twin/">operate the beamline twin</Link>.</p>
     <SampleSummary />
     <TryThis done={planned} research={<><Tex>{`\\mu d = ${result.opticalDepth.toFixed(3)}`}</Tex>; {info.plan ? <Tex>{`\\Delta\\mu d = ${(info.plan.edgeStep.deltaMu_cm_inv * state.thickness * 1e-4).toFixed(3)}`}</Tex> : <><Tex>{'\\Delta\\mu d'}</Tex> unavailable</>}. Counts use total tabulated attenuation, including scattering.</>}>{planned ? 'This thickness balances the edge step against total absorption. Start a scan to see where the signal changes.' : 'Use the suggested thickness, then start an energy scan. Watch how many photons reach the detector.'}</TryThis>
     <div className="main-with-controls">
