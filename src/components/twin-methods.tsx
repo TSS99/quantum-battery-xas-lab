@@ -1,8 +1,12 @@
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Panel } from './ui';
 import { TexProse } from './twin/tex-prose';
 import { TWIN_ATTRIBUTIONS, TWIN_METHODS } from '@/lib/twin/methods';
 import type { Provenance } from '@/lib/twin/types';
+
+// The figure carries its own data and plots, so it loads after the page rather than with it.
+const MeasuredFigure = dynamic(() => import('./twin/measured-figure').then(m => m.MeasuredFigure), { ssr: false, loading: () => <p className="muted">Loading the comparison with a measured spectrum…</p> });
 
 const SOURCE: Record<Provenance, string> = { tabulated: 'Tabulated', computed: 'Computed', measured: 'Measured', 'teaching-model': 'Teaching model' };
 
@@ -29,6 +33,9 @@ export function TwinMethods() {
         </ul></details></td>
       </tr>)}</tbody>
     </table></div>
+    <h3>Checked against a measurement</h3>
+    <p>Every other row checks the twin against another code. This one checks it against a real scan.</p>
+    <MeasuredFigure />
     <h3>Sources and licences</h3>
     <ul className="source-list">{TWIN_ATTRIBUTIONS.map(a => <li key={a.name}><a href={a.url} target="_blank" rel="noreferrer">{a.name}</a>: {a.use} ({a.licence}).</li>)}</ul>
   </Panel>;

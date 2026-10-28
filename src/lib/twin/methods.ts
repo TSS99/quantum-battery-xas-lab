@@ -191,6 +191,15 @@ export const TWIN_METHODS: readonly TwinMethod[] = [
     provenance: 'computed',
     tests: [twin('xdi', 'round-trips a simulated scan: header fields, column names and every value'), twin('xdi', 'follows the XDI rules: required fields, energy first, integer column tags in order')],
   },
+  {
+    quantity: 'Agreement with a measured spectrum',
+    model: String.raw`The twin scans the energies of a measured Cu foil with its own 7 $\mu$m foil; both go through the same normalization and AUTOBK, and $k^2\chi(k)$ is compared over $k = 3$ to $15\ \mathring{\mathrm{A}}^{-1}$`,
+    data: 'Cu foil, transmission, APS 13-ID, 2001 (Larch examples)',
+    checked: 'The measurement itself, not another code',
+    tolerance: String.raw`$\chi(k)$ correlation above $0.7$ ($0.75$; $0.89$ with a $5$ eV $E_0$ shift), amplitude within $30\,\%$ ($1.08$), first shell within $0.05$ Å. The near edge is a teaching model and does not match (normalized RMS $0.28$)`,
+    provenance: 'measured',
+    tests: [twin('measured-check', 'puts the edge within 3 eV of the measured one and matches the normalized pre-edge and EXAFS region'), twin('measured-check', 'gives chi(k) the measured phase and amplitude'), twin('measured-check', 'keeps the comparison on the Methods page in step with the code')],
+  },
 ];
 
 /** Data and code the twin builds on, with their licences, for the Methods page and exported metadata. */
@@ -199,4 +208,5 @@ export const TWIN_ATTRIBUTIONS: readonly { name: string; use: string; licence: s
   { name: 'xraylarch', use: 'reference values for every Larch port, and the FEFF6L path calculations', licence: 'MIT', url: 'https://github.com/xraypy/xraylarch' },
   { name: 'FEFF6L', use: 'scattering amplitudes and phases of the library paths', licence: 'as distributed with xraylarch', url: 'https://feff.phys.washington.edu/' },
   { name: 'X-ray Data Booklet', use: 'bending magnet flux and critical energy', licence: 'cited reference', url: 'https://xdb.lbl.gov/' },
+  { name: 'Cu foil spectrum, APS 13-ID, 2001 (xraylarch examples, cu_metal_rt.xdi)', use: 'the measured spectrum the twin is compared with', licence: 'MIT, with xraylarch', url: 'https://github.com/xraypy/xraylarch/blob/master/examples/xafsdata/cu_metal_rt.xdi' },
 ];
