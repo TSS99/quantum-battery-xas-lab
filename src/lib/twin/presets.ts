@@ -66,8 +66,8 @@ const UND6: TwinProfile = {
   ],
   chambers: [
     { id: 'I0', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e4, dark_A: 0 },
-    { id: 'It', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e4, dark_A: 0 },
-    { id: 'Iref', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e5, dark_A: 0 },
+    { id: 'It', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e3, dark_A: 0 },
+    { id: 'Iref', length_cm: 30, gas: { N2: 0.5, Ar: 0.5 }, gain_V_per_A: 1e4, dark_A: 0 },
   ],
   beam_um: [200, 100],
 };
@@ -89,8 +89,8 @@ const TENDER: TwinProfile = {
   ],
   chambers: [
     { id: 'I0', length_cm: 15, gas: { He: 1 }, gain_V_per_A: 1e7, dark_A: 0 },
-    { id: 'It', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e6, dark_A: 0 },
-    { id: 'Iref', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e7, dark_A: 0 },
+    { id: 'It', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e5, dark_A: 0 },
+    { id: 'Iref', length_cm: 15, gas: { N2: 1 }, gain_V_per_A: 1e6, dark_A: 0 },
   ],
   sdd: { ...BM3.sdd, roi_eV: [2207, 2407] },
 };

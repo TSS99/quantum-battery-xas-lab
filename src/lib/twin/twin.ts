@@ -210,6 +210,24 @@ export interface CommandResult {
 
 /** The output the auto-gain setting aims for, V: well inside the 10 V full scale with room for the edge. */
 export const AUTO_GAIN_TARGET_V = 5;
+
+/**
+ * Where auto gain looks: the set energy, the last scan point below the edge (the most light through the sample and
+ * the foil) and about sixty points spread over the rest of the scan. Only the set energy when the plan has no edge.
+ */
+export function autoGainEnergies(state: TwinState): number[] {
+  try {
+    const e0 = edgeEnergy(state.sample), { energy_eV } = planPoints(state.scan, e0);
+    const stride = Math.max(1, Math.ceil(energy_eV.length / 60)), out = [state.energy_eV];
+    let below = -1;
+    for (let i = 0; i < energy_eV.length; i++) {
+      if (i % stride === 0 || i === energy_eV.length - 1) out.push(energy_eV[i]);
+      if (energy_eV[i] < e0) below = i;
+    }
+    if (below >= 0) out.push(energy_eV[below]);
+    return out;
+  } catch { return [state.energy_eV]; }
+}
 const GAIN_RANGE: [number, number] = [1e3, 1e11];
 const clamp = (value: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, value));
 /** Formula as upright LaTeX with numeric subscripts, as `formulaTex` in components/tex.tsx (which lib code must not import). */
@@ -289,14 +307,20 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
       return done(setChamber(state, command.chamber, { gain_V_per_A }), String.raw`${command.chamber} amplifier gain $10^{${Math.log10(gain_V_per_A)}}\ \mathrm{V/A}$.`);
     }
     case 'autoGain': {
-      const now = status(state);
+      // As at a beamline: each gain is set for the largest current its chamber will see over the scan, which for It
+      // and Iref is just below the edge, where the sample and the foil pass the most, not only at the set energy.
+      const peak: Record<ChamberConfig['id'], number> = { I0: 0, It: 0, Iref: 0 };
+      for (const energy_eV of autoGainEnergies(state)) {
+        const at = status({ ...state, energy_eV });
+        for (const [id, readout] of [['I0', at.i0], ['It', at.it], ['Iref', at.iref]] as const) if (readout && readout.current_A > peak[id]) peak[id] = readout.current_A;
+      }
       let next = state;
-      for (const [id, readout] of [['I0', now.i0], ['It', now.it], ['Iref', now.iref]] as const) {
-        if (!readout || !(readout.current_A > 0)) continue;
-        const decade = Math.floor(Math.log10(AUTO_GAIN_TARGET_V / readout.current_A));
+      for (const id of ['I0', 'It', 'Iref'] as const) {
+        if (!(peak[id] > 0)) continue;
+        const decade = Math.floor(Math.log10(AUTO_GAIN_TARGET_V / peak[id]));
         next = setChamber(next, id, { gain_V_per_A: 10 ** clamp(decade, [3, 11]) });
       }
-      return done(next, `Amplifier gains set so each chamber reads below ${AUTO_GAIN_TARGET_V} V at this energy.`);
+      return done(next, `Amplifier gains set so each chamber stays below ${AUTO_GAIN_TARGET_V} V over the whole scan.`);
     }
     case 'profile': {
       const preset = profilePreset(command.id);

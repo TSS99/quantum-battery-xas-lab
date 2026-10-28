@@ -5,7 +5,7 @@ import { edgeEnergy, runScan } from './acquire';
 import { beamAtSample } from './beam';
 import { PROFILE_PRESETS, SAMPLE_PRESETS, resolveSamplePreset, thicknessFor } from './presets';
 import { muComponents } from './sample';
-import { defaultPlan } from './scan';
+import { defaultPlan, planPoints } from './scan';
 import { DEFAULT_STATE, applyCommand, energyRange, fromSession, rockingCurve, status, toSession, validateState, xrfSpectrum } from './twin';
 import { handleScanRequest, type ScanMessage } from './worker';
 import { seededRandom } from '../xas';
@@ -27,13 +27,16 @@ describe('presets', () => {
     }
   });
 
-  it('every profile reads on scale, between 0.1 and 9 V, with its own sample just above the edge', () => {
+  it('every profile reads on scale with its own sample: never clipped over the scan, above 0.05 V just above the edge', () => {
     for (const preset of PROFILE_PRESETS) {
       const state = applyCommand({ ...DEFAULT_STATE, profile: preset.profile }, { type: 'samplePreset', id: preset.sample }).state;
       const s = status(state);
-      for (const reading of [s.i0, s.it, s.iref]) {
-        expect(reading!.voltage_V, `${preset.id} ${reading!.voltage_V}`).toBeGreaterThan(0.1);
-        expect(reading!.voltage_V, `${preset.id} ${reading!.voltage_V}`).toBeLessThan(9);
+      // Gains are set for the pre-edge, where the most light gets through, so just above a strong edge It can sit low.
+      for (const reading of [s.i0, s.it, s.iref]) expect(reading!.voltage_V, `${preset.id} ${reading!.voltage_V}`).toBeGreaterThan(0.05);
+      const { energy_eV } = planPoints(state.scan, edgeEnergy(state.sample));
+      for (const e of energy_eV) {
+        const at = status({ ...state, energy_eV: e });
+        for (const reading of [at.i0, at.it, at.iref]) expect(reading!.voltage_V, `${preset.id} at ${e} eV`).toBeLessThan(9);
       }
     }
   });
@@ -123,13 +126,18 @@ describe('commands', () => {
     expect(applyCommand(DEFAULT_STATE, { type: 'gain', chamber: 'I0', gain_V_per_A: 1 }).state.profile.chambers[0].gain_V_per_A).toBe(1e3);
   });
 
-  it('auto gain puts every chamber between 0.5 and 5 V', () => {
+  it('auto gain keeps every chamber below 5 V over the whole scan, with the largest reading above 0.5 V', () => {
     const clipped = applyCommand(DEFAULT_STATE, { type: 'gain', chamber: 'It', gain_V_per_A: 1e9 }).state;
     expect(status(clipped).it!.saturated).toBe(true);
-    const fixed = applyCommand(clipped, { type: 'autoGain' }).state;
-    for (const reading of [status(fixed).i0!, status(fixed).it!, status(fixed).iref!]) {
-      expect(reading.voltage_V).toBeGreaterThan(0.5);
-      expect(reading.voltage_V).toBeLessThan(5);
+    for (const profile of ['bm3', 'und6']) {
+      const fixed = applyCommand(applyCommand(clipped, { type: 'profile', id: profile }).state, { type: 'autoGain' }).state;
+      const { energy_eV } = planPoints(fixed.scan, edgeEnergy(fixed.sample));
+      for (const id of ['i0', 'it', 'iref'] as const) {
+        // Every point of the scan, not only the ones auto gain looked at.
+        const volts = [fixed.energy_eV, ...energy_eV].map(e => status({ ...fixed, energy_eV: e })[id]!.voltage_V);
+        expect(Math.max(...volts)).toBeLessThan(5);
+        expect(Math.max(...volts)).toBeGreaterThan(0.5);
+      }
     }
   });
 
