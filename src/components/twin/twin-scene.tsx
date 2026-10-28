@@ -2,10 +2,11 @@
 import { memo, useCallback, useDeferredValue, useEffect, useRef, useState, type ComponentType } from 'react';
 import { Box, Camera, Expand, Eye, Maximize2, Minimize2, Play, RotateCcw, Shrink, Square, Video } from 'lucide-react';
 import { Tex } from '../tex';
-import { HutchScene } from './hutch-scene';
+import dynamic from 'next/dynamic';
 import { useTwin } from './twin-store';
 
-const Diagram = memo(HutchScene);
+// The 2D diagram shows only when chosen or without WebGL, so it loads then rather than with the page.
+const Diagram = dynamic(() => import('./hutch-scene').then(m => memo(m.HutchScene)), { ssr: false });
 type Hutch3DView = ComponentType<import('./hutch-3d').Hutch3DProps>;
 /** The 3D code and its textures, fetched once; the view switches over only when both are in. */
 let loading3D: Promise<Hutch3DView> | null = null;
