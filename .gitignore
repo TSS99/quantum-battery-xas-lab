@@ -9,3 +9,6 @@ playwright-report/
 *.log
 out/
 .cache/
+desktop-dist/
+src-tauri/target/
+src-tauri/gen/

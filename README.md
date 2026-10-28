@@ -193,6 +193,12 @@ Executed results for this delivery will be recorded here after the final verific
 
 Browsers that support web apps (Chrome, Edge, and Safari through Add to Dock or Add to Home Screen) can install XAS Lab from the "Install app" link in the footer. `src/app/manifest.ts` describes the app and `scripts/make-sw.mjs` writes `out/sw.js` after every build, stamped with the build id. Pages and route data are fetched network first, so an online visitor always sees the current site; hashed build assets are cached. The installed app downloads the remaining assets for offline use, which suits beamline computers without internet. The build reports the asset count and download size. The element reference pages are left out of that bundle; they are cached when visited. Install icons are drawn by `scripts/make-share-assets.mjs`.
 
+## Desktop app
+
+Each release also carries desktop installers, built by `.github/workflows/desktop.yml` with [Tauri](https://tauri.app): `.msi` and `.exe` for Windows, a universal `.dmg` for Intel and Apple silicon Macs, and `.AppImage` and `.deb` for Linux. They bundle the whole site, so the app works offline from its first launch. They are not code-signed: Windows SmartScreen asks you to choose "More info, Run anyway", and on macOS you open the app the first time from its right-click menu (Open).
+
+To build one yourself you need Node.js, Rust and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your system, then `npm ci` and `npm run desktop`. The installers land in `src-tauri/target/release/bundle/`. `npm run build:desktop` builds the site for the app (no GitHub Pages subpath) into `desktop-dist/`; `src-tauri/src/lib.rs` opens the one window and sends links to other sites to the system browser. The app icon is the site's, rendered by `scripts/make-app-icon.mjs`.
+
 ## Search and sharing assets
 
 Titles, descriptions, canonical URLs, Open Graph and Twitter tags and JSON-LD come from `src/data/site-pages.json` through `src/lib/site.ts`. The build also writes `sitemap.xml`, `robots.txt` and a `404.html`. After changing a page title or description, regenerate the share images and icons with `PLAYWRIGHT_CHANNEL=chrome node scripts/make-share-assets.mjs`. To rebuild the X-ray tables, run `scripts/build-xray-data.py` with the `xraydb` package installed (see `src/data/xray/README.md`).
