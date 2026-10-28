@@ -12,7 +12,7 @@ import { sampleDoseRate } from './damage';
 import { harmonicRejectionAngle } from './mirrors';
 import { backscatterEnergy_eV, detuneFactor, monoTrueEnergy_eV } from './mono';
 import { PROFILE_PRESETS, profilePreset, referenceFor, resolveSamplePreset, samplePreset } from './presets';
-import { planPoints } from './scan';
+import { planPoints, xanesPlan } from './scan';
 import { massFractions } from '../xraydata';
 import { fluorescence, fluorescenceLine, muComponents, transmission } from './sample';
 import { efficiency, filterTransmission, mcaSpectrum, solidAngle, type McaSpectrum } from './sdd';
@@ -231,6 +231,20 @@ function withAutoGain(state: TwinState): TwinState {
   return next;
 }
 
+/** Whether this beamline reaches every point of the sample's scan. */
+function fitsScan(state: TwinState): boolean {
+  try {
+    const { energy_eV } = planPoints(state.scan, edgeEnergy(state.sample)), [a, b] = energyRange(state);
+    return energy_eV[0] >= a && energy_eV[energy_eV.length - 1] <= b;
+  } catch { return false; }
+}
+
+/** The beamline to move to when this one cannot reach the sample's whole scan, or null when it can (or none can). */
+function beamlineFor(state: TwinState): (typeof PROFILE_PRESETS)[number] | null {
+  if (fitsScan(state)) return null;
+  return PROFILE_PRESETS.find(p => fitsScan({ ...state, profile: p.profile })) ?? null;
+}
+
 /**
  * Where auto gain looks: the set energy, the last scan point below the edge (the most light through the sample and
  * the foil) and about sixty points spread over the rest of the scan, all within the beamline's range. Only the set
@@ -344,10 +358,20 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
       const preset = samplePreset(command.id);
       if (!preset) throw new Error(`Unknown sample preset ${command.id}.`);
       const resolved = resolveSamplePreset(preset);
-      const next: TwinState = { ...state, ...resolved, reference: resolved.reference };
+      let next: TwinState = { ...state, ...resolved, reference: resolved.reference };
+      // A sample whose scan this beamline cannot reach moves to one that can (a sulfur sample to the tender beamline);
+      // when no beamline reaches the whole EXAFS scan (the P K edge sits just above the Si(111) limit), it gets the
+      // shorter XANES plan.
+      let switched = beamlineFor(next), shortened = false;
+      if (!switched && !fitsScan(next)) {
+        const xanes = { ...next, scan: xanesPlan(edgeEnergy(resolved.sample)) };
+        switched = fitsScan(xanes) ? null : beamlineFor(xanes);
+        if (switched || fitsScan(xanes)) { next = xanes; shortened = true; }
+      }
+      if (switched) next = { ...next, profile: switched.profile };
       const energy_eV = clamp(edgeEnergy(resolved.sample) + 20, energyRange(next));
       // A new sample gets its gains set for its own scan, as it would be at the beamline, so nothing clips.
-      return done(withAutoGain(centredRoi({ ...next, energy_eV })), `Sample: ${preset.name}. ${preset.story} Amplifier gains set for its scan.`);
+      return done(withAutoGain(centredRoi({ ...next, energy_eV })), `Sample: ${preset.name}. ${preset.story}${switched ? ` Beamline: ${switched.name}, which reaches its edge.` : ''}${shortened ? ' Scan plan: XANES, as no beamline here reaches the whole EXAFS scan.' : ''} Amplifier gains set for its scan.`);
     }
     case 'thickness': {
       const thickness_um = clamp(command.thickness_um, [0.01, 1e5]);
@@ -356,6 +380,11 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
     case 'sample': {
       const sample = { ...state.sample, ...command.patch };
       if (!(sample.absorber in massFractions(sample.formula))) throw new Error(`${sample.absorber} is not in ${sample.formula}.`);
+      // A new material starts at its element's edge unless the change says otherwise.
+      if (sample.formula !== state.sample.formula || sample.absorber !== state.sample.absorber || sample.edge !== state.sample.edge) {
+        if (!('edgeShift_eV' in command.patch)) delete sample.edgeShift_eV;
+        delete sample.libraryId;
+      }
       const e0 = edgeEnergy(sample);
       const moved = sample.formula !== state.sample.formula || sample.absorber !== state.sample.absorber || sample.edge !== state.sample.edge;
       let next: TwinState = { ...state, sample };
@@ -431,6 +460,7 @@ export function validateState(state: TwinState): { state: TwinState; issues: str
       thicknessSpread: fix('Thickness spread', sample.thicknessSpread, [0, 0.5]),
       particle_um: fix('Particle size', sample.particle_um, [0, 1000]),
       incidence_deg: fix('Incidence angle', sample.incidence_deg, [1, 90]),
+      ...(sample.edgeShift_eV === undefined ? {} : { edgeShift_eV: fix('Edge shift', sample.edgeShift_eV, [-50, 50]) }),
     },
     environment: { ...environment, temperature_K: fix('Temperature', environment.temperature_K, TEMPERATURE_RANGE[environment.kind]) },
   };

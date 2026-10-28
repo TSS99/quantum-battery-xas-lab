@@ -48,11 +48,11 @@ export function poisson(mean: number, random: Random): number {
 
 const AMBIENT: EnvironmentConfig = { kind: 'ambient', temperature_K: 295, windows: [] };
 
-/** Tabulated edge energy of the sample's absorber, eV. */
-export function edgeEnergy(sample: Pick<SampleConfig, 'absorber' | 'edge'>): number {
+/** Edge energy of the sample's absorber, eV: the tabulated (elemental) edge plus the sample's chemical shift. */
+export function edgeEnergy(sample: Pick<SampleConfig, 'absorber' | 'edge' | 'edgeShift_eV'>): number {
   const edge = elementInfo(sample.absorber).edges.find(e => e.edge === sample.edge);
   if (!edge) throw new Error(`${sample.absorber} has no tabulated ${sample.edge} edge.`);
-  return edge.energy_eV;
+  return edge.energy_eV + (sample.edgeShift_eV ?? 0);
 }
 
 /** Transmission of the reference foil; it uses the sample's edge model when it contains the absorber. */

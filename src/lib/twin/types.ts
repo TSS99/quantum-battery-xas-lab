@@ -91,6 +91,11 @@ export interface SampleConfig {
   libraryId?: string;
   /** Angle between the incident beam and the sample surface. */
   incidence_deg: number;
+  /**
+   * Chemical shift of the absorber's edge from its tabulated (elemental) energy, eV: higher for a higher oxidation
+   * state. Absent or 0 for the element itself. It moves the whole edge: absorption, fluorescence and the scan.
+   */
+  edgeShift_eV?: number;
 }
 
 export interface ScanRegion {

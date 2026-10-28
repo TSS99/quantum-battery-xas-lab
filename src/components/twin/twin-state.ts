@@ -197,7 +197,8 @@ export function twinReducer(store: TwinStore, action: TwinAction): TwinStore {
       if (settings) {
         const preset = settings.profilePreset ? profilePreset(settings.profilePreset) : undefined;
         if (preset) next = { ...next, profile: preset.profile };
-        if (settings.sample) next = { ...next, sample: { ...next.sample, ...settings.sample } };
+        // A linked sample carries its own chemical shift, or none.
+        if (settings.sample) { const { edgeShift_eV: _, libraryId: __, ...rest } = next.sample; next = { ...next, sample: { ...rest, ...settings.sample } }; }
         if (settings.energy_eV !== undefined) next.energy_eV = settings.energy_eV;
         if (settings.realistic !== undefined) next.realistic = settings.realistic;
         if (settings.scan) next.scan = settings.scan;
@@ -266,7 +267,9 @@ export function parseHash(hash: string): { mode?: TwinMode; seed?: number; setti
         if (raw.r === 0 || raw.r === 1 || typeof raw.r === 'boolean') settings.realistic = raw.r === 1 || raw.r === true;
         const q = scanPlan(raw.q); if (q) settings.scan = q;
         if (isRecord(raw.m) && typeof raw.m.f === 'string' && raw.m.f.length > 0 && raw.m.f.length <= 120 && typeof raw.m.a === 'string' && /^[A-Z][a-z]?$/.test(raw.m.a) && typeof raw.m.g === 'string' && /^(K|L[1-3]|M[1-5]|N[1-7])$/.test(raw.m.g) && finite(raw.m.d) && raw.m.d > 0 && raw.m.d <= 30 && finite(raw.m.t) && raw.m.t > 0 && raw.m.t <= 1e5 && typeof raw.m.o === 'string' && (FORMS as readonly string[]).includes(raw.m.o)) {
-          settings.sample = { formula: raw.m.f, absorber: raw.m.a, edge: raw.m.g, density: raw.m.d, thickness_um: raw.m.t, form: raw.m.o as TwinState['sample']['form'] };
+          settings.sample = { formula: raw.m.f, absorber: raw.m.a, edge: raw.m.g, density: raw.m.d, thickness_um: raw.m.t, form: raw.m.o as TwinState['sample']['form'],
+            ...(finite(raw.m.s) && Math.abs(raw.m.s) <= 50 ? { edgeShift_eV: raw.m.s } : {}),
+            ...(typeof raw.m.l === 'string' && /^[a-z0-9-]{1,40}$/.test(raw.m.l) ? { libraryId: raw.m.l } : {}) };
         }
         if (Object.keys(settings).length) out.settings = settings;
       }
@@ -282,7 +285,7 @@ export function formatHash(state: TwinState): string {
   const m = state.sample;
   const payload = {
     p: state.profile.preset,
-    m: { f: m.formula, a: m.absorber, g: m.edge, d: m.density, t: m.thickness_um, o: m.form },
+    m: { f: m.formula, a: m.absorber, g: m.edge, d: m.density, t: m.thickness_um, o: m.form, ...(m.edgeShift_eV ? { s: m.edgeShift_eV } : {}), ...(m.libraryId ? { l: m.libraryId } : {}) },
     e: state.energy_eV,
     r: state.realistic ? 1 : 0,
     q: state.scan,

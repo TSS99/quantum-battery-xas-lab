@@ -140,8 +140,15 @@ const MODEL_CACHE_SIZE = 32;
 const libraryMaterials = new Map<string, FeffMaterial>();
 const libraryModels = new Map<string, FineStructureModel>();
 
-/** The FEFF library material for a sample: the same formula, absorber and edge, or null. */
-export function libraryMaterialId(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge'>): string | null {
+/**
+ * The FEFF library material for a sample: the one it names (for polymorphs such as anatase and rutile, or a supported
+ * metal drawn with its bulk paths), else the one with the same formula, absorber and edge, or null.
+ */
+export function libraryMaterialId(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge' | 'libraryId'>): string | null {
+  if (sample.libraryId) {
+    const named = FEFF_INDEX.find(m => m.id === sample.libraryId && m.absorber === sample.absorber && m.edge === sample.edge);
+    if (named) return named.id;
+  }
   const formula = sample.formula.replace(/\s+/g, '');
   return FEFF_INDEX.find(m => m.formula === formula && m.absorber === sample.absorber && m.edge === sample.edge)?.id ?? null;
 }
@@ -251,7 +258,9 @@ export function muComponents(sample: SampleConfig, energy_eV: number, options: M
   }
   requirePositive(sample.density, 'Sample density');
   const edge = findEdge(sample.absorber, sample.edge);
-  const model = options.fineStructure ?? defaultFineStructure(sample, edge.energy_eV, options.temperature_K);
+  // The chemical shift moves the edge the fine structure draws; the tabulated step only sets its size.
+  const e0 = edge.energy_eV + (sample.edgeShift_eV ?? 0);
+  const model = options.fineStructure ?? defaultFineStructure(sample, e0, options.temperature_K);
 
   const tabulated_cm_inv = mu(composition, sample.density, energy_eV).total;
   const above = elementMuOverRhoSide(sample.absorber, edge.edge, energy_eV, 'above').photo;
@@ -270,7 +279,7 @@ export function muComponents(sample: SampleConfig, energy_eV: number, options: M
 
   return {
     energy_eV,
-    edgeEnergy_eV: edge.energy_eV,
+    edgeEnergy_eV: e0,
     tabulated_cm_inv,
     rest_cm_inv,
     sharpStep_cm_inv,
