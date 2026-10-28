@@ -118,6 +118,8 @@ export interface SamplePreset {
   reference?: Omit<ReferenceFoil, 'thickness_um'>;
   damage: DamageClass;
   densitySource: string;
+  /** How it looks in the 3D hutch: the material's usual colour, and whether it is a metal. */
+  look: { color: string; metal?: boolean };
 }
 
 const compound = (id: string) => {
@@ -151,21 +153,25 @@ export const SAMPLE_PRESETS: readonly SamplePreset[] = [
     id: 'cu-foil', name: 'Cu foil', story: 'The reference metal: energy calibration and the EXAFS of fcc copper.',
     sample: { ...base, formula: 'Cu', density: compound('cu-foil').density, absorber: 'Cu', edge: 'K', form: 'foil' },
     thickness: 7, environment: AMBIENT, reference: foil('Cu'), damage: 'oxide', densitySource: compound('cu-foil').densitySource,
+    look: { color: '#c8794a', metal: true },
   },
   {
     id: 'limn2o4-pellet', name: 'LiMn₂O₄ cathode pellet', story: 'The battery story: Mn K edge of a spinel cathode, later followed while it charges.',
     sample: { ...base, formula: 'LiMn2O4', density: compound('limn2o4').density, absorber: 'Mn', edge: 'K', form: 'pellet' },
     thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Mn'), damage: 'oxide', densitySource: compound('limn2o4').densitySource,
+    look: { color: '#26282b' },
   },
   {
     id: 'fe-2mm-water', name: 'Fe, 2 mM in water', story: 'Dilute: transmission barely sees the edge, fluorescence does, and dead time starts to matter.',
     sample: { ...base, formula: `Fe${perWater(0.002)}H2O`, density: compound('water').density, absorber: 'Fe', edge: 'K', form: 'solution' },
     thickness: 1000, environment: LIQUID_CELL, reference: foil('Fe'), damage: 'solution', densitySource: compound('water').densitySource,
+    look: { color: '#d9c27a' },
   },
   {
     id: 'nio-pellet', name: 'NiO, thick pellet', story: 'Concentrated and thick: self absorption flattens the white line in fluorescence.',
     sample: { ...base, formula: 'NiO', density: compound('nio').density, absorber: 'Ni', edge: 'K', form: 'pellet' },
     thickness: 200, environment: AMBIENT, reference: foil('Ni'), damage: 'oxide', densitySource: compound('nio').densitySource,
+    look: { color: '#5f7a4e' },
   },
   {
     // 1 wt% Pt: 0.01 / 195.08 mol Pt per 0.99 / 101.96 mol Al2O3 = 5.28e-3.
@@ -173,21 +179,81 @@ export const SAMPLE_PRESETS: readonly SamplePreset[] = [
     sample: { ...base, formula: 'Pt0.00528Al2O3', density: 3.99, absorber: 'Pt', edge: 'L3', form: 'pellet' },
     thickness: { muX: 2 }, environment: AMBIENT, reference: foil('Pt'), damage: 'oxide',
     densitySource: 'Corundum (α-Al₂O₃), 3.99 g/cm³ (CRC Handbook); the thickness is the equivalent full-density thickness.',
+    look: { color: '#6d6a66' },
   },
   {
     id: 'cu-solution', name: 'Cu(II), 10 mM in water', story: 'A metal ion in solution: a focused beam reduces Cu(II), and the edge moves between scans.',
     sample: { ...base, formula: `Cu${perWater(0.01)}H2O`, density: compound('water').density, absorber: 'Cu', edge: 'K', form: 'solution' },
     thickness: 1000, environment: LIQUID_CELL, reference: foil('Cu'), damage: 'solution', densitySource: compound('water').densitySource,
+    look: { color: '#7fb3d9' },
   },
   {
     id: 'li2s', name: 'Li₂S pellet', story: 'Sulfur K edge in the tender range, for the lithium-sulfur battery; there is no metal foil, so no reference channel.',
     sample: { ...base, formula: 'Li2S', density: 1.66, absorber: 'S', edge: 'K', form: 'pellet' },
     thickness: { edgeStep: 1 }, environment: AMBIENT, damage: 'oxide',
     densitySource: 'Lithium sulfide, 1.66 g/cm³ (CRC Handbook).',
+    look: { color: '#e8e2c8' },
+  },
+  // Reference materials whose FEFF paths are in the library (src/data/twin/feff), so their EXAFS is computed, not
+  // the teaching model. Densities are those of the library structures (scripts/twin/structures.py). Thickness: an
+  // edge step of 1, the usual aim for a transmission standard.
+  {
+    id: 'fe-foil', name: 'Fe foil', story: 'The Fe K edge calibration foil, and the EXAFS of bcc iron: eight neighbours at 2.48 Å, six more just beyond.',
+    sample: { ...base, formula: 'Fe', density: METAL_DENSITY.Fe, absorber: 'Fe', edge: 'K', form: 'foil' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Fe'), damage: 'oxide',
+    densitySource: 'Iron, 7.874 g/cm³ (CRC Handbook; NIST SRD 126 Table 1).', look: { color: '#9aa0a6', metal: true },
+  },
+  {
+    id: 'ni-foil', name: 'Ni foil', story: 'fcc nickel at the Ni K edge: twelve neighbours at 2.49 Å. Set it beside NiO to see what the oxygens change.',
+    sample: { ...base, formula: 'Ni', density: METAL_DENSITY.Ni, absorber: 'Ni', edge: 'K', form: 'foil' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Ni'), damage: 'oxide',
+    densitySource: 'Nickel, 8.908 g/cm³ (CRC Handbook).', look: { color: '#b8b4a8', metal: true },
+  },
+  {
+    id: 'pt-foil', name: 'Pt foil', story: 'Bulk platinum at the L₃ edge, twelve neighbours at 2.77 Å: the reference for Pt on alumina.',
+    sample: { ...base, formula: 'Pt', density: compound('pt-foil').density, absorber: 'Pt', edge: 'L3', form: 'foil' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Pt'), damage: 'oxide',
+    densitySource: compound('pt-foil').densitySource, look: { color: '#cfd2d4', metal: true },
+  },
+  {
+    id: 'licoo2-pellet', name: 'LiCoO₂ cathode pellet', story: 'The layered cathode in most phone batteries, at the Co K edge: CoO₆ octahedra in sheets, six oxygens at 1.92 Å.',
+    sample: { ...base, formula: 'LiCoO2', density: compound('licoo2').density, absorber: 'Co', edge: 'K', form: 'pellet' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Co'), damage: 'oxide',
+    densitySource: compound('licoo2').densitySource, look: { color: '#2e3033' },
+  },
+  {
+    id: 'lifepo4-pellet', name: 'LiFePO₄ cathode pellet', story: 'The olivine cathode at the Fe K edge: Fe²⁺ in distorted octahedra, so its edge sits below that of Fe₃O₄.',
+    sample: { ...base, formula: 'LiFePO4', density: compound('lifepo4').density, absorber: 'Fe', edge: 'K', form: 'pellet' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Fe'), damage: 'oxide',
+    densitySource: compound('lifepo4').densitySource, look: { color: '#7d7f7c' },
+  },
+  {
+    id: 'fe3o4-pellet', name: 'Fe₃O₄ (magnetite) pellet', story: 'The mixed-valence spinel: a third of the iron on tetrahedral sites, two thirds octahedral, both in the EXAFS.',
+    sample: { ...base, formula: 'Fe3O4', density: 5.2, absorber: 'Fe', edge: 'K', form: 'pellet' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Fe'), damage: 'oxide',
+    densitySource: 'Magnetite, 5.200 g/cm³, the crystallographic density of the cubic cell a = 8.3941 Å (Fleet, Acta Cryst. B37, 917, 1981).', look: { color: '#1c1c1e' },
+  },
+  {
+    id: 'zno-pellet', name: 'ZnO pellet', story: 'Wurtzite zinc oxide at the Zn K edge: four oxygens at 1.97 Å, then twelve zincs near 3.2 Å, a clean two-shell EXAFS.',
+    sample: { ...base, formula: 'ZnO', density: compound('zno').density, absorber: 'Zn', edge: 'K', form: 'pellet' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Zn'), damage: 'oxide',
+    densitySource: compound('zno').densitySource, look: { color: '#ecebe6' },
+  },
+  {
+    id: 'ceo2-pellet', name: 'CeO₂ pellet', story: 'Ceria, a catalyst support, at the Ce L₃ edge near 5.7 keV: eight oxygens at 2.34 Å. There is no Ce foil, so no reference channel.',
+    sample: { ...base, formula: 'CeO2', density: 7.215, absorber: 'Ce', edge: 'L3', form: 'pellet' },
+    thickness: { edgeStep: 1 }, environment: AMBIENT, damage: 'oxide',
+    densitySource: 'Ceria, 7.215 g/cm³ (Kobayashi and Fujiwara, J. Alloys Compd. 408-412, 1157, 2006).', look: { color: '#e9dfa8' },
   },
 ];
 
 export const samplePreset = (id: string) => SAMPLE_PRESETS.find(p => p.id === id);
+
+/** How a sample looks in the 3D hutch: its preset's colour, or else a plain metal foil or a grey powder. */
+export function sampleLook(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge' | 'form'>): SamplePreset['look'] {
+  const preset = SAMPLE_PRESETS.find(p => p.sample.formula === sample.formula && p.sample.absorber === sample.absorber && p.sample.edge === sample.edge);
+  return preset?.look ?? (sample.form === 'foil' ? { color: '#b9b9b9', metal: true } : { color: '#5a5e66' });
+}
 
 /** A metal foil of the absorber for the reference channel when its density is tabulated here, with an edge step of 1. */
 export function referenceFor(sample: Omit<SampleConfig, 'thickness_um'>): ReferenceFoil | undefined {

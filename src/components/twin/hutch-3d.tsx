@@ -17,6 +17,7 @@ import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, labelled
 import { FLOOR, FOV, LABEL3, ROCKING, TABLE, TIP3, clampToBox, frameFor, motorStep, rockingDetune, swayAngle, toThree, type Motor, type V3 } from './hutch-3d-layout';
 import { braggAngle_rad, braggEnergy_eV, detuneFactor, monoReading_eV, monoTrueEnergy_eV } from '@/lib/twin/mono';
 import { planPoints } from '@/lib/twin/scan';
+import { sampleLook } from '@/lib/twin/presets';
 import { edgeEnergy } from '@/lib/twin/acquire';
 import { scanCursor } from './scan-cursor';
 import { YB } from '../scene-kit';
@@ -169,10 +170,27 @@ const STAGE_TOP = YB - 12;
 
 /**
  * The sample and its environment at real size (scene units are centimetres), centred on the beam at the sample
- * position: a 13 mm pellet in a small holder, a closed-cycle cryostat tail with Kapton windows, a compact furnace, an
+ * position: the sample (see Specimen) in a small holder, a closed-cycle cryostat tail with Kapton windows, a compact furnace, an
  * operando coin cell holder or a liquid cell with its tubing.
  */
-function Environment3D({ m, kind }: { m: Mats; kind: TwinState['environment']['kind'] }) {
+/**
+ * The sample itself, at its real size where that can be seen: a foil or film is a thin square sheet (its real thickness,
+ * at least 0.1 mm so it shows edge on), a pellet a 13 mm disc (its real thickness, at least 0.4 mm, as pressed pellets
+ * are), a capillary a 1 mm glass tube; each in the material's usual colour.
+ */
+function Specimen({ sample }: { sample: TwinState['sample'] }) {
+  const look = sampleLook(sample);
+  const material = useMemo(() => new THREE.MeshStandardMaterial(look.metal ? { color: look.color, metalness: 1, roughness: 0.28 } : { color: look.color, metalness: 0, roughness: 0.86 }), [look.color, look.metal]);
+  useLayoutEffect(() => () => material.dispose(), [material]);
+  const t_cm = sample.thickness_um * 1e-4;
+  switch (sample.form) {
+    case 'foil': case 'film': { const t = Math.max(t_cm, 0.01); return <Blk x0={XS - t} x1={XS} y0={YB - 0.8} y1={YB + 0.8} z0={-0.8} z1={0.8} m={material} />; }
+    case 'capillary': return <CylY x={XS - 0.1} y0={YB - 2} y1={YB + 2} r={0.05} m={material} seg={16} />;
+    default: return <CylX x0={XS - Math.max(t_cm, 0.04)} x1={XS} y={YB} r={0.65} m={material} seg={24} />;
+  }
+}
+
+function Environment3D({ m, kind, sample }: { m: Mats; kind: TwinState['environment']['kind']; sample: TwinState['sample'] }) {
   switch (kind) {
     case 'cryostat': return <>
       <CylY x={XS} y0={STAGE_TOP} y1={YB - 6} r={5} m={m.steel} />
@@ -199,14 +217,15 @@ function Environment3D({ m, kind }: { m: Mats; kind: TwinState['environment']['k
     case 'liquid-cell': return <>
       <Blk x0={XS - 1} x1={XS + 1.5} y0={STAGE_TOP} y1={YB + 5} z0={-3.5} z1={3.5} m={m.peek} r={0.3} />
       <CylX x0={XS - 1.3} x1={XS - 1} y={YB} r={1.6} m={m.glass} />
-      <mesh position={toThree([XS - 1.15, YB, 0])} rotation={[0, Math.PI / 2, 0]}><circleGeometry args={[1.5, 24]} /><meshStandardMaterial color="#7fb8e8" transparent opacity={0.55} roughness={0.1} /></mesh>
+      {/* The solution in the material's colour: Cu(II) blue, Fe(III) pale yellow */}
+      <mesh position={toThree([XS - 1.15, YB, 0])} rotation={[0, Math.PI / 2, 0]}><circleGeometry args={[1.5, 24]} /><meshStandardMaterial color={sampleLook(sample).color} transparent opacity={0.55} roughness={0.1} /></mesh>
       {[YB + 4, YB - 2].map(y => <Tube key={y} points={[[XS + 1.5, y, 0], [XS + 8, y + 2, 10], [XS + 14, 16, 50], [XS + 14, -82, 80]]} r={0.4} m={m.gas} />)}
     </>;
     default: return <>
-      {/* A pellet holder: a rod from the rotation table and a small aluminium frame holding a 13 mm pellet */}
+      {/* A sample holder: a rod from the rotation table and a small aluminium frame holding the sample */}
       <CylY x={XS + 0.5} y0={STAGE_TOP} y1={YB - 3} r={0.6} m={m.steel} seg={12} />
       <Blk x0={XS} x1={XS + 1} y0={YB - 3.2} y1={YB + 3.2} z0={-3.2} z1={3.2} m={m.alu} r={0.3} />
-      <CylX x0={XS - 0.2} x1={XS} y={YB} r={0.65} m={m.pellet} seg={24} />
+      <Specimen sample={sample} />
     </>;
   }
 }
@@ -634,7 +653,7 @@ function World({ twin, live, animate, hq, setup, touring, scanBadge }: { twin: T
       <Tube points={[[XS, 6.7, -14], [XS - 4, 6, -22], [XS - 6, 0.5, -40], [XS - 8, -26, -60], [XS - 10, FLOOR + 1, -66]]} r={0.45} m={m.cable} />
     </Part>
     <group position={toThree([XS, YB, 0])} rotation-y={-turn}><group position={[-XS, -YB, 0]}>
-      <Part idle={idle('sample-environment')}><Environment3D m={m} kind={environment.kind} /></Part>
+      <Part idle={idle('sample-environment')}><Environment3D m={m} kind={environment.kind} sample={twin.sample} /></Part>
       {spot && environment.kind === 'ambient' && <mesh position={toThree([XS - 0.25, YB, 0])} rotation-y={-Math.PI / 2} renderOrder={3}>
         <planeGeometry args={[spot.w, spot.h]} />
         <meshBasicMaterial color={new THREE.Color(spot.color[0] * 1.6, spot.color[1] * 1.6, spot.color[2] * 1.6)} toneMapped={false} />

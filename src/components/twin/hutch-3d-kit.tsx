@@ -84,7 +84,6 @@ function makeMaterials([alu, wall, concrete, floor, pano]: THREE.Texture[]) {
     gas: std({ color: '#4f89c7', roughness: 0.25, transparent: true, opacity: 0.92 }),
     hv: std({ color: '#9a3a34', roughness: 0.45 }),
     foil: std({ color: '#efe8da', metalness: 1, roughness: 0.12 }),
-    pellet: std({ color: '#3d4148', roughness: 0.8 }),
     tableSide: std({ color: '#2b3038', metalness: 0.45, roughness: 0.45 }),
     isolator: std({ color: '#545d68', metalness: 0.45, roughness: 0.4 }),
     tableTop: std({ map: tableTopTexture(alu, 360, 120), metalness: 0.7, roughness: 0.34 }),

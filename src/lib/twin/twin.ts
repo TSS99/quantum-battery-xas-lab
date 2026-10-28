@@ -212,8 +212,29 @@ export interface CommandResult {
 export const AUTO_GAIN_TARGET_V = 5;
 
 /**
+ * Each amplifier's gain set, a decade at a time, for the largest current its chamber will see over the scan (for It and
+ * Iref just below the edge, where the sample and the foil pass the most), so that current reads below the target.
+ */
+function withAutoGain(state: TwinState): TwinState {
+  const peak: Record<ChamberConfig['id'], number> = { I0: 0, It: 0, Iref: 0 };
+  for (const energy_eV of autoGainEnergies(state)) {
+    let at: TwinStatus;
+    try { at = status({ ...state, energy_eV }); } catch { continue; }
+    for (const [id, readout] of [['I0', at.i0], ['It', at.it], ['Iref', at.iref]] as const) if (readout && readout.current_A > peak[id]) peak[id] = readout.current_A;
+  }
+  let next = state;
+  for (const id of ['I0', 'It', 'Iref'] as const) {
+    if (!(peak[id] > 0)) continue;
+    const decade = Math.floor(Math.log10(AUTO_GAIN_TARGET_V / peak[id]));
+    next = setChamber(next, id, { gain_V_per_A: 10 ** clamp(decade, [3, 11]) });
+  }
+  return next;
+}
+
+/**
  * Where auto gain looks: the set energy, the last scan point below the edge (the most light through the sample and
- * the foil) and about sixty points spread over the rest of the scan. Only the set energy when the plan has no edge.
+ * the foil) and about sixty points spread over the rest of the scan, all within the beamline's range. Only the set
+ * energy when the plan has no edge.
  */
 export function autoGainEnergies(state: TwinState): number[] {
   try {
@@ -225,7 +246,9 @@ export function autoGainEnergies(state: TwinState): number[] {
       if (energy_eV[i] < e0) below = i;
     }
     if (below >= 0) out.push(energy_eV[below]);
-    return out;
+    // Only energies this beamline can reach: a scan past its range has no beam to set a gain for.
+    const [lo, hi] = energyRange(state);
+    return out.filter(e => e >= lo && e <= hi);
   } catch { return [state.energy_eV]; }
 }
 const GAIN_RANGE: [number, number] = [1e3, 1e11];
@@ -306,22 +329,8 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
       const gain_V_per_A = 10 ** Math.round(Math.log10(clamp(command.gain_V_per_A, GAIN_RANGE)));
       return done(setChamber(state, command.chamber, { gain_V_per_A }), String.raw`${command.chamber} amplifier gain $10^{${Math.log10(gain_V_per_A)}}\ \mathrm{V/A}$.`);
     }
-    case 'autoGain': {
-      // As at a beamline: each gain is set for the largest current its chamber will see over the scan, which for It
-      // and Iref is just below the edge, where the sample and the foil pass the most, not only at the set energy.
-      const peak: Record<ChamberConfig['id'], number> = { I0: 0, It: 0, Iref: 0 };
-      for (const energy_eV of autoGainEnergies(state)) {
-        const at = status({ ...state, energy_eV });
-        for (const [id, readout] of [['I0', at.i0], ['It', at.it], ['Iref', at.iref]] as const) if (readout && readout.current_A > peak[id]) peak[id] = readout.current_A;
-      }
-      let next = state;
-      for (const id of ['I0', 'It', 'Iref'] as const) {
-        if (!(peak[id] > 0)) continue;
-        const decade = Math.floor(Math.log10(AUTO_GAIN_TARGET_V / peak[id]));
-        next = setChamber(next, id, { gain_V_per_A: 10 ** clamp(decade, [3, 11]) });
-      }
-      return done(next, `Amplifier gains set so each chamber stays below ${AUTO_GAIN_TARGET_V} V over the whole scan.`);
-    }
+    case 'autoGain':
+      return done(withAutoGain(state), `Amplifier gains set so each chamber stays below ${AUTO_GAIN_TARGET_V} V over the whole scan.`);
     case 'profile': {
       const preset = profilePreset(command.id);
       if (!preset) throw new Error(`Unknown profile ${command.id}.`);
@@ -337,7 +346,8 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
       const resolved = resolveSamplePreset(preset);
       const next: TwinState = { ...state, ...resolved, reference: resolved.reference };
       const energy_eV = clamp(edgeEnergy(resolved.sample) + 20, energyRange(next));
-      return done(centredRoi({ ...next, energy_eV }), `Sample: ${preset.name}. ${preset.story}`);
+      // A new sample gets its gains set for its own scan, as it would be at the beamline, so nothing clips.
+      return done(withAutoGain(centredRoi({ ...next, energy_eV })), `Sample: ${preset.name}. ${preset.story} Amplifier gains set for its scan.`);
     }
     case 'thickness': {
       const thickness_um = clamp(command.thickness_um, [0.01, 1e5]);
@@ -352,6 +362,7 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
       if (sample.absorber !== state.sample.absorber || sample.edge !== state.sample.edge) {
         next = centredRoi({ ...next, reference: referenceFor(sample), energy_eV: clamp(e0 + 20, energyRange(next)) });
       }
+      if (moved) next = withAutoGain(next);
       const changed = Object.keys(command.patch).join(', ');
       return done(next, moved ? String.raw`Sample: $${formulaTex(sample.formula)}$, ${sample.absorber} ${sample.edge} edge at $${fmt(e0)}\ \mathrm{eV}$.` : `Sample ${changed} changed.`);
     }
