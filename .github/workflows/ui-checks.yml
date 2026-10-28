@@ -1,0 +1,43 @@
+name: Page weight and accessibility
+
+# Browser checks on the exported site: first-load JavaScript within each page's budget, and every page clean at
+# 1440 and 390 px (console, overflow, maths and axe). They run beside the deploy rather than gating it, so a red
+# mark here flags a regression on the live site without holding a fix back.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install application dependencies
+        run: npm ci
+      - name: Build static laboratory
+        env:
+          NEXT_PUBLIC_BASE_PATH: /quantum-battery-xas-lab
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Check page weight and every page
+        env:
+          PLAYWRIGHT_EXTERNAL_SERVER: '1'
+          PLAYWRIGHT_CHANNEL: chromium
+        run: |
+          node scripts/serve.mjs &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/quantum-battery-xas-lab/ > /dev/null && break; sleep 1; done
+          npx playwright test tests/budget.spec.ts tests/sweep.spec.ts --project=desktop
