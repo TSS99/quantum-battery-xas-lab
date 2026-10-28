@@ -2,7 +2,7 @@
 /* The photons of the 3D hutch: packets from photon-sim.ts drawn as glowing dots with short streaks along their
    direction, flashes where they are absorbed, and the beam's outline (its real width, three times enlarged) fading
    with every absorber. X-rays are invisible; the colours are a false energy scale. */
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { C1, SLITS_X, SOURCE_X, STOP_X, YB0 } from './hutch-parts';
@@ -19,8 +19,11 @@ const ION: V3 = [0.45, 0.6, 1];
 const tmp = new THREE.Object3D(), color = new THREE.Color(), UP = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0), probe = new THREE.Vector3();
 
-/** The packets, their streaks and the absorption flashes, stepped every frame while `animate` is on. */
-export function Photons({ setup, animate, seed = 1 }: { setup: PhotonSetup; animate: boolean; seed?: number }) {
+/**
+ * The packets, their streaks and the absorption flashes, stepped every frame while `animate` is on. `pass`, while the
+ * second crystal rocks, holds its throughput for each order right now.
+ */
+export function Photons({ setup, animate, seed = 1, pass }: { setup: PhotonSetup; animate: boolean; seed?: number; pass?: RefObject<number[] | null> }) {
   const sim = useMemo(() => {
     let s = seed >>> 0 || 1;
     const random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
@@ -44,6 +47,7 @@ export function Photons({ setup, animate, seed = 1 }: { setup: PhotonSetup; anim
   useLayoutEffect(() => () => [dots, gems, streaks, flashes].forEach(m => { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }), [dots, gems, streaks, flashes]);
 
   useFrame(({ camera }, dt) => {
+    sim.secondCrystalPass = pass?.current ?? null;
     if (animate) sim.step(Math.min(dt, 0.1));
     // Markers keep about the same size on screen: smaller than the hardware up close, still visible from afar.
     const near = (at: V3) => Math.min(1.5, Math.max(0.32, camera.position.distanceTo(probe.set(...at)) / 720));
@@ -90,10 +94,11 @@ export function Photons({ setup, animate, seed = 1 }: { setup: PhotonSetup; anim
 /**
  * The beam's outline from the source to the beam stop: the bending-magnet fan up to the front-end slits, then the
  * accepted beam at its real width (enlarged three times; heights of a fraction of a millimetre are drawn thicker),
- * narrowing to the focus at the sample and opening again past it. Each stretch between absorbers is fainter by what
- * the absorbers before it took out of the fundamental.
+ * narrowing to the focus at the sample and opening again past it. Each stretch between absorbers is fainter in
+ * proportion to what the absorbers before it took out of the fundamental (with a floor, so a faint beam still shows
+ * where it goes); past the second crystal it follows that crystal's throughput as it rocks.
  */
-export function BeamOutline({ setup }: { setup: PhotonSetup }) {
+export function BeamOutline({ setup, pass }: { setup: PhotonSetup; pass?: RefObject<number[] | null> }) {
   // Materials are kept for the life of the view and only recoloured: disposing them on every slider step made three.js
   // throw away and recompile their shader program each time.
   const pool = useRef<THREE.MeshBasicMaterial[]>([]);
@@ -101,10 +106,13 @@ export function BeamOutline({ setup }: { setup: PhotonSetup }) {
     const { envelope, stages, c2x, twoTheta, orders, fanMrad } = setup;
     // Breakpoints: every stage, the slits, the crystals and the focus; the fundamental's surviving share on each stretch.
     const cuts = [...new Set([SOURCE_X, SLITS_X, C1, c2x, ...stages.map(s => s.x0), ...stages.map(s => s.x1), envelope.focusX ?? STOP_X, STOP_X])].filter(x => x >= SOURCE_X && x <= STOP_X).sort((a, b) => a - b);
-    const out: { geometry: THREE.BufferGeometry; color: V3; opacity: number }[] = [];
+    const out: { geometry: THREE.BufferGeometry; color: V3; base: number; survive: number; afterCrystal: boolean }[] = [];
+    const crystal = stages.find(s => s.kind === 'crystal');
     for (let i = 0; i + 1 < cuts.length; i++) {
       const xa = cuts[i], xb = cuts[i + 1];
-      const survive = stages.filter(s => s.x1 <= xa).reduce((r, s) => r * (1 - s.remove[0]), 1);
+      // What reaches this stretch, leaving out the second crystal, whose share can change from frame to frame.
+      const survive = stages.filter(s => s.x1 <= xa && s !== crystal).reduce((r, s) => r * (1 - s.remove[0]), 1);
+      const afterCrystal = !!crystal && crystal.x1 <= xa;
       if (xb - xa < 0.01 || survive < 1e-6) continue;
       const white = xb <= C1, steps = Math.max(2, Math.ceil((xb - xa) / 12));
       const ring = (x: number): V3[] => {
@@ -123,12 +131,20 @@ export function BeamOutline({ setup }: { setup: PhotonSetup }) {
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); geometry.setIndex(index);
-      out.push({ geometry, color: white ? [0.92, 0.94, 1] : orders[0].color, opacity: (white ? 0.28 : 0.34) * (0.25 + 0.75 * Math.sqrt(survive)) });
+      out.push({ geometry, color: white ? [0.92, 0.94, 1] : orders[0].color, base: white ? 0.28 : 0.34, survive, afterCrystal });
     }
     while (pool.current.length < out.length) pool.current.push(new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
-    out.forEach((segment, i) => { pool.current[i].color.setRGB(...segment.color); pool.current[i].opacity = segment.opacity; });
+    out.forEach((segment, i) => pool.current[i].color.setRGB(...segment.color));
     return out;
-  }, [setup]);
+  }, [setup, pass]);
+  const setPass = 1 - (setup.stages.find(s => s.kind === 'crystal')?.remove[0] ?? 0);
+  useFrame(() => {
+    const now = pass?.current?.[0] ?? setPass;
+    segments.forEach((segment, i) => {
+      const share = segment.survive * (segment.afterCrystal ? now : 1);
+      pool.current[i].opacity = share < 1e-6 ? 0 : segment.base * (0.12 + 0.88 * share);
+    });
+  });
   useLayoutEffect(() => () => segments.forEach(m => m.geometry.dispose()), [segments]);
   useLayoutEffect(() => () => pool.current.forEach(m => m.dispose()), []);
   return <>{segments.map((m, i) => <mesh key={i} geometry={m.geometry} material={pool.current[i]} renderOrder={2} />)}</>;

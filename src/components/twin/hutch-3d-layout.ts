@@ -75,6 +75,50 @@ export function frameFor(mode: TwinMode, whole: boolean, aspect: number): Frame 
   return { target, position: [target[0] + d * dir[0], target[1] + d * dir[1], target[2] + d * dir[2]] };
 }
 
+/**
+ * The Bragg axis of the monochromator, as a motor drives it: it speeds up at a fixed acceleration, cruises at its top
+ * speed and slows down to stop on the target, so a long move takes seconds and a scan step of a few millidegrees is
+ * done at once. A few degrees a second is the order of a stepper-driven Bragg axis.
+ */
+export const BRAGG_MOTOR = { speed_rad_s: 3 * Math.PI / 180, accel_rad_s2: 6 * Math.PI / 180 } as const;
+
+export interface Motor { position: number; velocity: number }
+
+/**
+ * One step of a motor with a speed and acceleration limit (a trapezoidal move): it brakes when the distance left is
+ * what it needs to stop, never passes the target and turns round smoothly when the target moves behind it. Steps of
+ * any size cover the same ground, so a slow frame rate does not change where the motor is.
+ */
+export function motorStep(motor: Motor, target: number, dt: number, limits: { speed_rad_s: number; accel_rad_s2: number } = BRAGG_MOTOR): Motor {
+  const { speed_rad_s: vmax, accel_rad_s2: a } = limits;
+  let { position: x, velocity: v } = motor, left = Math.max(0, dt);
+  // Small substeps keep long frames exact enough; each one is a constant acceleration.
+  while (left > 0) {
+    const h = Math.min(left, 1 / 240); left -= h;
+    const gap = target - x, dir = Math.sign(gap);
+    if (gap === 0 && v === 0) break;
+    // Close enough to stop within this substep: land on the target.
+    if (Math.abs(gap) <= Math.abs(v) * h + 0.5 * a * h * h && Math.abs(v) <= a * h * 2) { x = target; v = 0; break; }
+    const stopping = v * v / (2 * a);
+    const towards = Math.sign(v) === dir;
+    const want = towards && stopping >= Math.abs(gap) ? 0 : dir * vmax;
+    const dv = Math.max(-a * h, Math.min(a * h, want - v)), v1 = v + dv;
+    let x1 = x + (v + v1) / 2 * h;
+    // Never pass the target while heading for it.
+    if (towards && Math.sign(target - x1) !== dir) { x1 = target; v = 0; x = x1; break; }
+    x = x1; v = v1;
+  }
+  return { position: x, velocity: v };
+}
+
+/**
+ * The second-crystal rocking cue: the detune, in widths of the fundamental rocking curve, swinging either side of
+ * the set detune with a slow period. The drawing turns the crystal by `drawn_deg` at the full swing, about a thousand
+ * times the real angle, which is a few arcseconds.
+ */
+export const ROCKING = { amplitude: 1.5, period_s: 3.2, drawn_deg: 2.5 } as const;
+export const rockingDetune = (t_s: number) => ROCKING.amplitude * Math.sin(2 * Math.PI * t_s / ROCKING.period_s);
+
 /** The idle sway: after a few seconds without input the view swings slowly left and right about its target, easing in. */
 export const SWAY = { idle_ms: 5000, ramp_ms: 3000, amplitude_deg: 6, period_ms: 20000 } as const;
 

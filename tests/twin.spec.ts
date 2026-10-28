@@ -288,6 +288,21 @@ test('the live scope runs without Acquire and follows a control at once', async 
   expect(errors).toEqual([]);
 });
 
+test('during a scan the 3D hutch follows it: the scene shows the scan energy as it steps, then clears', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=7');
+  const badge = page.locator('.hutch-3d .hutch-scanning');
+  await expect(badge).toBeHidden();
+  await page.keyboard.press('i');
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText(/^Scanning · \d+\.\d eV$/);
+  const first = await badge.innerText();
+  await expect.poll(() => badge.innerText()).not.toBe(first);
+  await expect(changed(page)).toContainText('Acquisition 1 stored', { timeout: 30_000 });
+  await expect(badge).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
 test('Acquire runs a scan in the worker: points build up, the acquisition is stored and downloads as XDI', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page, '#mode=transmission&seed=7');

@@ -27,6 +27,7 @@ import { RESULT_TABS, type ResultTab } from './twin-state';
 import { storedAcquisition, useTwin, type StoredAcquisition } from './twin-store';
 import { TexProse } from './tex-prose';
 import { useTwinScan } from './use-twin-worker';
+import { scanCursor } from './scan-cursor';
 
 // The scope's drawing code loads after the page, keeping the first load within its budget.
 const LiveScope = dynamic(() => import('./live-scope').then(m => m.LiveScope), { ssr: false, loading: () => <p className="twin-empty">Starting the live scope…</p> });
@@ -241,6 +242,9 @@ export function ResultsDock() {
   // Replay the streamed points at a watchable pace (instantly with reduced motion).
   const shown = !scanState ? 0 : reduced ? progress.points.length : Math.min(progress.points.length, Math.ceil(progress.total * elapsed / REPLAY_MS));
   const replaying = !!scanState && (progress.running || shown < progress.points.length);
+  // The 3D hutch follows the point on show: its crystals step with the scan.
+  useEffect(() => { scanCursor.energy_eV = replaying && shown > 0 ? progress.points[shown - 1].energy_eV : null; }, [replaying, shown, progress.points]);
+  useEffect(() => () => { scanCursor.energy_eV = null; }, []);
   useEffect(() => {
     if (!replaying || paused) return;
     let last = performance.now();

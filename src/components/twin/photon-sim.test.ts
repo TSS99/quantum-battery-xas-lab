@@ -95,13 +95,48 @@ describe('photon packets in the 3D hutch', () => {
     // Isotropic would put 10 % within |cos| > 0.9; the dipole pattern of a horizontally polarised beam about 1.4 %.
     expect(towardDetector / 20000).toBeLessThan(0.025);
     const state = applyCommand(DEFAULT_STATE, { type: 'mode', mode: 'fluorescence' }).state;
-    const { secondaries, setup } = run(applyCommand(state, { type: 'samplePreset', id: 'nio-pellet' }).state, 30, 5);
+    const { secondaries, setup } = run(applyCommand(state, { type: 'samplePreset', id: 'nio-pellet' }).state, 120, 5);
     expect(secondaries.fluorescence).toBeGreaterThan(100);
     // The detector catches about its solid angle of the isotropic fluorescence.
     expect(secondaries.detected / secondaries.fluorescence).toBeGreaterThan(setup.detector.fraction * 0.4);
     expect(secondaries.detected / secondaries.fluorescence).toBeLessThan(setup.detector.fraction * 2.5);
     expect(setup.sample.line!.energy_eV).toBeLessThan(setup.orders[0].energy_eV);
     expect(setup.sample.rotation).toBeCloseTo(Math.PI / 4, 6);
+  });
+
+  it('lets the crystals filter the white beam without changing any packet energy', () => {
+    const { setup } = setupFor(DEFAULT_STATE), sim = new PhotonSim(setup, seededRandom(11));
+    const drawn = new Map<object, number>();
+    let passed = 0;
+    for (let t = 0; t < 20; t += 1 / 30) {
+      sim.step(1 / 30);
+      for (const p of sim.packets) {
+        if (p.species === 'white' && p.order >= 0) drawn.set(p, p.energy_eV);
+        if (p.species === 'beam' && drawn.has(p)) { expect(p.energy_eV).toBe(drawn.get(p)); drawn.delete(p); passed++; }
+      }
+    }
+    expect(passed).toBeGreaterThan(500);
+    // White packets that end at the first crystal carry energies from the whole spectrum, not the mono's.
+    const heat = sim.packets.filter(p => p.species === 'white' && p.order < 0);
+    expect(new Set(heat.map(p => Math.round(p.energy_eV / 1000))).size).toBeGreaterThan(5);
+  });
+
+  it('lets a rocking second crystal pass what its throughput says right now', () => {
+    const state = applyCommand(DEFAULT_STATE, { type: 'thickness', thickness_um: 10 }).state;
+    const { setup } = setupFor(state), sim = new PhotonSim(setup, seededRandom(4));
+    sim.secondCrystalPass = setup.orders.map(() => 0.25);
+    let atCrystal = 0, beyond = 0;
+    const seen = new Set<object>();
+    for (let t = 0; t < 60; t += 1 / 30) {
+      sim.step(1 / 30);
+      for (const p of sim.packets) {
+        if (p.species !== 'beam' || seen.has(p)) continue;
+        seen.add(p);
+        if (p.end?.stage === 'second-crystal') atCrystal++; else beyond++;
+      }
+    }
+    const n = atCrystal + beyond;
+    expect(Math.abs(beyond / n - 0.25)).toBeLessThan(4 * Math.sqrt(0.25 * 0.75 / n));
   });
 
   it('boosts rare events by a round factor and says so', () => {

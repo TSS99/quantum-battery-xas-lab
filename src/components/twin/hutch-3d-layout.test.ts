@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TwinMode } from '@/lib/twin/types';
 import { PARTS, sceneFor } from './hutch-parts';
-import { CLOSE_UP, FLOOR, FOV, LABEL3, SHELF_GAP, SWAY, TIP3, clampToBox, focusX3, frameFor, swayAngle, toThree } from './hutch-3d-layout';
+import { CLOSE_UP, FLOOR, FOV, LABEL3, SHELF_GAP, SWAY, TIP3, BRAGG_MOTOR, ROCKING, clampToBox, focusX3, frameFor, motorStep, rockingDetune, swayAngle, toThree, type Motor } from './hutch-3d-layout';
 
 const MODES: TwinMode[] = ['transmission', 'fluorescence', 'electron-yield', 'xrf', 'mono', 'calibration', 'time-resolved', 'damage'];
 const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -76,5 +76,39 @@ describe('3D hutch layout', () => {
     expect(peak).toBeCloseTo(max, 3);
     // The quarter period after the ramp is the full swing.
     expect(swayAngle(SWAY.idle_ms + SWAY.period_ms * 1.25)).toBeCloseTo(max, 9);
+  });
+
+  it('drives the Bragg axis like a motor: top speed, smooth stop on the target, no overshoot', () => {
+    const deg = Math.PI / 180, { speed_rad_s: vmax, accel_rad_s2: a } = BRAGG_MOTOR;
+    const run = (from: number, to: number, dt: number) => {
+      let m: Motor = { position: from, velocity: 0 }, t = 0, fastest = 0;
+      while ((m.position !== to || m.velocity !== 0) && t < 60) {
+        m = motorStep(m, to, dt); t += dt; fastest = Math.max(fastest, Math.abs(m.velocity));
+        expect(Math.sign(to - from) * (m.position - to)).toBeLessThanOrEqual(1e-12);
+      }
+      return { t, fastest, m };
+    };
+    // A 10 degree move: accelerate, cruise, brake; the trapezoid takes d/vmax + vmax/a.
+    const long = run(12 * deg, 2 * deg, 1 / 60);
+    expect(long.m.position).toBe(2 * deg);
+    expect(long.fastest).toBeLessThanOrEqual(vmax + 1e-12);
+    expect(long.t).toBeGreaterThan(10 * deg / vmax);
+    expect(long.t).toBeLessThan(10 * deg / vmax + vmax / a + 0.1);
+    // A scan step of a thousandth of a degree is over in a fraction of a second.
+    expect(run(12 * deg, 12.001 * deg, 1 / 60).t).toBeLessThan(0.1);
+    // No time, no motion; one long frame lands where many short ones do.
+    expect(motorStep({ position: 1, velocity: 0 }, 0, 0)).toEqual({ position: 1, velocity: 0 });
+    const one = motorStep({ position: 0, velocity: 0 }, deg, 0.5), many = Array.from({ length: 30 }).reduce<Motor>(m => motorStep(m, deg, 0.5 / 30), { position: 0, velocity: 0 });
+    expect(one.position).toBeCloseTo(many.position, 9);
+    // A target that jumps behind a moving motor: it brakes, turns and still lands exactly.
+    let m: Motor = { position: 0, velocity: vmax };
+    for (let i = 0; i < 600 && (m.position !== -deg || m.velocity !== 0); i++) m = motorStep(m, -deg, 1 / 60);
+    expect(m).toEqual({ position: -deg, velocity: 0 });
+  });
+
+  it('rocks the second crystal either side of the set detune', () => {
+    expect(rockingDetune(0)).toBe(0);
+    expect(rockingDetune(ROCKING.period_s / 4)).toBeCloseTo(ROCKING.amplitude, 12);
+    expect(rockingDetune(ROCKING.period_s * 3 / 4)).toBeCloseTo(-ROCKING.amplitude, 12);
   });
 });

@@ -14,7 +14,11 @@ import { useReducedMotion } from 'motion/react';
 import { Tex } from '../tex';
 import type { TwinState } from '@/lib/twin/types';
 import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, labelledParts, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
-import { FLOOR, FOV, LABEL3, TABLE, TIP3, clampToBox, frameFor, swayAngle, toThree, type V3 } from './hutch-3d-layout';
+import { FLOOR, FOV, LABEL3, ROCKING, TABLE, TIP3, clampToBox, frameFor, motorStep, rockingDetune, swayAngle, toThree, type Motor, type V3 } from './hutch-3d-layout';
+import { braggAngle_rad, braggEnergy_eV, detuneFactor, monoReading_eV, monoTrueEnergy_eV } from '@/lib/twin/mono';
+import { planPoints } from '@/lib/twin/scan';
+import { edgeEnergy } from '@/lib/twin/acquire';
+import { scanCursor } from './scan-cursor';
 import { YB } from '../scene-kit';
 import { tourPose, tourStops, tourTimeline, type TourStop, type TourTimeline } from './hutch-tour';
 import { Blk, Bolts, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
@@ -354,8 +358,39 @@ const Room = memo(function Room({ m }: { m: Mats }) {
   </>;
 });
 
+/** Seconds for one swing of the Bragg axis there and back in a quick scan, slowed like everything else in the drawing. */
+const QUICK_SCAN_PERIOD_S = 4;
+
+/**
+ * The beam and its photons. At rest they come from the set state; while the mono turns they follow the angle the
+ * crystals are actually at, a few times a second, so the beam always leaves the second crystal and carries the
+ * energy it passes. While the second crystal rocks, its throughput for each order is worked out every frame from the
+ * tabulated rocking curves, and the packets and the beam past it dim and brighten with it.
+ */
+function MovingBeam({ twin, live, setup, mono, animate, rocking }: { twin: TwinState; live: HutchSceneProps['live']; setup: PhotonSetup; mono: RefObject<number | null>; animate: boolean; rocking: boolean }) {
+  const [theta, setTheta] = useState<number | null>(null), last = useRef(0), pass = useRef<number[] | null>(null);
+  const moving = useMemo(() => {
+    if (theta === null) return setup;
+    try {
+      const { crystal, offset_eV } = twin.profile.mono;
+      return photonSetup({ ...twin, energy_eV: monoReading_eV(braggEnergy_eV(crystal, theta), offset_eV) }, live, drawnBraggDeg(theta * 180 / Math.PI) * Math.PI / 180) ?? setup;
+    } catch { return setup; }
+  }, [theta, setup, twin, live]);
+  useFrame(({ clock }) => {
+    const want = mono.current, now = performance.now();
+    if (want !== theta && (want === null || now - last.current > 66)) { last.current = now; setTheta(want); }
+    if (!rocking || !animate) { pass.current = null; return; }
+    const detune = Math.min(1.5, Math.abs(twin.profile.mono.detune + rockingDetune(clock.getElapsedTime())));
+    pass.current = moving.orders.map(o => { try { return detuneFactor(moving.crystal, o.order, moving.fundamental_eV, detune); } catch { return 1; } });
+  });
+  return <>
+    <BeamOutline setup={moving} pass={pass} />
+    <Photons setup={moving} animate={animate} seed={twin.seed} pass={pass} />
+  </>;
+}
+
 /** Everything in the hutch. */
-function World({ twin, live, animate, hq, setup, touring }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean; setup: PhotonSetup | null; touring: boolean }) {
+function World({ twin, live, animate, hq, setup, touring, scanBadge }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean; setup: PhotonSetup | null; touring: boolean; scanBadge: RefObject<HTMLDivElement | null> }) {
   const m = useMaterials();
   const { mode, environment, profile } = twin;
   // The tour shows every part solid, since its captions visit hardware this mode does not read.
@@ -371,17 +406,53 @@ function World({ twin, live, animate, hq, setup, touring }: { twin: TwinState; l
   const turn = setup?.sample.rotation ?? 0;
   // The beam's footprint on the sample face: its size at the focus, longer across the face when the sample is turned.
   const spot = setup ? { w: Math.max(0.3, setup.envelope.real(XS).width_mm / 10 * WIDTH_SCALE) / Math.cos(turn), h: Math.max(0.2, setup.envelope.real(XS).height_mm / 10 * WIDTH_SCALE), color: setup.orders[0].color } : null;
-  const tv = drawnBraggDeg(live.theta_deg) * Math.PI / 180, c2x = C1 + (YB - YB0) / Math.tan(2 * tv);
+  const { crystal, offset_eV } = profile.mono;
+  const setTheta = live.theta_deg === null ? null : live.theta_deg * Math.PI / 180;
+  // A time-resolved (quick) scan swings the Bragg axis back and forth over the scan's energy range.
+  const sweep = useMemo(() => {
+    if (!fast) return null;
+    try {
+      const { energy_eV } = planPoints(twin.scan, edgeEnergy(twin.sample));
+      const angle = (e: number) => braggAngle_rad(crystal, monoTrueEnergy_eV(e, offset_eV));
+      const a = angle(energy_eV.reduce((x, y) => Math.min(x, y))), b = angle(energy_eV.reduce((x, y) => Math.max(x, y)));
+      return { mid: (a + b) / 2, half: Math.abs(a - b) / 2 };
+    } catch { return null; }
+  }, [fast, twin.scan, twin.sample, crystal, offset_eV]);
 
-  // Moving parts: crystals rocking, the harmonic rejection mirror sliding, electrons going round.
+  // Moving parts: the Bragg axis driven like a motor to a new angle, the second crystal rocking, the harmonic rejection
+  // mirror sliding, electrons going round. During a scan the crystals follow the scan's energy instead of the set one;
+  // the badge says what the mono is doing, and the beam follows the angle the crystals are actually at.
   const crystal1 = useRef<THREE.Group>(null), crystal2 = useRef<THREE.Group>(null), hrmGroup = useRef<THREE.Group>(null);
+  const motor = useRef<Motor>({ position: setTheta ?? 0, velocity: 0 }), monoNow = useRef<number | null>(null), badgeText = useRef('');
+  const carriage = useRef<THREE.Group>(null);
+  const placeCrystals = (theta: number | null, rock: number) => {
+    const a = drawnBraggDeg(theta === null ? null : theta * 180 / Math.PI) * Math.PI / 180;
+    if (crystal1.current) crystal1.current.rotation.z = a;
+    const x = C1 + (YB - YB0) / Math.tan(2 * a);
+    if (crystal2.current) { crystal2.current.rotation.z = a + rock; crystal2.current.position.x = x; }
+    if (carriage.current) carriage.current.position.x = x;
+  };
+  useLayoutEffect(() => placeCrystals(setTheta === null ? null : motor.current.position, 0));
   const electrons = useRef<THREE.Group>(null);
   const orbit = useMemo(() => new THREE.CatmullRomCurve3(ORBIT.map(p => new THREE.Vector3(...toThree(p)))), []);
   const hrmY = hrm?.inserted ? 0 : -16;
   useFrame(({ clock }, dt) => {
-    const t = clock.getElapsedTime(), rock = (on: boolean) => on && animate ? Math.sin(t * Math.PI / 1.6) * 2.5 * Math.PI / 180 : 0;
-    if (crystal1.current) crystal1.current.rotation.z = tv + rock(fast);
-    if (crystal2.current) crystal2.current.rotation.z = tv + rock(rocking);
+    const t = clock.getElapsedTime(), scanning = scanCursor.energy_eV;
+    let target = setTheta;
+    if (scanning !== null) { try { target = braggAngle_rad(crystal, monoTrueEnergy_eV(scanning, offset_eV)); } catch { /* keep the set angle */ } }
+    else if (sweep && animate) target = sweep.mid + sweep.half * Math.sin(2 * Math.PI * t / QUICK_SCAN_PERIOD_S);
+    if (target !== null) motor.current = animate ? motorStep(motor.current, target, Math.min(dt, 0.25)) : { position: target, velocity: 0 };
+    const theta = target === null ? null : motor.current.position;
+    // In the rocking cue the second crystal swings through its rocking curve; the drawing enlarges the angle.
+    const rock = rocking && !fast && animate ? rockingDetune(t) / ROCKING.amplitude * ROCKING.drawn_deg * Math.PI / 180 : 0;
+    placeCrystals(theta, rock);
+    const settled = theta === null || (theta === setTheta && motor.current.velocity === 0);
+    monoNow.current = settled ? null : theta;
+    const badge = scanBadge.current;
+    if (badge) {
+      const text = settled ? '' : `${scanning !== null ? 'Scanning' : sweep && animate ? 'Quick scan' : 'Mono moving'} · ${monoReading_eV(braggEnergy_eV(crystal, theta!), offset_eV).toFixed(1)} eV`;
+      if (text !== badgeText.current) { badgeText.current = text; badge.hidden = !text; if (text) badge.textContent = text; }
+    }
     if (hrmGroup.current) hrmGroup.current.position.y += (hrmY - hrmGroup.current.position.y) * (animate ? Math.min(1, dt * 5) : 1);
     electrons.current?.children.forEach((e, i) => e.position.copy(orbit.getPointAt(((animate ? t * 0.7 : 0) + i / 6) % 1)));
   });
@@ -467,14 +538,15 @@ function World({ twin, live, animate, hq, setup, touring }: { twin: TwinState; l
       <Tank m={m} x0={480} x1={640} y1={100} z={40} win={[16, 92]} plate={profile.mono.crystal.replace(/Si(\d+)/, 'Si($1)')}>
         {[C1 - 4, C1 + 4].map(x => <Blk key={x} x0={x - 1} x1={x + 1} y0={YB0 - 10} y1={97} z0={8} z1={11} m={m.copper} r={0.3} />)}
         <Blk x0={C1 - 10} x1={C1 + 10} y0={7} y1={YB0 - 12} z0={-12} z1={12} m={m.dark} />
-        <CylY x={c2x} y0={YB + 10} y1={97} r={2} m={m.steel} />
+        {/* The second crystal's carriage rod rides with it along the beam */}
+        <group ref={carriage}><CylY x={0} y0={YB + 10} y1={97} r={2} m={m.steel} /></group>
       </Tank>
     </Part>
     <Part idle={idle('first-crystal')}>
-      <group ref={crystal1} position={toThree([C1, YB0, 0])} rotation={[0, 0, tv]}><Blk x0={-15} x1={15} y0={-8} y1={0} z0={-12} z1={12} m={m.silicon} r={0.5} /></group>
+      <group ref={crystal1} position={toThree([C1, YB0, 0])}><Blk x0={-15} x1={15} y0={-8} y1={0} z0={-12} z1={12} m={m.silicon} r={0.5} /></group>
     </Part>
     <Part idle={idle('second-crystal')}>
-      <group ref={crystal2} position={toThree([c2x, YB, 0])} rotation={[0, 0, tv]}><Blk x0={-15} x1={15} y0={0} y1={8} z0={-12} z1={12} m={m.silicon} r={0.5} /></group>
+      <group ref={crystal2} position={[0, YB, 0]}><Blk x0={-15} x1={15} y0={0} y1={8} z0={-12} z1={12} m={m.silicon} r={0.5} /></group>
     </Part>
     <Pipe m={m} x0={640} x1={680} y={YB} bellows={[648, 670]} />
     <Part idle={idle('focusing-mirror')}>
@@ -536,8 +608,7 @@ function World({ twin, live, animate, hq, setup, touring }: { twin: TwinState; l
 
     {/* The beam: invisible in reality. Its outline (real width, three times enlarged) and photon packets whose every
         absorption, reflection and emission follows the twin's numbers; see photon-sim.ts. */}
-    {setup && <BeamOutline setup={setup} />}
-    {setup && <Photons setup={setup} animate={animate} seed={twin.seed} />}
+    {setup && <MovingBeam twin={twin} live={live} setup={setup} mono={monoNow} animate={animate} rocking={rocking && !fast} />}
 
     <Part idle={idle('i0')}><Chamber m={m} c={CHAMBERS.I0} length={profile.chambers.find(c => c.id === 'I0')?.length_cm} readout={live.i0 ? lcdVolts(live.i0.voltage_V, live.i0.saturated) : undefined} gas={gas('I0')} /></Part>
     <Part idle={idle('sample-stage')}>
@@ -877,14 +948,16 @@ const power = (value: number) => { const e = Math.floor(Math.log10(value)), m = 
 
 /** What the dots mean: X-rays are invisible, so the colours, the speed and the counts are spelled out. A chip with the
     energy bar; tap it for the rest. */
-function PhotonLegend({ setup }: { setup: PhotonSetup }) {
+function PhotonLegend({ setup, rocking }: { setup: PhotonSetup; rocking: boolean }) {
+  // The drawn rocking swing over the real one: the crystal turns by a few arcseconds through its rocking curve.
+  const rockScale = ROCKING.drawn_deg * Math.PI / 180 / (ROCKING.amplitude * setup.rockingFwhm_rad);
   const [open, setOpen] = useState(false);
   const stops = [0, 0.25, 0.5, 0.75, 1].map(t => { const c = energyColor(COLOR_RANGE_eV[0] * (COLOR_RANGE_eV[1] / COLOR_RANGE_eV[0]) ** t); return `rgb(${c.map(v => Math.round(Math.min(1, v) * 255)).join(' ')}) ${t * 100}%`; });
   return <div className={'hutch-legend' + (open ? ' is-open' : '')} role="note" aria-label="How the photons are drawn">
     <button type="button" className="hutch-legend-chip" aria-expanded={open} aria-controls="hutch-legend-text" onClick={() => setOpen(!open)}>
       <strong>Photons</strong><span>2 keV</span><i style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} /><span>45 keV</span>
     </button>
-    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex> · flash: absorbed</p>
+    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex>{rocking && <> · rocking angle <Tex plain>{String.raw`\times${power(rockScale)}`}</Tex></>} · flash: absorbed</p>
   </div>;
 }
 
@@ -908,7 +981,7 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
   const collimating = twin.profile.mirrors.some(r => r.role === 'collimating');
   const harmonicRejectionIn = !!twin.profile.mirrors.find(r => r.role === 'harmonic-rejection')?.inserted;
   const run = useMemo<TourRun | null>(() => tour && { timeline: tourTimeline(tourStops({ collimating, harmonicRejectionIn }), reduced), record: tour === 'record' }, [tour, reduced, collimating, harmonicRejectionIn]);
-  const [step, setStep] = useState(0), bar = useRef<HTMLSpanElement>(null);
+  const [step, setStep] = useState(0), bar = useRef<HTMLSpanElement>(null), scanBadge = useRef<HTMLDivElement>(null);
   useEffect(() => setStep(0), [run]);
   useEffect(() => {
     if (!run) return;
@@ -947,7 +1020,7 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
       <div className="hutch-canvas" role="img" aria-label={label} onPointerDown={run ? () => onTour('stopped', null) : undefined}>
         <Canvas shadows dpr={coarse ? [1, 1.5] : [1, 2]} frameloop={visible || hq ? 'demand' : 'never'} camera={{ fov: FOV, near: 10, far: 9000, position: [700, 600, 2400] }}
           gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMappingExposure = 1; gl.shadowMap.autoUpdate = false; }}>
-          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} setup={setup} touring={!!run} /></Suspense>
+          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} setup={setup} touring={!!run} scanBadge={scanBadge} /></Suspense>
           <Rig mode={mode} whole={whole} focusOn={focusOn} reset={reset} reduced={reduced} touring={!!run} />
           {run && <Tour run={run} onStep={setStep} onEnd={video => onTour('done', video)} bar={bar} />}
           <Effects light={coarse} hq={hq} composer={composer} />
@@ -977,7 +1050,8 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
       <div className="hutch-hud" aria-hidden="true" ref={el => { overlay.current.hud = el; }}>
         <span className="hutch-hud-live">Live</span><span>{modeInfo(mode).name}</span><span>{live.energy_eV.toFixed(1)} eV</span><span>{twin.profile.mono.crystal.replace(/Si(\d+)/, 'Si($1)')}</span>
       </div>
-      {setup && <PhotonLegend setup={setup} />}
+      {setup && <PhotonLegend setup={setup} rocking={hasCue(mode, 'rocking') && !hasCue(mode, 'fast')} />}
+      <div className="hutch-scanning" ref={scanBadge} role="status" hidden />
       {run && <div className="hutch-tour" role="status">
         <div key={step}>
           <p className="hutch-tour-count">{step + 1} / {run.timeline.items.length}{run.record ? ' · Recording' : ''}</p>

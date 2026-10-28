@@ -6,7 +6,8 @@
  * - The source emits a white beam (the bending magnet or undulator spectrum of src/lib/twin/source.ts) across its
  *   fan; the front-end slits keep the accepted angle, the collimating mirror reflects each energy with its tabulated
  *   reflectivity, and the first crystal passes only the energies of its Bragg orders. Everything else is absorbed,
- *   which is why real first crystals are cooled.
+ *   which is why real first crystals are cooled. A crystal is a filter, not a converter: the packets it will pass
+ *   are drawn at the source with their own energy and keep their colour all the way.
  * - After the monochromator a packet is the fundamental or one harmonic, in the shares beam.ts computes; at every
  *   mirror, chamber, sample and foil it is removed with the probability the twin's models give at its own energy,
  *   so harmonics punch through thick samples just as they do in the data.
@@ -20,7 +21,7 @@ import type { MirrorConfig, TwinState } from '@/lib/twin/types';
 import type { TwinStatus } from '@/lib/twin/twin';
 import { beamAtSample } from '@/lib/twin/beam';
 import { tuneSource } from '@/lib/twin/source';
-import { mirrorReflectivity } from '@/lib/twin/tables';
+import { darwin, mirrorReflectivity } from '@/lib/twin/tables';
 import { absorbedFraction } from '@/lib/twin/chambers';
 import { fluorescenceLine, muComponents, sharpEdge, transmission } from '@/lib/twin/sample';
 import { edgeEnergy, foilTransmission } from '@/lib/twin/acquire';
@@ -142,6 +143,13 @@ export interface PhotonSetup {
   /** Probability that a packet the crystals pass is each order, and the running total for drawing one. */
   orderShare: number[];
   orderCdf: number[];
+  /** The same running total at the source, before the collimating mirror has taken its share of each order. */
+  sourceCdf: number[];
+  /** The monochromator, for the second crystal's throughput as it rocks. */
+  crystal: TwinState['profile']['mono']['crystal'];
+  fundamental_eV: number;
+  /** Full width of the fundamental's rocking curve, radians: a few arcseconds. */
+  rockingFwhm_rad: number;
   stages: Stage[];
   /** White spectrum to sample from: log-spaced energies and their cumulative probability. */
   white: { energy: Float64Array; cdf: Float64Array };
@@ -240,19 +248,21 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
   }
   grid.sort((a, b) => a - b);
   const energyGrid = new Float64Array(grid), cdf = new Float64Array(grid.length);
-  let acc = 0, mirrorPass = 0;
+  let acc = 0;
   for (let i = 0; i < grid.length; i++) {
     const width = Math.log(grid[Math.min(i + 1, grid.length - 1)] / grid[Math.max(i - 1, 0)]) / 2;
     const w = Math.max(0, tuned.fluxAt(grid[i])) * width;
-    acc += w; cdf[i] = acc; mirrorPass += w * (collimating ? collimating(grid[i]) : 1);
+    acc += w; cdf[i] = acc;
   }
   const whiteFlux = acc / 1e-3, monoFlux = beam.orders.reduce((sum, o) => sum + o.sourceFlux * o.bandwidth * o.acceptance, 0) / 1e-3;
   for (let i = 0; i < cdf.length; i++) cdf[i] /= acc || 1;
 
-  // Packets per second the drawing passes through the crystals: the emitted rate, less the slits and the collimating mirror.
+  // Packets per second the drawing passes through the crystals: the share of the emitted rate drawn at an order's
+  // energy, less the slits, and less what the collimating mirror takes at that energy.
   const fanMrad = profile.source.kind === 'undulator' ? 0.03 : FAN_MRAD;
   const slitShare = Math.min(1, profile.source.kind === 'undulator' ? 1 : profile.source.hAccept_mrad / FAN_MRAD);
-  const selectedRate = WHITE_RATE * slitShare * (acc > 0 ? mirrorPass / acc : 1) * SELECTED_SHARE;
+  const sourceShares = orders.map(o => pre[beam.orders.indexOf(o)]), sourceTotal = sourceShares.reduce((a, b) => a + b, 0) || 1;
+  const selectedRate = WHITE_RATE * slitShare * SELECTED_SHARE * total / sourceTotal;
   // How often the drawing sees each event at the sample, before any boost.
   let reachSample = per(() => 1);
   for (const s of stages) { if (s.kind === 'sample') break; reachSample = reachSample.map((r, i) => r * (1 - s.remove[i])); }
@@ -267,6 +277,8 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
     orders: orders.map(o => ({ order: o.order, energy_eV: o.energy_eV, color: energyColor(o.energy_eV) })),
     orderShare: shares.map(s => s / total),
     orderCdf: shares.map((_, i) => shares.slice(0, i + 1).reduce((a, b) => a + b, 0) / total),
+    sourceCdf: sourceShares.map((_, i) => sourceShares.slice(0, i + 1).reduce((a, b) => a + b, 0) / sourceTotal),
+    crystal: profile.mono.crystal, fundamental_eV: energy, rockingFwhm_rad: darwin(profile.mono.crystal, 1, energy).rocking_theta_fwhm_rad,
     stages,
     white: { energy: energyGrid, cdf },
     collimating,
@@ -307,7 +319,7 @@ export interface Packet {
   x: number;
   u: number;
   v: number;
-  /** Order index after the crystals; -1 for white packets. */
+  /** The Bragg order a packet the crystals will pass belongs to (drawn at the source); -1 for the rest of the white beam. */
   order: number;
   /** Where and how it ends on the line, decided when it is made. */
   endX: number;
@@ -342,6 +354,8 @@ function pick(cdf: ArrayLike<number>, r: number): number {
 export class PhotonSim {
   readonly packets: Packet[] = [];
   readonly flashes: Flash[] = [];
+  /** While the second crystal rocks: its throughput for each order right now, in place of the set detune's. */
+  secondCrystalPass: number[] | null = null;
   private debt = 0;
   constructor(public setup: PhotonSetup, private random: Random) {}
 
@@ -368,28 +382,38 @@ export class PhotonSim {
     return p.x > C1 && p.x < this.setup.c2x ? [Math.cos(this.setup.twoTheta), Math.sin(this.setup.twoTheta), 0] : [1, 0, 0];
   }
 
-  /** A new white packet at the source, with its whole history on the line decided now. */
+  /**
+   * A new white packet at the source, with its whole history on the line decided now. A share of them sit at the
+   * energy of a Bragg order (those are the ones the crystals will pass); the rest are anywhere in the white spectrum
+   * and end as heat at the slits, the collimating mirror or the first crystal.
+   */
   private emit(x = SOURCE_X) {
     const { setup, random } = this;
-    const energy = setup.white.energy[pick(setup.white.cdf, random())];
-    const p: Packet = { species: 'white', energy_eV: energy, color: energyColor(energy), x, u: random() - 0.5, v: random() - 0.5, order: -1, endX: 0, end: null, origin: [0, 0, 0], dir: [1, 0, 0], travelled: 0, limit: Infinity };
+    const u = random() - 0.5, v = random() - 0.5, selected = random() < SELECTED_SHARE;
+    const order = selected ? pick(setup.sourceCdf, random()) : -1;
+    const energy = selected ? setup.orders[order].energy_eV : setup.white.energy[pick(setup.white.cdf, random())];
+    const p: Packet = { species: 'white', energy_eV: energy, color: selected ? setup.orders[order].color : energyColor(energy), x, u, v, order, endX: 0, end: null, origin: [0, 0, 0], dir: [1, 0, 0], travelled: 0, limit: Infinity };
     // The front-end slits take the middle of the fan.
     if (Math.abs(p.u) > setup.slitShare / 2) { p.endX = SLITS_X; p.end = { kind: 'heat', stage: 'front-end-slits', secondary: null, count: 0 }; }
     else if (setup.collimating && random() > setup.collimating(energy)) { p.endX = MIRROR_X.collimating; p.end = { kind: 'heat', stage: 'collimating-mirror', secondary: null, count: 0 }; }
-    else if (random() > SELECTED_SHARE) { p.endX = C1; p.end = { kind: 'heat', stage: 'first-crystal', secondary: null, count: 0 }; }
+    else if (!selected) { p.endX = C1; p.end = { kind: 'heat', stage: 'first-crystal', secondary: null, count: 0 }; }
     else { p.endX = C1; p.end = null; }
     this.packets.push(p);
   }
 
-  /** At the first crystal a passed packet takes the energy of one Bragg order and gets its fate on the rest of the line. */
+  /**
+   * At the first crystal a passed packet gets its fate on the rest of the line. It keeps its energy; only while the
+   * mono is turning, when the order it was drawn for has moved on, does it take the energy the crystal passes now.
+   */
   private diffract(p: Packet) {
     const { setup, random } = this;
-    p.order = pick(setup.orderCdf, random());
+    if (!(p.order >= 0 && p.order < setup.orders.length)) p.order = pick(setup.orderCdf, random());
     const order = setup.orders[p.order];
-    p.species = 'beam'; p.energy_eV = order.energy_eV; p.color = order.color;
+    p.species = 'beam';
+    if (p.energy_eV !== order.energy_eV) { p.energy_eV = order.energy_eV; p.color = order.color; }
     p.endX = STOP_X; p.end = { kind: 'heat', stage: 'beam-stop', secondary: null, count: 0 };
     for (const stage of setup.stages) {
-      const remove = stage.remove[p.order];
+      const remove = stage.kind === 'crystal' && this.secondCrystalPass ? 1 - (this.secondCrystalPass[p.order] ?? 1) : stage.remove[p.order];
       if (!(random() < remove)) continue;
       const photo = random() < stage.photo[p.order];
       // Depth of the interaction: exponential through a chamber's gas, at the face for thin things.
