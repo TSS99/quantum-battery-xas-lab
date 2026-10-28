@@ -4,6 +4,7 @@ import { seededRandom } from '@/lib/xas';
 import { loadOptics, mirrorReflectivity } from '@/lib/twin/tables';
 import { DEFAULT_STATE, applyCommand, status } from '@/lib/twin/twin';
 import type { TwinState } from '@/lib/twin/types';
+import { SAMPLE_PRESETS } from '@/lib/twin/presets';
 import { comptonShifted } from '@/lib/twin/compton';
 import { electronRangeInGas_cm } from '@/lib/twin/ionization';
 import { CHAMBER_PLATE_OFFSET, XS } from './hutch-parts';
@@ -255,6 +256,18 @@ describe('photon packets in the 3D hutch', () => {
       for (const f of sim.flashes) if (f.kind === 'absorb' && !counted.has(f)) { counted.add(f); seen++; expect(f.at[0]).toBeGreaterThanOrEqual(front - 1e-9); expect(f.at[0]).toBeLessThanOrEqual(XS + 1e-9); }
     }
     expect(seen).toBeGreaterThan(10);
+  });
+
+  it('builds the photons of every sample: its orders, its fluorescence line and its slab', () => {
+    for (const preset of SAMPLE_PRESETS) {
+      const state = applyCommand(DEFAULT_STATE, { type: 'samplePreset', id: preset.id }).state;
+      const live = status(state), setup = photonSetup(state, live, live.theta_deg! * Math.PI / 180);
+      expect(setup, preset.id).not.toBeNull();
+      expect(setup!.sample.line, preset.id).not.toBeNull();
+      expect(setup!.sample.line!.energy_eV, preset.id).toBeLessThan(setup!.orders[0].energy_eV);
+      expect(setup!.sample.slab.thickness_cm, preset.id).toBeGreaterThan(0);
+      expect(setup!.sample.drawnThickness_cm, preset.id).toBeGreaterThanOrEqual(setup!.sample.slab.thickness_cm - 1e-12);
+    }
   });
 
   it('boosts rare events by a round factor and says so', () => {

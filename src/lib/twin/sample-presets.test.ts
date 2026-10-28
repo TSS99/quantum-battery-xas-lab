@@ -3,7 +3,7 @@ import { loadXrayData } from '../xraydata';
 import { loadOptics } from './tables';
 import { edgeEnergy } from './acquire';
 import { PROFILE_PRESETS, SAMPLE_PRESETS } from './presets';
-import { defaultFineStructure, libraryMaterialId, loadLibraryFineStructure, transmission } from './sample';
+import { defaultFineStructure, libraryMaterialId, loadLibraryFineStructure, muComponents, transmission } from './sample';
 import { planPoints } from './scan';
 import { DEFAULT_STATE, applyCommand, status } from './twin';
 import type { TwinState } from './types';
@@ -58,7 +58,48 @@ describe('every sample in the live view', () => {
       expect(defaultFineStructure(state.sample, edgeEnergy(state.sample)).label, preset.id).toMatch(/FEFF paths/);
       computed++;
     }
-    expect(computed).toBeGreaterThanOrEqual(11);
+    expect(computed).toBeGreaterThanOrEqual(38);
+  });
+
+  it('moves the whole edge by the chemical shift: the derivative peak, the scan window and the EXAFS reference', async () => {
+    for (const id of ['cu2o-pellet', 'cuo-pellet', 'mno2-pellet', 'na2so4-pellet']) {
+      const state = applyCommand(DEFAULT_STATE, { type: 'samplePreset', id }).state;
+      const shift = state.sample.edgeShift_eV!;
+      expect(shift, id).toBeGreaterThan(1);
+      await loadLibraryFineStructure(state.sample);
+      const unshifted = { ...state.sample, edgeShift_eV: undefined };
+      // The steepest rise of mu(E) near the edge, with and without the shift.
+      const steepest = (sample: TwinState['sample']) => {
+        const e0 = edgeEnergy(unshifted); let best = e0, slope = -Infinity;
+        for (let e = e0 - 15; e <= e0 + 30; e += 0.05) {
+          const d = muComponents(sample, e + 0.05).total_cm_inv - muComponents(sample, e).total_cm_inv;
+          if (d > slope) { slope = d; best = e; }
+        }
+        return best;
+      };
+      expect(Math.abs(steepest(state.sample) - steepest(unshifted) - shift), id).toBeLessThan(0.15);
+      expect(edgeEnergy(state.sample) - edgeEnergy(unshifted)).toBeCloseTo(shift, 12);
+      expect(state.energy_eV).toBeCloseTo(edgeEnergy(state.sample) + 20, 6);
+    }
+  });
+
+  it('sends each sample to a beamline that reaches its scan, and keeps every valence series in order', () => {
+    for (const preset of SAMPLE_PRESETS) {
+      const state = applyCommand(DEFAULT_STATE, { type: 'samplePreset', id: preset.id }).state;
+      const { energy_eV } = planPoints(state.scan, edgeEnergy(state.sample));
+      const [lo, hi] = PROFILE_PRESETS.find(p => p.id === state.profile.preset)!.range_eV;
+      expect(energy_eV[0] >= lo && energy_eV[energy_eV.length - 1] <= hi, preset.id).toBe(true);
+    }
+    // Higher oxidation state, higher edge, within each element.
+    const shift = (id: string) => SAMPLE_PRESETS.find(p => p.id === id)!.sample.edgeShift_eV ?? 0;
+    expect(shift('cu-foil')).toBeLessThan(shift('cu2o-pellet'));
+    expect(shift('cu2o-pellet')).toBeLessThan(shift('cuo-pellet'));
+    expect(shift('mn2o3-pellet')).toBeLessThan(shift('limn2o4-pellet'));
+    expect(shift('limn2o4-pellet')).toBeLessThan(shift('mno2-pellet'));
+    expect(shift('coo-pellet')).toBeLessThan(shift('co3o4-pellet'));
+    expect(shift('co3o4-pellet')).toBeLessThan(shift('licoo2-pellet'));
+    expect(shift('as3-water')).toBeLessThan(shift('as5-water'));
+    expect(shift('s8-pellet')).toBeLessThan(shift('na2so4-pellet'));
   });
 
   it('gives every sample a colour for the 3D hutch', () => {

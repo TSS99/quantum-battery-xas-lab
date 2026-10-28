@@ -7,7 +7,7 @@ import { edgeEnergy } from '@/lib/twin/acquire';
 import { CHAMBER_FILLS } from '@/lib/twin/chambers';
 import { cutoffEnergy_eV } from '@/lib/twin/mirrors';
 import { braggAngle_rad } from '@/lib/twin/mono';
-import { SAMPLE_PRESETS } from '@/lib/twin/presets';
+import { SAMPLE_GROUPS, SAMPLE_PRESETS } from '@/lib/twin/presets';
 import { defaultPlan, planDuration, xanesPlan, kOf } from '@/lib/twin/scan';
 import { TEMPERATURE_RANGE, energyRange, status, type TwinCommand } from '@/lib/twin/twin';
 import type { ChamberConfig, Crystal, EnvironmentConfig, ScanPlan, TwinState } from '@/lib/twin/types';
@@ -92,7 +92,8 @@ export function ControlRail() {
   const plans = e0 === null ? [] : scanPresets(e0);
   const planId = plans.find(x => JSON.stringify(x.plan.regions) === JSON.stringify(scan.regions))?.id ?? 'custom';
   const duration = e0 === null ? null : (() => { try { return planDuration(scan, e0); } catch { return null; } })();
-  const presetId = SAMPLE_PRESETS.find(x => x.sample.formula === s.formula && x.sample.absorber === s.absorber && x.sample.edge === s.edge)?.id ?? 'custom';
+  // The preset this sample is: the same material, absorber and edge, and the same FEFF set (anatase or rutile, say).
+  const presetId = SAMPLE_PRESETS.find(x => x.sample.formula === s.formula && x.sample.absorber === s.absorber && x.sample.edge === s.edge && (x.sample.libraryId ?? null) === (s.libraryId ?? null))?.id ?? 'custom';
   const tRange = TEMPERATURE_RANGE[env.kind];
   // The counting window sliders reach as far as the XRF spectrum shows, 1 keV above the beam energy.
   const roiMax = Math.ceil(Math.max(twin.energy_eV + 1000, p.sdd.roi_eV[1]) / 10) * 10;
@@ -165,8 +166,11 @@ export function ControlRail() {
     </Fold>
 
     <Fold id="twin-c-sample" title="Sample" desktopOpen>
-      <div className="twin-chipset" role="group" aria-label="Preset">
-        {SAMPLE_PRESETS.map(x => <button key={x.id} type="button" className="twin-chip" aria-pressed={presetId === x.id} disabled={tables !== 'ready' || locked('sample')} onClick={() => run({ type: 'samplePreset', id: x.id })}>{x.name}</button>)}
+      <div className="twin-sample-groups" role="group" aria-label="Preset">
+        {SAMPLE_GROUPS.map(group => <div key={group} className="twin-sample-group" role="group" aria-label={group}>
+          <span className="twin-sample-group-name" aria-hidden="true">{group}</span>
+          <div className="twin-chipset">{SAMPLE_PRESETS.filter(x => x.group === group).map(x => <button key={x.id} type="button" className="twin-chip" aria-pressed={presetId === x.id} disabled={tables !== 'ready' || locked('sample')} onClick={() => run({ type: 'samplePreset', id: x.id })}>{x.name}</button>)}</div>
+        </div>)}
         {presetId === 'custom' && <span className="twin-chip is-current">Your sample</span>}
       </div>
       {preset && <p className="twin-soon">{preset.story}</p>}

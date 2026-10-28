@@ -192,6 +192,24 @@ export const TWIN_METHODS: readonly TwinMethod[] = [
     tests: [twin('xdi', 'round-trips a simulated scan: header fields, column names and every value'), twin('xdi', 'follows the XDI rules: required fields, energy first, integer column tags in order')],
   },
   {
+    quantity: 'FEFF paths from deposited crystal structures',
+    model: 'FEFF6L, as for the library, on 28 structures read from Crystallography Open Database CIFs: metal foils, oxides, chromate, litharge, sphalerite, sulfate, halides and calcite (scripts/twin/structures_cod.py)',
+    data: 'COD CIFs stored in the repository; each cites its paper',
+    checked: 'Symmetry and composition of the rebuilt cell. The density and first shell come from the same deposited coordinates, so they check the reading of the CIF, not the structure against an independent value',
+    tolerance: String.raw`density $2\,\%$, first shell $0.02$ Å (self-consistent)`,
+    provenance: 'computed',
+    tests: [twin('feff-data', 'accounts for every requested structure exactly once'), twin('sample-presets', 'uses the FEFF paths for every sample whose material is in the library')],
+  },
+  {
+    quantity: 'Edge shifts with valence',
+    model: String.raw`The whole edge moves by the sample's chemical shift: $E_0 = E_\mathrm{tab} + \Delta E$; between measured oxidation states the shift is interpolated by valence (LiMn$_2$O$_4$) or extrapolated (LiCoO$_2$)`,
+    data: 'Mn, Cu, Co, S and As compounds measured beside their metal foil (or element) in one study each; the other samples keep the tabulated edge',
+    checked: 'The derivative peak, scan window and EXAFS reference all move by the shift; each valence series stays in order',
+    tolerance: String.raw`$0.15$ eV`,
+    provenance: 'measured',
+    tests: [twin('sample-presets', 'moves the whole edge by the chemical shift'), twin('sample-presets', 'keeps every valence series in order')],
+  },
+  {
     quantity: 'Compton scattering in the 3D photons',
     model: String.raw`Share of scattering that is Compton, $\mu_\mathrm{incoh}/(\mu_\mathrm{coh}+\mu_\mathrm{incoh})$, weighted over the sample's elements; directions from the polarised Klein-Nishina cross section; $E' = E/[1 + (E/m_ec^2)(1-\cos\theta)]$. Elastic scatter keeps the Thomson dipole pattern (no form factor)`,
     data: 'xraydb coherent and incoherent cross sections (Elam), H to Cf, 1 to 100 keV',
@@ -217,5 +235,6 @@ export const TWIN_ATTRIBUTIONS: readonly { name: string; use: string; licence: s
   { name: 'xraylarch', use: 'reference values for every Larch port, and the FEFF6L path calculations', licence: 'MIT', url: 'https://github.com/xraypy/xraylarch' },
   { name: 'FEFF6L', use: 'scattering amplitudes and phases of the library paths', licence: 'as distributed with xraylarch', url: 'https://feff.phys.washington.edu/' },
   { name: 'X-ray Data Booklet', use: 'bending magnet flux and critical energy', licence: 'cited reference', url: 'https://xdb.lbl.gov/' },
+  { name: 'Crystallography Open Database', use: 'the crystal structures of 28 samples, read from their deposited CIFs', licence: 'public domain (CC0)', url: 'https://www.crystallography.net/cod/' },
   { name: 'Cu foil spectrum, APS 13-ID, 2001 (xraylarch examples, cu_metal_rt.xdi)', use: 'the measured spectrum the twin is compared with', licence: 'MIT, with xraylarch', url: 'https://github.com/xraypy/xraylarch/blob/master/examples/xafsdata/cu_metal_rt.xdi' },
 ];

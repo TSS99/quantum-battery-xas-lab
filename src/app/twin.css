@@ -27,6 +27,9 @@ body:has(.twin-app) {background:#141d31}
 .twin-chip.is-accent {border-color:var(--tw-accent-line);background:var(--tw-accent-soft);color:var(--tw-accent)}
 .twin-chip:disabled {opacity:.45;cursor:not-allowed}
 .twin-chipset {display:flex;flex-wrap:wrap;gap:7px}
+.twin-sample-groups {display:flex;flex-direction:column;gap:10px}
+.twin-sample-group {display:flex;flex-direction:column;gap:5px}
+.twin-sample-group-name {font:500 9.5px/1.4 var(--tw-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--tw-muted)}
 .twin-icon {display:inline-grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:1px solid var(--tw-line);border-radius:10px;background:rgb(29 40 62/.6);color:var(--tw-muted);cursor:pointer;transition:border-color .2s,color .2s,background-color .2s}
 .twin-icon:hover {border-color:var(--tw-line-2);color:var(--tw-text)}
 .twin-icon-text {font:600 11px/1 var(--tw-mono);letter-spacing:.04em}
