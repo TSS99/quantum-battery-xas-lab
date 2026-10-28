@@ -7,8 +7,8 @@ body:has(.twin-app) {background:#141d31}
 .twin-app {
   --tw-bg:#141d31; --tw-card:rgb(29 40 62/.86); --tw-card-solid:#1d283e; --tw-line:rgb(255 255 255/.12); --tw-line-2:rgb(255 255 255/.2);
   --tw-text:#f3f6fa; --tw-body:#d4dae3; --tw-muted:#a7b1c1; --tw-accent:#8ce3ff; --tw-accent-soft:rgb(140 227 255/.14); --tw-accent-line:rgb(140 227 255/.42); --tw-warm:#ffc46b;
-  --tw-sans:var(--font-twin-sans),system-ui,sans-serif; --tw-serif:var(--font-twin-serif),Georgia,serif; --tw-mono:var(--font-tex-digits),var(--font-twin-mono),ui-monospace,monospace;
-  --font-sans:var(--font-tex-digits),var(--font-twin-sans),system-ui,sans-serif; --font-display:var(--font-sans);
+  --tw-sans:var(--font-plex-sans),system-ui,sans-serif; --tw-serif:var(--font-twin-serif),Georgia,serif; --tw-mono:var(--font-plex-mono),ui-monospace,monospace;
+  --font-sans:var(--font-plex-sans),system-ui,sans-serif; --font-display:var(--font-sans);
   /* The site's tokens, remapped so shared parts (sliders, plots, buttons, dialogs) match the console. */
   --text:var(--tw-text); --text-2:var(--tw-body); --muted:var(--tw-muted); --accent:var(--tw-accent); --hairline:var(--tw-line); --control-edge:var(--tw-line-2); --surface-1:var(--tw-card-solid); --surface-2:#26324b; --bg:var(--tw-bg);
   position:relative;color:var(--tw-text);font:14px/1.5 var(--font-sans);
