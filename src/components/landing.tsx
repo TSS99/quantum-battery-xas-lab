@@ -51,7 +51,7 @@ export function LandingHero() {
       <img
         className="hero-image"
         src={`${basePath}/images/hero-synchrotron-dusk.webp`}
-        srcSet={`${basePath}/images/hero-synchrotron-dusk-960.webp 960w, ${basePath}/images/hero-synchrotron-dusk.webp 1920w`}
+        srcSet={`${basePath}/images/hero-synchrotron-dusk-960.webp 960w, ${basePath}/images/hero-synchrotron-dusk.webp 1920w, ${basePath}/images/hero-synchrotron-dusk-4k.webp 3840w`}
         sizes="100vw"
         width="1920"
         height="1080"

@@ -22,8 +22,9 @@ const all = await list(root);
 const buildId = (await readdir(path.join(root, '_next/static'))).find(name => !['chunks', 'css', 'media'].includes(name));
 if (!buildId) throw new Error('No build id folder in out/_next/static; run next build first.');
 
-// The 98 element reference pages stay online-first (cached when visited); the offline bundle is the lab itself.
-const skip = [path.sep + 'og' + path.sep, path.sep + 'elements' + path.sep];
+// The 98 element reference pages stay online-first (cached when visited); the offline bundle is the lab itself. So do
+// the 4K images and textures (several megabytes), which only 4K screens and the Ultra view ask for.
+const skip = [path.sep + 'og' + path.sep, path.sep + 'elements' + path.sep, '-4k.'];
 // Lab pages are cached at install (small). Everything the app needs offline is cached only when the installed app asks.
 const pages = all.filter(file => (file.endsWith('index.html') || file.endsWith(path.sep + '404.html')) && !skip.some(part => file.includes(part)))
   .map(file => url(file).replace(/index\.html$/, ''));

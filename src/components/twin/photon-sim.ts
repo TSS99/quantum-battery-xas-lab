@@ -34,8 +34,10 @@ import { monoTrueEnergy_eV } from '@/lib/twin/mono';
 import { solidAngle } from '@/lib/twin/sdd';
 import { mu } from '@/lib/xraydata';
 import { comptonShare, comptonShifted, kleinNishinaDirection } from '@/lib/twin/compton';
+import { electronRangeInGas_cm } from '@/lib/twin/ionization';
+import type { GasMix } from '@/lib/twin/chambers';
 import { YB } from '../scene-kit';
-import { C1, CHAMBERS, FOIL_X, MIRROR_X, SLITS_X, SOURCE_X, STOP_X, XS, YB0 } from './hutch-parts';
+import { C1, CHAMBERS, CHAMBER_PLATE_OFFSET, FOIL_X, MIRROR_X, SLITS_X, SOURCE_X, STOP_X, XS, YB0, drawnSampleThickness } from './hutch-parts';
 
 export type V3 = [number, number, number];
 export type Random = () => number;
@@ -139,6 +141,9 @@ export interface Stage {
   remove: number[];
   /** Of the packets taken out, the share that is photoabsorbed (the rest scatter). */
   photo: number[];
+  /** A chamber's fill and its energy per electron-ion pair, eV. */
+  gas?: GasMix;
+  W_eV?: number;
 }
 
 export interface Order { order: number; energy_eV: number; color: V3 }
@@ -180,6 +185,8 @@ export interface PhotonSetup {
     rotation: number;
     /** The sample as a slab: its thickness, and its total attenuation (1/cm) at each order and at the fluorescence line. */
     slab: { thickness_cm: number; muIn: number[]; muLine: number };
+    /** How thick the hutch draws it, cm, so an absorption is drawn at its depth inside the drawn sample. */
+    drawnThickness_cm: number;
   };
   detector: { halfAngle: number; fraction: number };
   /** For the legend: photons each fundamental packet stands for, and how many white photons it takes to make one. */
@@ -220,7 +227,7 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
     const config = profile.chambers.find(c => c.id === id), box = CHAMBERS[id];
     if (!config) return;
     const fractions = per(e => absorbedFraction(config.gas, config.length_cm, e));
-    stages.push({ id, kind: 'chamber', x0: box.x0 + 10, x1: box.x1 - 10, remove: fractions.map(f => f.attenuated), photo: fractions.map(f => f.attenuated > 0 ? f.absorbed / f.attenuated : 1) });
+    stages.push({ id, kind: 'chamber', x0: box.x0 + 10, x1: box.x1 - 10, remove: fractions.map(f => f.attenuated), photo: fractions.map(f => f.attenuated > 0 ? f.absorbed / f.attenuated : 1), gas: config.gas, W_eV: fractions[0].W_eV });
   };
   chamber('I0');
   const through = per(e => transmission(sample, environment, e).transmission);
@@ -302,6 +309,7 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
       scatterBoost: boost(scatterRate, SCATTER_TARGET),
       rotation: TILTED.has(state.mode) ? Math.PI / 2 - sample.incidence_deg * Math.PI / 180 : 0,
       slab: { thickness_cm: sample.thickness_um * 1e-4, muIn: muAt.map(m => m.total), muLine: line ? mu(sample.formula, sample.density, line.energy_eV).total : 0 },
+      drawnThickness_cm: drawnSampleThickness(sample),
     },
     detector: { halfAngle: Math.acos(1 - 2 * detector), fraction: detector },
     photonsPerPacket: live.flux && fundamentalAtI0 > 0 ? live.flux / fundamentalAtI0 : 0,
@@ -345,6 +353,19 @@ export interface Packet {
 
 export interface Flash { at: V3; kind: FlashKind; age: number; color: V3 }
 
+/** A photoelectron's path as it slows in the chamber gas (or a spark in the sample): a bent line that fades. */
+export interface Track { points: V3[]; age: number; life: number; color: V3 }
+/** One drawn electron or positive ion, drifting to its plate in the chamber's field. */
+export interface Carrier { at: V3; vy: number; stopY: number; kind: 'electron' | 'ion' }
+
+/** Tracks are drawn this many times their real length: a 9 keV photoelectron runs about 1 mm in argon. */
+export const TRACK_SCALE = 10;
+/** Electron drift speed in the drawing, scene units per second; ions drift ION_SLOWER times slower (about 1000 in reality). */
+export const ELECTRON_DRIFT = 14, ION_SLOWER = 8;
+/** Real electron-ion pairs each drawn carrier stands for, and the fewest and most drawn per absorbed photon. */
+export const PAIRS_PER_DOT = 30;
+const MIN_DOTS = 3, MAX_DOTS = 16, TRACK_STEPS = 8, MAX_CARRIERS = 4000, MAX_TRACKS = 400;
+
 /**
  * Depth below the front face (cm, along the normal) where a beam photon absorbed in a slab was absorbed: the path
  * along the beam is exponential with the total attenuation and stops at the back face; cosIn is the cosine of the
@@ -368,6 +389,12 @@ export function escapeChance(depth_cm: number, thickness_cm: number, cosOut: num
   return Math.exp(-mu_cm_inv * path);
 }
 
+/** A direction turned at random by about `spread` radians: multiple scattering along an electron's path. */
+function deflect(random: Random, d: V3, spread: number): V3 {
+  const r = isotropic(random), x = d[0] + r[0] * spread, y = d[1] + r[1] * spread, z = d[2] + r[2] * spread, n = Math.hypot(x, y, z) || 1;
+  return [x / n, y / n, z / n];
+}
+
 /** A direction drawn uniformly over the sphere. */
 function isotropic(random: Random): V3 {
   const z = 2 * random() - 1, phi = 2 * Math.PI * random(), r = Math.sqrt(1 - z * z);
@@ -389,6 +416,8 @@ function pick(cdf: ArrayLike<number>, r: number): number {
 export class PhotonSim {
   readonly packets: Packet[] = [];
   readonly flashes: Flash[] = [];
+  readonly tracks: Track[] = [];
+  readonly carriers: Carrier[] = [];
   /** Fluorescence and scatter packets the sample itself absorbed on their way out, since the start. */
   selfAbsorbed = 0;
   /** While the second crystal rocks: its throughput for each order right now, in place of the set detune's. */
@@ -462,7 +491,9 @@ export class PhotonSim {
         const expected = photo ? s.fluorescence[p.order] * s.fluorescenceBoost : s.scatterBoost;
         count = Math.floor(expected) + (random() < expected % 1 ? 1 : 0);
         secondary = count ? (photo ? 'fluorescence' : 'scatter') : null;
-        if (count) depth_cm = absorptionDepth(random, s.slab.muIn[p.order], s.slab.thickness_cm, Math.cos(s.rotation));
+        depth_cm = absorptionDepth(random, s.slab.muIn[p.order], s.slab.thickness_cm, Math.cos(s.rotation));
+        // Drawn where it happens: that depth below the front face of the drawn sample, along the (turned) beam.
+        p.endX = XS - s.drawnThickness_cm * (1 - depth_cm / s.slab.thickness_cm) / Math.cos(s.rotation);
       }
       // In a chamber both photoabsorption and Compton recoil electrons make ion pairs.
       p.end = { kind: stage.kind === 'chamber' ? 'ion' : stage.kind === 'sample' ? 'absorb' : 'heat', stage: stage.id, secondary, count, depth_cm };
@@ -538,11 +569,62 @@ export class PhotonSim {
       const at = this.position(p);
       if (p.end) {
         this.flash(at, p.end.kind, p.color);
+        if (p.end.kind === 'ion') this.ionize(at, p.energy_eV, p.end.stage);
+        else if (p.end.kind === 'absorb') this.spark(at);
         if (p.end.secondary && p.end.count) this.emitFrom(at, p.end.secondary, p.energy_eV, p.end.count, p.end.depth_cm ?? 0, p.order);
       }
       this.packets.splice(i, 1);
     }
     for (let i = this.flashes.length - 1; i >= 0; i--) if ((this.flashes[i].age += dt) > FLASH_LIFE) this.flashes.splice(i, 1);
+    for (let i = this.tracks.length - 1; i >= 0; i--) if ((this.tracks[i].age += dt) > this.tracks[i].life) this.tracks.splice(i, 1);
+    // Carriers drift straight to their plate, electrons up to the high-voltage plate and ions down to the collector.
+    for (let i = this.carriers.length - 1; i >= 0; i--) {
+      const c = this.carriers[i];
+      c.at[1] += c.vy * dt;
+      if (c.vy > 0 ? c.at[1] >= c.stopY : c.at[1] <= c.stopY) this.carriers.splice(i, 1);
+    }
+  }
+
+  /**
+   * An X-ray absorbed in a chamber's gas: its photoelectron leaves mostly along the polarisation (horizontal, so
+   * cos^2 about Z), slows over its range in that gas and bends more as it slows, and frees one electron-ion pair per
+   * W of the photon's energy. The pairs then drift apart in the field.
+   */
+  private ionize(at: V3, energy_eV: number, stageId: string) {
+    const stage = this.setup.stages.find(s => s.id === stageId);
+    if (!stage?.gas || !stage.W_eV || this.tracks.length >= MAX_TRACKS) return;
+    const { random } = this;
+    const length = electronRangeInGas_cm(energy_eV, stage.gas) * TRACK_SCALE;
+    let d = isotropic(random);
+    while (random() > d[2] * d[2]) d = isotropic(random);
+    const points: V3[] = [at];
+    for (let i = 0; i < TRACK_STEPS; i++) {
+      const last = points[points.length - 1];
+      const next: V3 = [last[0] + d[0] * length / TRACK_STEPS, last[1] + d[1] * length / TRACK_STEPS, last[2] + d[2] * length / TRACK_STEPS];
+      // An electron that reaches a plate stops there (only long tracks, in helium at high energy, get that far).
+      if (Math.abs(next[1] - YB) >= CHAMBER_PLATE_OFFSET - 0.25) break;
+      points.push(next);
+      d = deflect(random, d, 0.35 + 0.12 * i);
+    }
+    this.tracks.push({ points, age: 0, life: 0.6, color: [0.55, 0.8, 1] });
+    const dots = Math.min(MAX_DOTS, Math.max(MIN_DOTS, Math.round(energy_eV / stage.W_eV / PAIRS_PER_DOT)));
+    for (let n = 0; n < dots && this.carriers.length < MAX_CARRIERS - 1; n++) {
+      const q = points[Math.floor(random() * points.length)];
+      this.carriers.push({ at: [...q], vy: ELECTRON_DRIFT, stopY: YB + CHAMBER_PLATE_OFFSET - 0.25, kind: 'electron' });
+      this.carriers.push({ at: [...q], vy: -ELECTRON_DRIFT / ION_SLOWER, stopY: YB - CHAMBER_PLATE_OFFSET + 0.25, kind: 'ion' });
+    }
+  }
+
+  /** A photon absorbed in the sample: a brief spark for its photoelectron, whose real range there is micrometres. */
+  private spark(at: V3) {
+    if (this.tracks.length >= MAX_TRACKS) return;
+    const { random } = this;
+    let d = isotropic(random);
+    while (random() > d[2] * d[2]) d = isotropic(random);
+    const points: V3[] = [at, [at[0] + d[0] * 0.18, at[1] + d[1] * 0.18, at[2] + d[2] * 0.18]];
+    d = deflect(random, d, 0.8);
+    points.push([points[1][0] + d[0] * 0.12, points[1][1] + d[1] * 0.12, points[1][2] + d[2] * 0.12]);
+    this.tracks.push({ points, age: 0, life: 0.25, color: [1, 0.95, 0.85] });
   }
 
   /** Run the drawing forward without showing it, so the line is full when it first appears. */

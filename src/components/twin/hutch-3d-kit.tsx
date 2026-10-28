@@ -3,14 +3,20 @@
    made for this page with an image model (tileable aluminium, painted hutch wall, concrete, epoxy floor). Rounded
    boxes are extrusions with world-space UVs, so a texture repeats per world unit: a big tank and a small post show
    the same grain. */
-import { memo, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
+import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { RoundedBox, useTexture } from '@react-three/drei';
 import { toThree, type V3 } from './hutch-3d-layout';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 /* The last one is a panorama of a hutch interior, used only for what shiny surfaces reflect. */
-export const TEXTURES = ['aluminium', 'hutch-wall', 'concrete', 'floor', 'hutch-pano'].map(name => `${BASE}/images/twin/${name}.webp`);
+const TEXTURE_NAMES = ['aluminium', 'hutch-wall', 'concrete', 'floor', 'hutch-pano'];
+export const TEXTURES = TEXTURE_NAMES.map(name => `${BASE}/images/twin/${name}.webp`);
+/* The same textures at four times the size (2048 to 4096 pixels), fetched only for the Ultra view. */
+const TEXTURES_4K = TEXTURE_NAMES.map(name => `${BASE}/images/twin/${name}-4k.webp`);
+
+/** How finely curved parts are tessellated: 1 normally, 2 in the Ultra view, so silhouettes stay round at 4K. */
+export const DetailContext = createContext(1);
 // Fetched as soon as this code loads; the page switches to the 3D view once they are in, so it never shows an empty room.
 useTexture.preload(TEXTURES);
 export const texturesReady = Promise.all(TEXTURES.map(url => new Promise<void>(done => { const img = new Image(); img.onload = img.onerror = () => done(); img.src = url; })));
@@ -106,9 +112,22 @@ function makeMaterials([alu, wall, concrete, floor, pano]: THREE.Texture[]) {
 
 export type Mats = ReturnType<typeof makeMaterials>;
 
-export function useMaterials(): Mats {
+export function useMaterials(ultra = false): Mats {
   const textures = useTexture(TEXTURES);
-  return useMemo(() => makeMaterials(textures), [textures]);
+  const materials = useMemo(() => makeMaterials(textures), [textures]);
+  // Ultra swaps each texture's image for its 4K one as it arrives. Every tiled copy shares its source's image, so all
+  // of them follow; the swap stays for the rest of the visit.
+  useEffect(() => {
+    if (!ultra) return;
+    let on = true;
+    TEXTURES_4K.forEach((url, i) => {
+      const image = new Image();
+      image.onload = () => { if (on) { textures[i].source.data = image; textures[i].source.needsUpdate = true; } };
+      image.src = url;
+    });
+    return () => { on = false; };
+  }, [ultra, textures]);
+  return materials;
 }
 
 /* The building blocks below skip re-rendering when their props are unchanged by value (callers build new point and
@@ -122,25 +141,29 @@ const sameProps = <P extends object>(a: P, b: P) => {
 /** A rounded box between two corners, in world coordinates. */
 export const Blk = memo(function Blk({ x0, x1, y0, y1, z0, z1, m, r = 1.2, cast = true }: { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number; m: THREE.Material; r?: number; cast?: boolean }) {
   const w = x1 - x0, h = y1 - y0, d = z1 - z0, radius = Math.max(0.05, Math.min(r, w / 2.2, h / 2.2, d / 2.2));
-  return <RoundedBox args={[w, h, d]} radius={radius} smoothness={2} bevelSegments={2} position={[(x0 + x1) / 2, (y0 + y1) / 2, -(z0 + z1) / 2]} material={m} castShadow={cast} receiveShadow />;
+  const detail = useContext(DetailContext);
+  return <RoundedBox args={[w, h, d]} radius={radius} smoothness={2 * detail} bevelSegments={2 * detail} position={[(x0 + x1) / 2, (y0 + y1) / 2, -(z0 + z1) / 2]} material={m} castShadow={cast} receiveShadow />;
 }, sameProps);
 
 /** A cylinder along the beam (X). */
 export const CylX = memo(function CylX({ x0, x1, y, z = 0, r, m, seg = 28 }: { x0: number; x1: number; y: number; z?: number; r: number; m: THREE.Material; seg?: number }) {
+  const detail = useContext(DetailContext);
   return <mesh position={[(x0 + x1) / 2, y, -z]} rotation={[0, 0, Math.PI / 2]} material={m} castShadow receiveShadow>
-    <cylinderGeometry args={[r, r, x1 - x0, seg]} />
+    <cylinderGeometry args={[r, r, x1 - x0, seg * detail]} />
   </mesh>;
 }, sameProps);
 /** An upright cylinder (Y). */
 export const CylY = memo(function CylY({ x, z = 0, y0, y1, r, m, seg = 24 }: { x: number; z?: number; y0: number; y1: number; r: number; m: THREE.Material; seg?: number }) {
+  const detail = useContext(DetailContext);
   return <mesh position={[x, (y0 + y1) / 2, -z]} material={m} castShadow receiveShadow>
-    <cylinderGeometry args={[r, r, y1 - y0, seg]} />
+    <cylinderGeometry args={[r, r, y1 - y0, seg * detail]} />
   </mesh>;
 }, sameProps);
 /** A cylinder along the depth (Z). */
 export const CylZ = memo(function CylZ({ x, y, z0, z1, r, m, seg = 28 }: { x: number; y: number; z0: number; z1: number; r: number; m: THREE.Material; seg?: number }) {
+  const detail = useContext(DetailContext);
   return <mesh position={[x, y, -(z0 + z1) / 2]} rotation={[Math.PI / 2, 0, 0]} material={m} castShadow receiveShadow>
-    <cylinderGeometry args={[r, r, z1 - z0, seg]} />
+    <cylinderGeometry args={[r, r, z1 - z0, seg * detail]} />
   </mesh>;
 }, sameProps);
 

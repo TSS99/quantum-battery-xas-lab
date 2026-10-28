@@ -11,6 +11,17 @@ import type { TwinMode } from '@/lib/twin/types';
 /** Positions along the beamline shared by the diagram and the 3D view. */
 export const YB0 = 46; // beam height before the fixed-exit monochromator; YB (scene-kit) is after it
 export const XS = 1150; // sample position
+/** The ion chambers' collector and high-voltage plates sit this far above and below the beam, cm. */
+export const CHAMBER_PLATE_OFFSET = 5;
+
+/**
+ * How thick the 3D hutch draws a sample, cm: its real thickness, at least 0.1 mm for a foil or film (so it shows edge
+ * on) and 0.4 mm for a pellet (pressed pellets are rarely thinner); a capillary is 1 mm across.
+ */
+export function drawnSampleThickness(sample: { form: string; thickness_um: number }): number {
+  const t = sample.thickness_um * 1e-4;
+  return sample.form === 'foil' || sample.form === 'film' ? Math.max(t, 0.01) : sample.form === 'capillary' ? 0.1 : Math.max(t, 0.04);
+}
 export const C1 = 512; // first crystal
 export const SOURCE_X = 96; // tangent point of the electron orbit inside the bending magnet
 export const SLITS_X = 250; // front-end slits

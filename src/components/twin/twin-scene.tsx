@@ -15,6 +15,16 @@ const load3D = () => loading3D ??= import('./hutch-3d').then(async m => { await 
 // Renamed in v1.9.1 so a diagram chosen before then no longer overrides the 3D default.
 const VIEW_KEY = 'xaslab-twin-hutch-view-2';
 const POSTER = (process.env.NEXT_PUBLIC_BASE_PATH || '') + '/images/twin/hutch-poster.webp';
+const POSTER_4K = (process.env.NEXT_PUBLIC_BASE_PATH || '') + '/images/twin/hutch-poster-4k.webp';
+const ULTRA_KEY = 'xaslab-twin-ultra';
+
+/** The Ultra 4K view, off by default because it asks several times more of the graphics card; kept in this browser. */
+function useUltra() {
+  const [ultra, setUltra] = useState(false);
+  useEffect(() => { try { setUltra(localStorage.getItem(ULTRA_KEY) === 'on'); } catch { /* storage unavailable: off */ } }, []);
+  const toggle = () => setUltra(was => { try { localStorage.setItem(ULTRA_KEY, was ? 'off' : 'on'); } catch { /* not kept */ } return !was; });
+  return { ultra, toggle };
+}
 
 /** The 3D view when the browser has WebGL 2 and the user has not chosen the diagram; the choice is kept in this browser. */
 function useHutchView() {
@@ -65,6 +75,7 @@ export function TwinScene() {
     dispatch({ type: 'note', text: 'Saved the guided tour as a video.' });
   }, [dispatch]);
   const { webgl, diagram, show3d, toggle } = useHutchView();
+  const { ultra, toggle: toggleUltra } = useUltra();
   const failed = tables === 'failed' || typeof live === 'string';
   // The 3D view is the default: its code and textures load alongside the X-ray tables, and a still of the hutch stands
   // in until both are in. The diagram shows only when chosen, without WebGL 2, or if the 3D code fails to load.
@@ -85,10 +96,10 @@ export function TwinScene() {
   return <section className={'twin-scene' + (view.labels ? '' : ' no-labels')} aria-labelledby="twin-scene-title" hidden={view.enlarged} aria-busy={!!props && show3d && !three}>
     <h2 id="twin-scene-title" className="sr-only">Beamline</h2>
     {failed ? <div className="twin-scene-wait" role="alert">{tables === 'failed' ? 'The X-ray tables could not be loaded. Reload the page to try again.' : 'The beamline could not be computed: ' + live}</div>
-      : props && show3d && Three ? <Three {...props} reset={reset} shot={shot} onShot={onShot} tour={tour} onTour={onTour} />
+      : props && show3d && Three ? <Three {...props} reset={reset} shot={shot} onShot={onShot} tour={tour} onTour={onTour} ultra={ultra} />
       : props && useDiagram ? <Diagram {...props} />
       : <div className="twin-scene-poster" role="img" aria-label="The 3D hutch is loading">
-        <img src={POSTER} alt="" width={1280} height={720} decoding="async" fetchPriority="high" />
+        <img src={POSTER} srcSet={`${POSTER} 1280w, ${POSTER_4K} 3840w`} sizes="(min-width: 1100px) 60vw, 100vw" alt="" width={1280} height={720} decoding="async" fetchPriority="high" />
         <span>{props ? 'Loading the 3D hutch…' : 'Loading the X-ray tables…'}</span>
       </div>}
     <div className="twin-scene-foot">
@@ -105,6 +116,7 @@ export function TwinScene() {
         {show3d && Three && canRecord && <button type="button" className="twin-icon" aria-pressed={tour === 'record'} title={tour === 'record' ? 'Stop recording (Escape)' : 'Record the tour as a video'} disabled={tour === 'play'} onClick={() => tour === 'record' ? onTour('stopped', null) : setTour('record')}>
           {tour === 'record' ? <Square size={15} aria-hidden="true" /> : <Video size={16} aria-hidden="true" />}<span className="sr-only">Record the tour</span>
         </button>}
+        {show3d && Three && <button type="button" className="twin-icon twin-icon-text" aria-pressed={ultra} title={ultra ? 'Ultra 4K is on: back to the faster view' : 'Ultra 4K: sharper, slower, for a strong graphics card'} onClick={toggleUltra}><span aria-hidden="true">4K</span><span className="sr-only">Ultra 4K view</span></button>}
         {show3d && Three && <button type="button" className="twin-icon" title="Save a 4K image of this view" disabled={shooting} onClick={() => { setShooting(true); setShot(n => n + 1); }}><Camera size={16} aria-hidden="true" /><span className="sr-only">Save 4K image</span></button>}
         <button type="button" className="twin-icon" aria-pressed={view.cinema} title={view.cinema ? 'Show the panels again (Escape)' : 'Scene only'} onClick={() => dispatch({ type: 'cinema' })}>{view.cinema ? <Shrink size={16} aria-hidden="true" /> : <Expand size={16} aria-hidden="true" />}<span className="sr-only">Scene only</span></button>
         {show3d && Three && <button type="button" className="twin-icon" title="Reset the view" onClick={() => setReset(n => n + 1)}><RotateCcw size={16} aria-hidden="true" /><span className="sr-only">Reset view</span></button>}

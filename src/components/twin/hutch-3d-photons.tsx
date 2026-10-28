@@ -10,7 +10,8 @@ import { YB } from '../scene-kit';
 import { toThree } from './hutch-3d-layout';
 import { FLASH_LIFE, PhotonSim, WIDTH_SCALE, realDistance_m, type PhotonSetup, type V3 } from './photon-sim';
 
-const MAX_PACKETS = 2000, MAX_FLASHES = 500;
+const MAX_PACKETS = 2000, MAX_FLASHES = 500, MAX_SEGMENTS = 3600, MAX_CARRIERS = 4000;
+const ELECTRON: V3 = [0.62, 0.86, 1], POSITIVE_ION: V3 = [1, 0.62, 0.3];
 /** Colours brighter than the bloom threshold, so the packets glow. */
 const GLOW = 2.4;
 const FLASH_GLOW: Record<string, number> = { heat: 2.6, ion: 3.2, absorb: 3.2, count: 4 };
@@ -33,7 +34,7 @@ export function Photons({ setup, animate, seed = 1, pass, pulse = null }: { setu
   const warmed = useRef(false);
   useEffect(() => { sim.setup = setup; if (!warmed.current) { sim.prewarm(6); warmed.current = true; } }, [sim, setup]);
 
-  const [dots, gems, streaks, flashes] = useMemo(() => {
+  const [dots, gems, streaks, flashes, segments, carriers] = useMemo(() => {
     const make = (geometry: THREE.BufferGeometry, count: number, opacity = 1) => {
       const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ toneMapped: false, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 }), count);
       mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
@@ -42,9 +43,12 @@ export function Photons({ setup, animate, seed = 1, pass, pulse = null }: { setu
     };
     const streak = new THREE.CylinderGeometry(0.32, 0.05, 1, 6, 1, true); streak.translate(0, -0.5, 0);
     // Beam packets are spheres; fluorescence and scatter are diamonds, since their energies can sit close to the beam's.
-    return [make(new THREE.SphereGeometry(1, 10, 8), MAX_PACKETS), make(new THREE.OctahedronGeometry(1.5), MAX_PACKETS), make(streak, MAX_PACKETS, 0.4), make(new THREE.SphereGeometry(1, 12, 10), MAX_FLASHES)];
+    // Ionization tracks are thin rods between their points; the drifting electrons and ions are small beads.
+    const rod = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true); rod.translate(0, 0.5, 0);
+    return [make(new THREE.SphereGeometry(1, 10, 8), MAX_PACKETS), make(new THREE.OctahedronGeometry(1.5), MAX_PACKETS), make(streak, MAX_PACKETS, 0.4), make(new THREE.SphereGeometry(1, 12, 10), MAX_FLASHES),
+      make(rod, MAX_SEGMENTS, 0.85), make(new THREE.SphereGeometry(1, 8, 6), MAX_CARRIERS)];
   }, []);
-  useLayoutEffect(() => () => [dots, gems, streaks, flashes].forEach(m => { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }), [dots, gems, streaks, flashes]);
+  useLayoutEffect(() => () => [dots, gems, streaks, flashes, segments, carriers].forEach(m => { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }), [dots, gems, streaks, flashes, segments, carriers]);
 
   useFrame(({ camera, clock }, dt) => {
     sim.secondCrystalPass = pass?.current ?? null; sim.pulse = pulse;
@@ -80,7 +84,30 @@ export function Photons({ setup, animate, seed = 1, pass, pulse = null }: { setu
       f++;
     }
     flashes.count = f;
-    for (const m of [dots, gems, streaks, flashes]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+    // Tracks fade over their life; each segment is a rod from one point to the next.
+    let s = 0;
+    for (const track of sim.tracks) {
+      const fade = Math.max(0, 1 - track.age / track.life), glow = 2.2 * fade;
+      color.setRGB(track.color[0] * glow, track.color[1] * glow, track.color[2] * glow);
+      for (let i = 1; i < track.points.length && s < MAX_SEGMENTS; i++) {
+        const a = toThree(track.points[i - 1]), b = toThree(track.points[i]);
+        dir.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+        const length = dir.length(); if (!(length > 0)) continue;
+        tmp.position.set(...a); tmp.quaternion.setFromUnitVectors(UP, dir.normalize()); tmp.scale.set(0.035 * near(a), length, 0.035 * near(a)); tmp.updateMatrix();
+        segments.setMatrixAt(s, tmp.matrix); segments.setColorAt(s, color); s++;
+      }
+    }
+    segments.count = s;
+    let c = 0;
+    for (const carrier of sim.carriers) {
+      if (c >= MAX_CARRIERS) break;
+      const at = toThree(carrier.at), tint = carrier.kind === 'electron' ? ELECTRON : POSITIVE_ION;
+      color.setRGB(tint[0] * 1.8, tint[1] * 1.8, tint[2] * 1.8);
+      tmp.position.set(...at); tmp.quaternion.identity(); tmp.scale.setScalar((carrier.kind === 'electron' ? 0.09 : 0.13) * near(at)); tmp.updateMatrix();
+      carriers.setMatrixAt(c, tmp.matrix); carriers.setColorAt(c, color); c++;
+    }
+    carriers.count = c;
+    for (const m of [dots, gems, streaks, flashes, segments, carriers]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
   });
 
   return <>
@@ -88,6 +115,8 @@ export function Photons({ setup, animate, seed = 1, pass, pulse = null }: { setu
     <primitive object={dots} />
     <primitive object={gems} />
     <primitive object={flashes} />
+    <primitive object={segments} />
+    <primitive object={carriers} />
   </>;
 }
 

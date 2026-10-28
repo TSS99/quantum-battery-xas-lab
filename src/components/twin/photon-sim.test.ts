@@ -5,8 +5,10 @@ import { loadOptics, mirrorReflectivity } from '@/lib/twin/tables';
 import { DEFAULT_STATE, applyCommand, status } from '@/lib/twin/twin';
 import type { TwinState } from '@/lib/twin/types';
 import { comptonShifted } from '@/lib/twin/compton';
-import { XS } from './hutch-parts';
-import { COLOR_RANGE_eV, PhotonSim, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
+import { electronRangeInGas_cm } from '@/lib/twin/ionization';
+import { CHAMBER_PLATE_OFFSET, XS } from './hutch-parts';
+import { YB } from '../scene-kit';
+import { COLOR_RANGE_eV, ELECTRON_DRIFT, ION_SLOWER, PhotonSim, TRACK_SCALE, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
 
 beforeAll(async () => { await Promise.all([loadXrayData(), loadOptics()]); });
 
@@ -209,6 +211,50 @@ describe('photon packets in the 3D hutch', () => {
     expect(n).toBeGreaterThan(200);
     // Harmonics also scatter, so allow their small part on top of counting error.
     expect(Math.abs(compton / n - share)).toBeLessThan(4 * Math.sqrt(share * (1 - share) / n) + 0.03);
+  });
+
+  it('leaves a photoelectron track as long as its range in the gas, and pairs that drift to the plates', () => {
+    const { setup } = setupFor(DEFAULT_STATE), sim = new PhotonSim(setup, seededRandom(12));
+    const seenTracks = new Set<object>(), seenCarriers = new Set<object>();
+    let gasTracks = 0, electrons = 0, ions = 0;
+    for (let t = 0; t < 15; t += 1 / 30) {
+      sim.step(1 / 30);
+      for (const track of sim.tracks) {
+        if (seenTracks.has(track) || track.life < 0.5) continue;
+        seenTracks.add(track); gasTracks++;
+        const length = track.points.slice(1).reduce((sum, q, i) => sum + Math.hypot(q[0] - track.points[i][0], q[1] - track.points[i][1], q[2] - track.points[i][2]), 0);
+        // The chamber the track sits in, and the range of a photoelectron of the fundamental's energy in its gas.
+        const stage = setup.stages.find(s => s.kind === 'chamber' && track.points[0][0] >= s.x0 - 1e-9 && track.points[0][0] <= s.x1 + 1e-9)!;
+        const expected = setup.orders.map(o => electronRangeInGas_cm(o.energy_eV, stage.gas!) * TRACK_SCALE);
+        // Full length, unless the electron reached a plate first.
+        expect(expected.some(e => Math.abs(length - e) < 1e-9 * e) || length < Math.max(...expected)).toBe(true);
+      }
+      for (const c of sim.carriers) {
+        if (seenCarriers.has(c)) continue;
+        seenCarriers.add(c);
+        if (c.kind === 'electron') { electrons++; expect(c.vy).toBeGreaterThan(0); } else { ions++; expect(c.vy).toBeCloseTo(-ELECTRON_DRIFT / ION_SLOWER, 12); }
+        // Every carrier starts between the plates and heads for its own.
+        expect(Math.abs(c.at[1] - YB)).toBeLessThan(CHAMBER_PLATE_OFFSET);
+      }
+    }
+    expect(gasTracks).toBeGreaterThan(20);
+    expect(electrons).toBe(ions);
+    // About E / W / PAIRS_PER_DOT carriers of each sign per absorbed photon: 9 keV in the 50/50 Ar and N2 fill gives about 10.
+    expect(electrons / gasTracks).toBeGreaterThan(5);
+    expect(electrons / gasTracks).toBeLessThan(16.0001);
+  });
+
+  it('draws each absorption in the sample at its depth inside the drawn sample', () => {
+    const state = applyCommand(DEFAULT_STATE, { type: 'samplePreset', id: 'nio-pellet' }).state;
+    const { setup } = setupFor(state), sim = new PhotonSim(setup, seededRandom(13));
+    const front = XS - setup.sample.drawnThickness_cm / Math.cos(setup.sample.rotation);
+    let seen = 0;
+    const counted = new Set<object>();
+    for (let t = 0; t < 10; t += 1 / 30) {
+      sim.step(1 / 30);
+      for (const f of sim.flashes) if (f.kind === 'absorb' && !counted.has(f)) { counted.add(f); seen++; expect(f.at[0]).toBeGreaterThanOrEqual(front - 1e-9); expect(f.at[0]).toBeLessThanOrEqual(XS + 1e-9); }
+    }
+    expect(seen).toBeGreaterThan(10);
   });
 
   it('boosts rare events by a round factor and says so', () => {

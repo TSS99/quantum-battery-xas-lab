@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { useReducedMotion } from 'motion/react';
 import { Tex } from '../tex';
 import type { TwinState } from '@/lib/twin/types';
-import { C1, CHAMBERS, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, hasCue, labelledParts, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
+import { C1, CHAMBERS, CHAMBER_PLATE_OFFSET, PARTS, SOURCE_X, XS, YB0, drawnBraggDeg, drawnSampleThickness, hasCue, labelledParts, lcdVolts, legLit, partActive, sceneFor, type Leg, type PartId } from './hutch-parts';
 import { FLOOR, FOV, LABEL3, ROCKING, TABLE, TIP3, clampToBox, frameFor, motorStep, rockingDetune, swayAngle, toThree, type Motor, type V3 } from './hutch-3d-layout';
 import { braggAngle_rad, braggEnergy_eV, detuneFactor, monoReading_eV, monoTrueEnergy_eV } from '@/lib/twin/mono';
 import { planPoints } from '@/lib/twin/scan';
@@ -22,12 +22,12 @@ import { edgeEnergy } from '@/lib/twin/acquire';
 import { scanCursor } from './scan-cursor';
 import { YB } from '../scene-kit';
 import { tourPose, tourStops, tourTimeline, type TourStop, type TourTimeline } from './hutch-tour';
-import { Blk, Bolts, CylX, CylY, CylZ, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
+import { Blk, Bolts, CylX, CylY, CylZ, DetailContext, Part, TextPlate, Tube, drapePoints, ring, useMaterials, type Mats } from './hutch-3d-kit';
 export { texturesReady } from './hutch-3d-kit';
 import type { HutchSceneProps } from './hutch-scene';
 import { modeInfo } from './twin-state';
 import { BeamOutline, Photons } from './hutch-3d-photons';
-import { COLOR_RANGE_eV, WIDTH_SCALE, energyColor, photonSetup, type PhotonSetup } from './photon-sim';
+import { COLOR_RANGE_eV, ION_SLOWER, TRACK_SCALE, WIDTH_SCALE, energyColor, photonSetup, type PhotonSetup } from './photon-sim';
 
 const percent = (fraction: number) => fraction >= 0.9995 ? '100' : fraction < 0.001 ? (fraction * 100).toExponential(1) : (fraction * 100).toFixed(1);
 const short = (value: number) => value.toExponential(1).replace('e+', 'e');
@@ -138,7 +138,7 @@ function Chamber({ m, c, readout, gas, length }: { m: Mats; c: ChamberBox; reado
     <mesh position={toThree([xc, (y0 + y1) / 2, z - t - 0.1])} material={m.inner}><planeGeometry args={[x1 - x0 - 2 * t, y1 - y0 - 2 * t]} /></mesh>
     <mesh position={toThree([xc, (y0 + y1) / 2, -z + 0.6])} material={m.glass} renderOrder={1}><planeGeometry args={[x1 - x0 - 4.8, y1 - y0 - 2 * t]} /></mesh>
     {/* Collector and HV plates, either side of the beam, on ceramic standoffs */}
-    {[YB + 5, YB - 5].map(y => <group key={y}>
+    {[YB + CHAMBER_PLATE_OFFSET, YB - CHAMBER_PLATE_OFFSET].map(y => <group key={y}>
       <Blk x0={x0 + 3} x1={x1 - 3} y0={y - 0.25} y1={y + 0.25} z0={-(z - 2.5)} z1={z - 2.5} m={m.copper} r={0.1} />
       {[x0 + 5, x1 - 5].map(x => <CylY key={x} x={x} z={z - 4} y0={y > YB ? y + 0.25 : y0 + t} y1={y > YB ? y1 - t : y - 0.25} r={0.6} m={m.ceramic} seg={8} />)}
     </group>)}
@@ -182,11 +182,11 @@ function Specimen({ sample }: { sample: TwinState['sample'] }) {
   const look = sampleLook(sample);
   const material = useMemo(() => new THREE.MeshStandardMaterial(look.metal ? { color: look.color, metalness: 1, roughness: 0.28 } : { color: look.color, metalness: 0, roughness: 0.86 }), [look.color, look.metal]);
   useLayoutEffect(() => () => material.dispose(), [material]);
-  const t_cm = sample.thickness_um * 1e-4;
+  const t = drawnSampleThickness(sample);
   switch (sample.form) {
-    case 'foil': case 'film': { const t = Math.max(t_cm, 0.01); return <Blk x0={XS - t} x1={XS} y0={YB - 0.8} y1={YB + 0.8} z0={-0.8} z1={0.8} m={material} />; }
-    case 'capillary': return <CylY x={XS - 0.1} y0={YB - 2} y1={YB + 2} r={0.05} m={material} seg={16} />;
-    default: return <CylX x0={XS - Math.max(t_cm, 0.04)} x1={XS} y={YB} r={0.65} m={material} seg={24} />;
+    case 'foil': case 'film': return <Blk x0={XS - t} x1={XS} y0={YB - 0.8} y1={YB + 0.8} z0={-0.8} z1={0.8} m={material} />;
+    case 'capillary': return <CylY x={XS - t / 2} y0={YB - 2} y1={YB + 2} r={t / 2} m={material} seg={16} />;
+    default: return <CylX x0={XS - t} x1={XS} y={YB} r={0.65} m={material} seg={24} />;
   }
 }
 
@@ -412,8 +412,8 @@ function MovingBeam({ twin, live, setup, mono, animate, rocking, pulse }: { twin
 }
 
 /** Everything in the hutch. */
-function World({ twin, live, animate, hq, setup, touring, scanBadge }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean; setup: PhotonSetup | null; touring: boolean; scanBadge: RefObject<HTMLDivElement | null> }) {
-  const m = useMaterials();
+function World({ twin, live, animate, hq, ultra, setup, touring, scanBadge }: { twin: TwinState; live: HutchSceneProps['live']; animate: boolean; hq: boolean; ultra: boolean; setup: PhotonSetup | null; touring: boolean; scanBadge: RefObject<HTMLDivElement | null> }) {
+  const m = useMaterials(ultra);
   const { mode, environment, profile } = twin;
   // The tour shows every part solid, since its captions visit hardware this mode does not read.
   const idle = (id: PartId) => !touring && !partActive(mode, id);
@@ -986,7 +986,7 @@ function PhotonLegend({ setup, rocking }: { setup: PhotonSetup; rocking: boolean
     <button type="button" className="hutch-legend-chip" aria-expanded={open} aria-controls="hutch-legend-text" onClick={() => setOpen(!open)}>
       <strong>Photons</strong><span>2 keV</span><i style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} /><span>45 keV</span>
     </button>
-    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter, Compton ones a little redder{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex>{rocking && <> · rocking angle <Tex plain>{String.raw`\times${power(rockScale)}`}</Tex></>} · flash: absorbed</p>
+    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter, Compton ones a little redder{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex>{rocking && <> · rocking angle <Tex plain>{String.raw`\times${power(rockScale)}`}</Tex></>} · chambers: photoelectron tracks <Tex plain>{String.raw`\times${TRACK_SCALE}`}</Tex>, electrons (blue) and ions (amber) drifting to the plates, sped up, with ions drawn <Tex plain>{String.raw`${ION_SLOWER}`}</Tex> times slower (about 1000 in reality) · flash: absorbed</p>
   </div>;
 }
 
@@ -999,9 +999,14 @@ export interface Hutch3DProps extends HutchSceneProps {
   /** The guided tour, played or recorded; onTour hears when it is stopped or done, with the video of a recording. */
   tour: 'play' | 'record' | null;
   onTour: (end: 'stopped' | 'done', video: Blob | null) => void;
+  /**
+   * The Ultra view: at least twice the screen's pixel density (a full-screen 1080p view renders at 4K), 4096 pixel
+   * shadows, full-resolution ambient occlusion, 8x multisampling, 4K textures and twice the tessellation.
+   */
+  ultra?: boolean;
 }
 
-function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot, tour, onTour }: Hutch3DProps) {
+function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, onShot, tour, onTour, ultra = false }: Hutch3DProps) {
   const reduced = !!useReducedMotion();
   const coarse = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
   const { mode } = twin;
@@ -1047,12 +1052,12 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
     <div className="hutch-stage" ref={stage}>
       {/* Taking hold of the hutch during the tour ends it. */}
       <div className="hutch-canvas" role="img" aria-label={label} onPointerDown={run ? () => onTour('stopped', null) : undefined}>
-        <Canvas shadows dpr={coarse ? [1, 1.5] : [1, 2]} frameloop={visible || hq ? 'demand' : 'never'} camera={{ fov: FOV, near: 10, far: 9000, position: [700, 600, 2400] }}
+        <Canvas shadows dpr={ultra ? [2, 3] : coarse ? [1, 1.5] : [1, 2]} frameloop={visible || hq ? 'demand' : 'never'} camera={{ fov: FOV, near: 10, far: 9000, position: [700, 600, 2400] }}
           gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMappingExposure = 1; gl.shadowMap.autoUpdate = false; }}>
-          <Suspense fallback={null}><World twin={twin} live={live} animate={!reduced} hq={hq} setup={setup} touring={!!run} scanBadge={scanBadge} /></Suspense>
+          <Suspense fallback={null}><DetailContext.Provider value={ultra ? 2 : 1}><World twin={twin} live={live} animate={!reduced} hq={hq || ultra} ultra={ultra} setup={setup} touring={!!run} scanBadge={scanBadge} /></DetailContext.Provider></Suspense>
           <Rig mode={mode} whole={whole} focusOn={focusOn} reset={reset} reduced={reduced} touring={!!run} />
           {run && <Tour run={run} onStep={setStep} onEnd={video => onTour('done', video)} bar={bar} />}
-          <Effects light={coarse} hq={hq} composer={composer} />
+          <Effects light={coarse && !ultra} hq={hq || ultra} composer={composer} />
           <Snapshot shot={shot} light={coarse} onShot={onShot} setHq={setHq} composer={composer} />
           <Pacer animate={!reduced && visible} />
           <Projector overlay={overlay} showLabels={showLabels} />
