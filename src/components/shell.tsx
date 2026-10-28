@@ -10,6 +10,7 @@ import { InstallApp } from './install-app';
 import { Chevron } from './chevron';
 import { LandingHero } from './landing';
 const LabConsole = dynamic(() => import('./lab-console'), { ssr: false });
+const MotionNotice = dynamic(() => import('./motion-notice').then(m => m.MotionNotice), { ssr: false });
 const REPO = 'https://github.com/TSS99/quantum-battery-xas-lab';
 const routes = [
   ['/', 'Overview', 'Start here: what the lab does and how the pieces connect'],
@@ -25,7 +26,7 @@ const routes = [
 const consoles = [['/twin/', 'Beamline twin', 'Operate a working XAS beamline, full screen']] as const;
 
 export function Shell({ children, elementNames, trails }: { children: React.ReactNode; elementNames: Record<string, string>; trails: Record<string, [string, string][]> }) {
-  const pathname = usePathname(), { state, set, notice, canUndo, undoPreset } = useLab();
+  const pathname = usePathname(), { state, set, notice, canUndo, undoPreset } = useLab(), reducedMotion = useReducedMotion();
   const [consoleOpen, setConsoleOpen] = useState(false), [consoleLoaded, setConsoleLoaded] = useState(false);
   const [scrolled, setScrolled] = useState(false), [labMenu, setLabMenu] = useState(false), [mobileMenu, setMobileMenu] = useState(false);
   const labMenuRef = useRef<HTMLDivElement>(null);
@@ -82,7 +83,7 @@ export function Shell({ children, elementNames, trails }: { children: React.Reac
   const home = current[0] === '/';
   const expanded = home && !scrolled;
 
-  const overlays = <>{consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}<MotionNotice />{notice &&<div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</>;
+  const overlays = <>{consoleLoaded && <LabConsole open={consoleOpen} onClose={closeConsole} />}{reducedMotion && <MotionNotice />}{notice && <div className="toast" role="status">{notice}{canUndo && <button className="button secondary small" onClick={undoPreset}>Undo preset</button>}</div>}</>;
   // Consoles run full screen, like an instrument: no site header, module bar or footer.
   if (fullScreen) return <MotionConfig reducedMotion="user"><a className="skip-link" href="#main">Skip to laboratory</a>
     <main id="main" tabIndex={-1} className="bare-main">{children}</main>{overlays}</MotionConfig>;
@@ -137,18 +138,3 @@ export function Shell({ children, elementNames, trails }: { children: React.Reac
     {overlays}</MotionConfig>;
 }
 
-/**
- * When the device asks for reduced motion, the scenes hold still and the camera cuts instead of flying. Say so once,
- * so a still page does not look broken; the note goes for good when dismissed.
- */
-function MotionNotice() {
-  const reduced = useReducedMotion();
-  const [dismissed, setDismissed] = useState(true);
-  useEffect(() => { try { setDismissed(localStorage.getItem('xaslab-motion-notice') === 'dismissed'); } catch { setDismissed(false); } }, []);
-  if (!reduced || dismissed) return null;
-  const dismiss = () => { setDismissed(true); try { localStorage.setItem('xaslab-motion-notice', 'dismissed'); } catch { /* Private browsing can disallow storage. */ } };
-  return <div className="motion-notice" role="status">
-    <p>Animations are paused because this device is set to reduce motion. Turn on animation effects in the system settings to see them move.</p>
-    <button type="button" className="button secondary small" onClick={dismiss}>Got it</button>
-  </div>;
-}
