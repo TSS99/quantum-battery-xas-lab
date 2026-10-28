@@ -33,13 +33,18 @@ describe('FEFF library fine structure', () => {
   // Recorded before any paths load, to check that loading them does not move a preset's thickness.
   let thicknessBefore = 0;
 
-  it('matches a sample to a library material by formula, absorber and edge only', () => {
+  it('matches a sample to a library material by formula, absorber and edge, or by the library id it names', () => {
     expect(libraryMaterialId(preset('cu-foil'))).toBe('cu');
     expect(libraryMaterialId(preset('limn2o4-pellet'))).toBe('limn2o4');
     expect(libraryMaterialId(preset('nio-pellet'))).toBe('nio');
-    // Iron in water is not bcc iron, and platinum particles on alumina are not the bulk metal.
+    // Iron in water is not bcc iron. Platinum particles on alumina are not the bulk metal either, but their preset
+    // names the bulk Pt paths as the nearest model; the same formula without that name matches nothing.
     expect(libraryMaterialId(preset('fe-2mm-water'))).toBeNull();
-    expect(libraryMaterialId(preset('pt-alumina'))).toBeNull();
+    expect(libraryMaterialId(preset('pt-alumina'))).toBe('pt');
+    expect(libraryMaterialId({ formula: 'Pt0.00528Al2O3', absorber: 'Pt', edge: 'L3' })).toBeNull();
+    // Anatase and rutile share a formula; each preset names its own paths.
+    expect(libraryMaterialId(preset('tio2-anatase-pellet'))).toBe('tio2-anatase');
+    expect(libraryMaterialId(preset('tio2-rutile-pellet'))).toBe('tio2-rutile');
     expect(libraryMaterialId({ formula: 'Cu', absorber: 'Cu', edge: 'L3' })).toBeNull();
     thicknessBefore = thicknessFor(preset('limn2o4-pellet'), { muX: 2 });
   });

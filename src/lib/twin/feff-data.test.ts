@@ -12,10 +12,11 @@ const index: FeffIndexEntry[] = JSON.parse(readFileSync(join(directory, 'index.j
 const materials: FeffMaterial[] = index.map(row => JSON.parse(readFileSync(join(directory, `${row.id}.json`), 'utf8')));
 const columns = ['k', 'real_phc', 'mag_feff', 'pha_feff', 'red_fact', 'lam', 'rep'] as const;
 const targetIds = [
-  'cu', 'fe-bcc', 'ni', 'co-hcp', 'zn-hcp', 'ti-hcp', 'v-bcc', 'cr-bcc', 'pd', 'ag', 'pt', 'au',
-  'limn2o4', 'licoo2', 'linio2', 'lifepo4', 'li2mno3',
-  'mno', 'mn3o4', 'beta-mno2', 'nio', 'coo', 'co3o4', 'cuo', 'cu2o', 'zno',
-  'alpha-fe2o3', 'fe3o4', 'tio2-rutile', 'tio2-anatase', 'v2o5', 'ceo2', 'srtio3', 'fes2', 'li2s',
+  'cu', 'fe-bcc', 'ni', 'co', 'zn', 'ti', 'v-bcc', 'cr', 'pd', 'ag', 'pt', 'au', 'mn', 'mo', 'w',
+  'limn2o4', 'licoo2', 'linio2', 'lifepo4', 'lifepo4-p', 'li2mno3',
+  'mno', 'mn2o3', 'mn3o4', 'mno2', 'nio', 'coo', 'co3o4', 'cuo', 'cu2o', 'zno', 'feo',
+  'fe2o3', 'fe3o4', 'tio2-rutile', 'tio2-anatase', 'cr2o3', 'k2cro4', 'pbo', 'v2o5', 'ceo2', 'srtio3', 'fes2', 'li2s',
+  'zns', 'na2so4', 'nacl', 'kcl', 'caco3',
 ];
 const fixtureIds = ['cu', 'fe-bcc', 'pt', 'limn2o4', 'licoo2', 'lifepo4', 'nio', 'fe3o4', 'zno', 'ceo2'];
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
@@ -23,7 +24,11 @@ const finite = (values: number[]) => values.every(value => typeof value === 'num
 
 function citation(source: FeffCitation) {
   expect(source.reference.length).toBeGreaterThan(10);
-  expect(source.doi).toMatch(/^10\.\d{4,9}\/\S+$/);
+  // Structures read from deposited CIFs cite the paper and the database record; papers from before DOIs have none.
+  if (source.locator.startsWith('COD ')) {
+    expect(source.url).toMatch(/^https:\/\/www\.crystallography\.net\/cod\/\d+\.html$/);
+    if (source.doi) expect(source.doi).toMatch(/^10\.\d{4,9}\/\S+$/);
+  } else expect(source.doi).toMatch(/^10\.\d{4,9}\/\S+$/);
   expect(source.locator.length).toBeGreaterThan(10);
   expect(typeof source.url).toBe('string');
 }

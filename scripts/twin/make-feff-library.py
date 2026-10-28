@@ -23,7 +23,11 @@ from larch.xafs.feffdat import FeffPathGroup
 from larch.xafs.feffrunner import find_exe
 import xraydb
 
-from structures import CRYSTALS, DROPPED, validate
+from structures import CRYSTALS as AUDITED, DROPPED, validate
+from structures_cod import cod_crystals
+
+# The hand-audited structures, then those built from COD CIFs (see structures_cod.py).
+CRYSTALS = AUDITED + cod_crystals()
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "src/data/twin"

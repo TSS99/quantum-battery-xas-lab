@@ -212,27 +212,15 @@ CRYSTALS = (
 )
 
 # Explicit scope ledger. Add a source-verified entry above before removing it here.
+# Pd, Au, Co, Zn, Ti, Cr, MnO, beta-MnO2, CoO, Co3O4, CuO, Cu2O, hematite, rutile and anatase left this list on
+# 2026-10-28: they are admitted from their deposited CIFs in structures_cod.py (ids co, zn, ti, cr, mno2 and fe2o3 for
+# the renamed ones), whose checks are self-consistent rather than independent (see its docstring).
 DROPPED = {
-    "co-hcp": ("Co", "Co", "K", "No verified primary-source cell, density and nearest-neighbour reference bundle."),
-    "zn-hcp": ("Zn", "Zn", "K", "No verified primary-source cell and nearest-neighbour reference bundle."),
-    "ti-hcp": ("Ti", "Ti", "K", "Cell located, but primary-source nearest-neighbour check not verified."),
     "v-bcc": ("V", "V", "K", "No verified primary-source cell and nearest-neighbour reference bundle."),
-    "cr-bcc": ("Cr", "Cr", "K", "No verified primary-source cell and nearest-neighbour reference bundle."),
-    "pd": ("Pd", "Pd", "K", "Complete primary-source structure and check values not yet transcribed."),
     "ag": ("Ag", "Ag", "K", "Cell and density located; independent published nearest-neighbour value not verified."),
-    "au": ("Au", "Au", "L3", "Cell and density located; independent published nearest-neighbour value not verified."),
     "linio2": ("LiNiO2", "Ni", "K", "Ideal ordered coordinates and check values not verified; no antisite-disordered substitution."),
     "li2mno3": ("Li2MnO3", "Mn", "K", "Complete monoclinic coordinates and site-specific checks not verified."),
-    "mno": ("MnO", "Mn", "K", "No verified primary-source cell, density and nearest-neighbour reference bundle."),
     "mn3o4": ("Mn3O4", "Mn", "K", "Tetragonal oxygen positions and both absorber-site checks not verified."),
-    "beta-mno2": ("MnO2", "Mn", "K", "Primary-source oxygen coordinate and check values not verified."),
-    "coo": ("CoO", "Co", "K", "No verified primary-source cell, density and nearest-neighbour reference bundle."),
-    "co3o4": ("Co3O4", "Co", "K", "Primary-source oxygen coordinate and both absorber-site checks not verified."),
-    "cuo": ("CuO", "Cu", "K", "Complete monoclinic coordinates and check values not verified."),
-    "cu2o": ("Cu2O", "Cu", "K", "No verified primary-source cell, density and nearest-neighbour reference bundle."),
-    "alpha-fe2o3": ("Fe2O3", "Fe", "K", "Primary-source internal coordinates and check values not verified."),
-    "tio2-rutile": ("TiO2", "Ti", "K", "Primary-source oxygen coordinate and check values not verified."),
-    "tio2-anatase": ("TiO2", "Ti", "K", "Primary-source origin convention, oxygen coordinate and check values not verified."),
     "v2o5": ("V2O5", "V", "K", "Complete orthorhombic coordinates and check values not verified."),
     "srtio3": ("SrTiO3", "Ti", "K", "No verified primary-source cell, density and nearest-neighbour reference bundle."),
     "fes2": ("FeS2", "Fe", "K", "Primary-source pyrite sulfur coordinate and check values not verified."),
