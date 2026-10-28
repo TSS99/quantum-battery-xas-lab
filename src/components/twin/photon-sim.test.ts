@@ -5,7 +5,7 @@ import { loadOptics, mirrorReflectivity } from '@/lib/twin/tables';
 import { DEFAULT_STATE, applyCommand, status } from '@/lib/twin/twin';
 import type { TwinState } from '@/lib/twin/types';
 import { XS } from './hutch-parts';
-import { COLOR_RANGE_eV, PhotonSim, beamEnvelope, boost, dipoleScatter, energyColor, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
+import { COLOR_RANGE_eV, PhotonSim, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
 
 beforeAll(async () => { await Promise.all([loadXrayData(), loadOptics()]); });
 
@@ -137,6 +137,54 @@ describe('photon packets in the 3D hutch', () => {
     }
     const n = atCrystal + beyond;
     expect(Math.abs(beyond / n - 0.25)).toBeLessThan(4 * Math.sqrt(0.25 * 0.75 / n));
+  });
+
+  it('lets fluorescence out of a thick sample with the analytic self-absorption share', () => {
+    // A thick slab, beam at 45 degrees, photons leaving at 60 degrees to the normal: the share that gets out is
+    // (mu_in / cos_in) / (mu_in / cos_in + mu_line / cos_out), whatever the absolute attenuations.
+    const random = seededRandom(9), muIn = 400, muLine = 150, cosIn = Math.SQRT1_2, cosOut = 0.5, thick = 1;
+    let out = 0;
+    const n = 200000;
+    for (let i = 0; i < n; i++) if (random() < escapeChance(absorptionDepth(random, muIn, thick, cosIn), thick, cosOut, muLine)) out++;
+    const expected = (muIn / cosIn) / (muIn / cosIn + muLine / cosOut);
+    expect(Math.abs(out / n - expected)).toBeLessThan(4 * Math.sqrt(expected * (1 - expected) / n));
+    // Out of the back of a thin slab, and never along the plane.
+    expect(escapeChance(0, 1e-4, -1, 100)).toBeCloseTo(Math.exp(-0.01), 12);
+    expect(escapeChance(5e-5, 1e-4, 0, 100)).toBe(0);
+  });
+
+  it('loses much of the fluorescence inside a thick concentrated pellet, and little inside a thin film', () => {
+    const fluo = applyCommand(DEFAULT_STATE, { type: 'mode', mode: 'fluorescence' }).state;
+    const share = (state: TwinState) => {
+      const { setup } = setupFor(state), sim = new PhotonSim(setup, seededRandom(6));
+      let drawn = 0;
+      const seen = new Set<object>();
+      for (let t = 0; t < 40; t += 1 / 30) { sim.step(1 / 30); for (const p of sim.packets) if (p.species === 'fluorescence' && !seen.has(p)) { seen.add(p); drawn++; } }
+      return sim.selfAbsorbed / (sim.selfAbsorbed + drawn);
+    };
+    const pellet = share(applyCommand(fluo, { type: 'samplePreset', id: 'nio-pellet' }).state);
+    const film = share(applyCommand(applyCommand(fluo, { type: 'samplePreset', id: 'nio-pellet' }).state, { type: 'thickness', thickness_um: 0.05 }).state);
+    expect(pellet).toBeGreaterThan(0.45);
+    expect(film).toBeLessThan(0.1);
+  });
+
+  it('emits in bursts as each bunch passes, at the same average rate', () => {
+    const { setup } = setupFor(DEFAULT_STATE), sim = new PhotonSim(setup, seededRandom(2));
+    sim.pulse = { hz: 4, phase_s: 0.1 };
+    const seen = new Set<object>();
+    let total = 0, framesWithLight = 0;
+    for (let i = 1; i <= 600; i++) {
+      sim.step(1 / 60, i / 60);
+      // Packets that left the source this frame: white ones not seen before.
+      const fresh = sim.packets.filter(p => p.species === 'white' && !seen.has(p));
+      fresh.forEach(p => seen.add(p));
+      if (fresh.length) framesWithLight++;
+      total += fresh.length;
+    }
+    // Ten seconds at four bunches a second: light in about 40 of the 600 frames, and the steady rate on average.
+    expect(framesWithLight).toBeGreaterThanOrEqual(39);
+    expect(framesWithLight).toBeLessThanOrEqual(41);
+    expect(Math.abs(total - 10 * WHITE_RATE)).toBeLessThan(WHITE_RATE / 4 + 1);
   });
 
   it('boosts rare events by a round factor and says so', () => {

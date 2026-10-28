@@ -12,7 +12,8 @@
  *   mirror, chamber, sample and foil it is removed with the probability the twin's models give at its own energy,
  *   so harmonics punch through thick samples just as they do in the data.
  * - A photon absorbed by the probed edge emits its fluorescence line in a random direction (fluorescence is
- *   isotropic). A scattered one leaves with the dipole pattern of a horizontally polarised beam, so almost none reach
+ *   isotropic), from a depth that follows the beam's attenuation, and gets out only if it crosses the sample on its
+ *   way out: the self absorption that flattens thick concentrated samples. A scattered one leaves with the dipole pattern of a horizontally polarised beam, so almost none reach
  *   the detector at 90 degrees in the horizontal plane.
  *
  * Pure data and arithmetic: no React and no DOM, unit tested in Node once the X-ray and optics tables are loaded.
@@ -170,6 +171,8 @@ export interface PhotonSetup {
     scatterBoost: number;
     /** Sample plane rotation about the vertical, radians from facing the beam: the incidence angle in fluorescence. */
     rotation: number;
+    /** The sample as a slab: its thickness, and its total attenuation (1/cm) at each order and at the fluorescence line. */
+    slab: { thickness_cm: number; muIn: number[]; muLine: number };
   };
   detector: { halfAngle: number; fraction: number };
   /** For the legend: photons each fundamental packet stands for, and how many white photons it takes to make one. */
@@ -290,6 +293,7 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
       fluorescenceBoost: boost(fluorescenceRate, FLUORESCENCE_TARGET),
       scatterBoost: boost(scatterRate, SCATTER_TARGET),
       rotation: TILTED.has(state.mode) ? Math.PI / 2 - sample.incidence_deg * Math.PI / 180 : 0,
+      slab: { thickness_cm: sample.thickness_um * 1e-4, muIn: muAt.map(m => m.total), muLine: line ? mu(sample.formula, sample.density, line.energy_eV).total : 0 },
     },
     detector: { halfAngle: Math.acos(1 - 2 * detector), fraction: detector },
     photonsPerPacket: live.flux && fundamentalAtI0 > 0 ? live.flux / fundamentalAtI0 : 0,
@@ -323,7 +327,7 @@ export interface Packet {
   order: number;
   /** Where and how it ends on the line, decided when it is made. */
   endX: number;
-  end: { kind: FlashKind; stage: string; secondary: 'fluorescence' | 'scatter' | null; count: number } | null;
+  end: { kind: FlashKind; stage: string; secondary: 'fluorescence' | 'scatter' | null; count: number; depth_cm?: number } | null;
   origin: V3;
   dir: V3;
   travelled: number;
@@ -332,6 +336,29 @@ export interface Packet {
 }
 
 export interface Flash { at: V3; kind: FlashKind; age: number; color: V3 }
+
+/**
+ * Depth below the front face (cm, along the normal) where a beam photon absorbed in a slab was absorbed: the path
+ * along the beam is exponential with the total attenuation and stops at the back face; cosIn is the cosine of the
+ * beam to the normal.
+ */
+export function absorptionDepth(random: Random, mu_cm_inv: number, thickness_cm: number, cosIn: number): number {
+  const along = thickness_cm / cosIn;
+  if (!(mu_cm_inv * along > 1e-9)) return random() * thickness_cm;
+  const s = -Math.log(1 - random() * (1 - Math.exp(-mu_cm_inv * along))) / mu_cm_inv;
+  return Math.min(thickness_cm, s * cosIn);
+}
+
+/**
+ * Chance that a photon leaving `depth_cm` below the front face gets out of the slab: out of the front when it heads
+ * outwards (cosOut, its direction on the outward normal, above zero), else out of the back, through the sample in
+ * between at the attenuation of its own energy. A photon along the plane never gets out.
+ */
+export function escapeChance(depth_cm: number, thickness_cm: number, cosOut: number, mu_cm_inv: number): number {
+  if (Math.abs(cosOut) < 1e-9) return 0;
+  const path = cosOut > 0 ? depth_cm / cosOut : (thickness_cm - depth_cm) / -cosOut;
+  return Math.exp(-mu_cm_inv * path);
+}
 
 /** A direction drawn uniformly over the sphere. */
 function isotropic(random: Random): V3 {
@@ -354,6 +381,8 @@ function pick(cdf: ArrayLike<number>, r: number): number {
 export class PhotonSim {
   readonly packets: Packet[] = [];
   readonly flashes: Flash[] = [];
+  /** Fluorescence and scatter packets the sample itself absorbed on their way out, since the start. */
+  selfAbsorbed = 0;
   /** While the second crystal rocks: its throughput for each order right now, in place of the set detune's. */
   secondCrystalPass: number[] | null = null;
   private debt = 0;
@@ -419,23 +448,30 @@ export class PhotonSim {
       // Depth of the interaction: exponential through a chamber's gas, at the face for thin things.
       const depth = stage.x1 > stage.x0 && remove < 1 ? Math.log(1 - random() * remove) / Math.log(1 - remove) : 0;
       p.endX = stage.x0 + (stage.x1 - stage.x0) * Math.min(1, depth);
-      let secondary: 'fluorescence' | 'scatter' | null = null, count = 0;
+      let secondary: 'fluorescence' | 'scatter' | null = null, count = 0, depth_cm: number | undefined;
       if (stage.kind === 'sample') {
         const s = setup.sample;
         const expected = photo ? s.fluorescence[p.order] * s.fluorescenceBoost : s.scatterBoost;
         count = Math.floor(expected) + (random() < expected % 1 ? 1 : 0);
         secondary = count ? (photo ? 'fluorescence' : 'scatter') : null;
+        if (count) depth_cm = absorptionDepth(random, s.slab.muIn[p.order], s.slab.thickness_cm, Math.cos(s.rotation));
       }
       // In a chamber both photoabsorption and Compton recoil electrons make ion pairs.
-      p.end = { kind: stage.kind === 'chamber' ? 'ion' : stage.kind === 'sample' ? 'absorb' : 'heat', stage: stage.id, secondary, count };
+      p.end = { kind: stage.kind === 'chamber' ? 'ion' : stage.kind === 'sample' ? 'absorb' : 'heat', stage: stage.id, secondary, count, depth_cm };
       return;
     }
   }
 
-  /** Fluorescence or scatter packets leaving the sample spot. */
-  private emitFrom(at: V3, kind: 'fluorescence' | 'scatter', energy_eV: number, count: number) {
-    const { setup, random } = this;
+  /**
+   * Fluorescence or scatter packets leaving the sample spot from `depth_cm` below its face; each one the sample
+   * absorbs on its way out (at the line's attenuation, or the beam's for scatter) is not drawn.
+   */
+  private emitFrom(at: V3, kind: 'fluorescence' | 'scatter', energy_eV: number, count: number, depth_cm: number, order: number) {
+    const { setup, random } = this, { slab, rotation } = setup.sample;
     const line = kind === 'fluorescence' ? setup.sample.line : null;
+    // The front face's outward normal: towards the source, turned towards the detector by the sample rotation.
+    const normal: V3 = [-Math.cos(rotation), 0, Math.sin(rotation)];
+    const muOut = kind === 'fluorescence' ? slab.muLine : slab.muIn[order] ?? 0;
     for (let n = 0; n < count; n++) {
       let dir = kind === 'fluorescence' ? isotropic(random) : dipoleScatter(random);
       let limit = FLIGHT;
@@ -446,6 +482,8 @@ export class PhotonSim {
         const d: V3 = [target[0] - at[0], target[1] - at[1], target[2] - at[2]], len = Math.hypot(...d);
         dir = [d[0] / len, d[1] / len, d[2] / len]; limit = len;
       }
+      const cosOut = dir[0] * normal[0] + dir[1] * normal[1] + dir[2] * normal[2];
+      if (!(random() < escapeChance(depth_cm, slab.thickness_cm, cosOut, muOut))) { this.selfAbsorbed++; continue; }
       const e = line?.energy_eV ?? energy_eV;
       this.packets.push({ species: kind, energy_eV: e, color: line?.color ?? energyColor(e), x: XS, u: 0, v: 0, order: -1, endX: 0, end: null, origin: at, dir, travelled: 0, limit });
     }
@@ -453,11 +491,23 @@ export class PhotonSim {
 
   private flash(at: V3, kind: FlashKind, color: V3) { this.flashes.push({ at, kind, age: 0, color }); }
 
-  /** Advance the drawing by dt seconds. */
-  step(dt: number) {
+  /**
+   * Advance the drawing by dt seconds, to `now_s` on the scene's clock when given. With `pulse` set, the source
+   * shines only as an electron bunch passes, so the packets leave in bursts at the bunch rate, as synchrotron light
+   * does; the average rate is the same.
+   */
+  step(dt: number, now_s = this.time + dt) {
     const { setup } = this;
+    const before = now_s - dt;
+    this.time = now_s;
     this.debt += dt * WHITE_RATE;
-    while (this.debt >= 1) { this.debt -= 1; this.emit(); }
+    if (this.pulse) {
+      const { hz, phase_s } = this.pulse;
+      if (Math.floor((now_s - phase_s) * hz) > Math.floor((before - phase_s) * hz)) {
+        // A bunch is a few centimetres long in the drawing (tens of picoseconds, slowed like the light).
+        while (this.debt >= 1) { this.debt -= 1; this.emit(SOURCE_X + BUNCH_LENGTH * this.random()); }
+      }
+    } else while (this.debt >= 1) { this.debt -= 1; this.emit(); }
     const travel = SPEED * dt;
     for (let i = this.packets.length - 1; i >= 0; i--) {
       const p = this.packets[i];
@@ -477,7 +527,7 @@ export class PhotonSim {
       const at = this.position(p);
       if (p.end) {
         this.flash(at, p.end.kind, p.color);
-        if (p.end.secondary && p.end.count) this.emitFrom(at, p.end.secondary, p.energy_eV, p.end.count);
+        if (p.end.secondary && p.end.count) this.emitFrom(at, p.end.secondary, p.energy_eV, p.end.count, p.end.depth_cm ?? 0, p.order);
       }
       this.packets.splice(i, 1);
     }
@@ -486,7 +536,14 @@ export class PhotonSim {
 
   /** Run the drawing forward without showing it, so the line is full when it first appears. */
   prewarm(seconds: number, dt = 1 / 30) { for (let t = 0; t < seconds; t += dt) this.step(dt); }
+
+  /** Bunch passages: how many a second and the time of one, on the clock `step` is given. Null for a steady source. */
+  pulse: { hz: number; phase_s: number } | null = null;
+  private time = 0;
 }
+
+/** Length of a drawn electron bunch's light along the line, scene units. */
+const BUNCH_LENGTH = 3;
 
 /** How long an absorption flash lasts, seconds. */
 export const FLASH_LIFE = 0.35;

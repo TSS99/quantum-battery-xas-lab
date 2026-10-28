@@ -23,7 +23,7 @@ const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0), probe = new THREE.Vector3
  * The packets, their streaks and the absorption flashes, stepped every frame while `animate` is on. `pass`, while the
  * second crystal rocks, holds its throughput for each order right now.
  */
-export function Photons({ setup, animate, seed = 1, pass }: { setup: PhotonSetup; animate: boolean; seed?: number; pass?: RefObject<number[] | null> }) {
+export function Photons({ setup, animate, seed = 1, pass, pulse = null }: { setup: PhotonSetup; animate: boolean; seed?: number; pass?: RefObject<number[] | null>; pulse?: PhotonSim['pulse'] }) {
   const sim = useMemo(() => {
     let s = seed >>> 0 || 1;
     const random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
@@ -46,9 +46,9 @@ export function Photons({ setup, animate, seed = 1, pass }: { setup: PhotonSetup
   }, []);
   useLayoutEffect(() => () => [dots, gems, streaks, flashes].forEach(m => { m.geometry.dispose(); (m.material as THREE.Material).dispose(); m.dispose(); }), [dots, gems, streaks, flashes]);
 
-  useFrame(({ camera }, dt) => {
-    sim.secondCrystalPass = pass?.current ?? null;
-    if (animate) sim.step(Math.min(dt, 0.1));
+  useFrame(({ camera, clock }, dt) => {
+    sim.secondCrystalPass = pass?.current ?? null; sim.pulse = pulse;
+    if (animate) sim.step(Math.min(dt, 0.1), clock.elapsedTime);
     // Markers keep about the same size on screen: smaller than the hardware up close, still visible from afar.
     const near = (at: V3) => Math.min(1.5, Math.max(0.32, camera.position.distanceTo(probe.set(...at)) / 720));
     let n = 0, g = 0;

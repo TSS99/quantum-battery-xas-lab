@@ -358,6 +358,9 @@ const Room = memo(function Room({ m }: { m: Mats }) {
   </>;
 });
 
+/** The drawn electron bunches: how many go round the ring, and how many times a second. */
+const BUNCHES = 6, ORBIT_TURNS_PER_S = 0.7;
+
 /** Seconds for one swing of the Bragg axis there and back in a quick scan, slowed like everything else in the drawing. */
 const QUICK_SCAN_PERIOD_S = 4;
 
@@ -367,7 +370,7 @@ const QUICK_SCAN_PERIOD_S = 4;
  * energy it passes. While the second crystal rocks, its throughput for each order is worked out every frame from the
  * tabulated rocking curves, and the packets and the beam past it dim and brighten with it.
  */
-function MovingBeam({ twin, live, setup, mono, animate, rocking }: { twin: TwinState; live: HutchSceneProps['live']; setup: PhotonSetup; mono: RefObject<number | null>; animate: boolean; rocking: boolean }) {
+function MovingBeam({ twin, live, setup, mono, animate, rocking, pulse }: { twin: TwinState; live: HutchSceneProps['live']; setup: PhotonSetup; mono: RefObject<number | null>; animate: boolean; rocking: boolean; pulse: { hz: number; phase_s: number } }) {
   const [theta, setTheta] = useState<number | null>(null), last = useRef(0), pass = useRef<number[] | null>(null);
   const moving = useMemo(() => {
     if (theta === null) return setup;
@@ -385,7 +388,7 @@ function MovingBeam({ twin, live, setup, mono, animate, rocking }: { twin: TwinS
   });
   return <>
     <BeamOutline setup={moving} pass={pass} />
-    <Photons setup={moving} animate={animate} seed={twin.seed} pass={pass} />
+    <Photons setup={moving} animate={animate} seed={twin.seed} pass={pass} pulse={pulse} />
   </>;
 }
 
@@ -435,6 +438,13 @@ function World({ twin, live, animate, hq, setup, touring, scanBadge }: { twin: T
   useLayoutEffect(() => placeCrystals(setTheta === null ? null : motor.current.position, 0));
   const electrons = useRef<THREE.Group>(null);
   const orbit = useMemo(() => new THREE.CatmullRomCurve3(ORBIT.map(p => new THREE.Vector3(...toThree(p)))), []);
+  // Light leaves the source as each drawn bunch passes it: six bunches going round 0.7 times a second.
+  const pulse = useMemo(() => {
+    const source = new THREE.Vector3(...toThree([SOURCE_X, YB0, 0]));
+    let at = 0, nearest = Infinity;
+    for (let i = 0; i < 400; i++) { const d = orbit.getPointAt(i / 400).distanceTo(source); if (d < nearest) { nearest = d; at = i / 400; } }
+    return { hz: ORBIT_TURNS_PER_S * BUNCHES, phase_s: at / ORBIT_TURNS_PER_S };
+  }, [orbit]);
   const hrmY = hrm?.inserted ? 0 : -16;
   useFrame(({ clock }, dt) => {
     const t = clock.getElapsedTime(), scanning = scanCursor.energy_eV;
@@ -454,7 +464,7 @@ function World({ twin, live, animate, hq, setup, touring, scanBadge }: { twin: T
       if (text !== badgeText.current) { badgeText.current = text; badge.hidden = !text; if (text) badge.textContent = text; }
     }
     if (hrmGroup.current) hrmGroup.current.position.y += (hrmY - hrmGroup.current.position.y) * (animate ? Math.min(1, dt * 5) : 1);
-    electrons.current?.children.forEach((e, i) => e.position.copy(orbit.getPointAt(((animate ? t * 0.7 : 0) + i / 6) % 1)));
+    electrons.current?.children.forEach((e, i) => e.position.copy(orbit.getPointAt(((animate ? t * ORBIT_TURNS_PER_S : 0) + i / BUNCHES) % 1)));
   });
   const gl = useThree(state => state.gl), invalidate = useThree(state => state.invalidate);
   // Shadows are redrawn once a change settles rather than on every slider step: what moves meanwhile (the crystals,
@@ -506,7 +516,7 @@ function World({ twin, live, animate, hq, setup, touring, scanBadge }: { twin: T
       <Tube points={ORBIT} r={4.5} m={m.steel} />
       <TextPlate at={[86, 22, -26.4]} w={34} h={8} text="DIPOLE" bg="#16191d" fg="#cfd6de" />
     </Part>
-    <group ref={electrons}>{Array.from({ length: 6 }, (_, i) => <mesh key={i}><sphereGeometry args={[1.6, 10, 8]} /><meshBasicMaterial color="#9ef0ff" toneMapped={false} /></mesh>)}</group>
+    <group ref={electrons}>{Array.from({ length: BUNCHES }, (_, i) => <mesh key={i}><sphereGeometry args={[1.6, 10, 8]} /><meshBasicMaterial color="#9ef0ff" toneMapped={false} /></mesh>)}</group>
     <GlowSprite at={[SOURCE_X, YB0, 0]} size={18} color="#fff1d6" />
 
     {/* Front end and the optics, joined by vacuum pipes */}
@@ -608,7 +618,7 @@ function World({ twin, live, animate, hq, setup, touring, scanBadge }: { twin: T
 
     {/* The beam: invisible in reality. Its outline (real width, three times enlarged) and photon packets whose every
         absorption, reflection and emission follows the twin's numbers; see photon-sim.ts. */}
-    {setup && <MovingBeam twin={twin} live={live} setup={setup} mono={monoNow} animate={animate} rocking={rocking && !fast} />}
+    {setup && <MovingBeam twin={twin} live={live} setup={setup} mono={monoNow} animate={animate} rocking={rocking && !fast} pulse={pulse} />}
 
     <Part idle={idle('i0')}><Chamber m={m} c={CHAMBERS.I0} length={profile.chambers.find(c => c.id === 'I0')?.length_cm} readout={live.i0 ? lcdVolts(live.i0.voltage_V, live.i0.saturated) : undefined} gas={gas('I0')} /></Part>
     <Part idle={idle('sample-stage')}>
