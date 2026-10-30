@@ -9,7 +9,7 @@ import { comptonShifted } from '@/lib/twin/compton';
 import { electronRangeInGas_cm } from '@/lib/twin/ionization';
 import { CHAMBERS, CHAMBER_PLATE_OFFSET, XS } from './hutch-parts';
 import { YB } from '../scene-kit';
-import { COLOR_RANGE_eV, ELECTRON_DRIFT, ION_SLOWER, PhotonSim, SLOW_MOTION, TRACK_SCALE, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
+import { BUNCH_HZ, BUNCH_SIGMA, COLOR_RANGE_eV, ELECTRON_DRIFT, ION_SLOWER, PhotonSim, SLOW_MOTION, TRACK_SCALE, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
 
 beforeAll(async () => { await Promise.all([loadXrayData(), loadOptics()]); });
 
@@ -211,6 +211,63 @@ describe('photon packets in the 3D hutch', () => {
     // A Poisson count's variance equals its mean; evenly spaced arrivals would give almost none.
     expect(variance / mean).toBeGreaterThan(0.8);
     expect(variance / mean).toBeLessThan(1.25);
+  });
+
+  it('times the light pulses by the ring RF, slowed, each a 15 ps Gaussian bunch', () => {
+    // 499.654 MHz slowed 1.15e8 times: a pulse about every 0.23 s of the drawing.
+    expect(BUNCH_HZ).toBeCloseTo(499.654e6 / SLOW_MOTION, 9);
+    expect(BUNCH_HZ).toBeGreaterThan(4.2);
+    expect(BUNCH_HZ).toBeLessThan(4.5);
+    const { setup } = setupFor(DEFAULT_STATE), sim = new PhotonSim(setup, seededRandom(6));
+    sim.pulse = { hz: BUNCH_HZ, phase_s: 0.05 };
+    const seen = new Set<object>(), offsets: number[] = [];
+    for (let i = 1; i <= 240; i++) {
+      sim.step(1 / 60, i / 60);
+      const fresh = sim.packets.filter(p => p.species === 'white' && !seen.has(p));
+      fresh.forEach(p => seen.add(p));
+      const mean = fresh.reduce((s, p) => s + p.x, 0) / (fresh.length || 1);
+      if (fresh.length > 20) fresh.forEach(p => offsets.push(p.x - mean));
+    }
+    const rms = Math.sqrt(offsets.reduce((s, d) => s + d * d, 0) / offsets.length);
+    expect(rms / BUNCH_SIGMA).toBeCloseTo(1, 1);
+    expect(BUNCH_SIGMA).toBeCloseTo(0.45, 2);
+  });
+
+  it('spreads a bending magnet beam uniformly across its fan and as a Gaussian in height, narrower for harmonics', () => {
+    const { setup: real } = setupFor(DEFAULT_STATE);
+    expect(real.undulator).toBe(false);
+    const third = real.orders.findIndex(o => o.order === 3);
+    expect(third).toBeGreaterThan(0);
+    // Harmonics are rare at 9 keV (15 of 20 000 packets): here half the packets are the third, to measure its spread.
+    const setup = { ...real, sourceCdf: real.sourceCdf.map((_, i) => i < third ? 0.5 : 1) }, sim = new PhotonSim(setup, seededRandom(7));
+    const v: number[][] = [[], []], u: number[] = [];
+    const seen = new Set<object>();
+    for (let t = 0; t < 40; t += 1 / 30) {
+      sim.step(1 / 30);
+      for (const p of sim.packets) if (p.species === 'white' && !seen.has(p) && p.order >= 0) {
+        seen.add(p);
+        if (p.order === 0) { v[0].push(p.v); u.push(p.u); } else if (p.order === third) v[1].push(p.v);
+      }
+    }
+    const sd = (a: number[]) => Math.sqrt(a.reduce((s, x) => s + x * x, 0) / a.length);
+    // The fundamental's height has its FWHM at the drawn height; the harmonic is narrower by (1/3)^0.425.
+    expect(sd(v[0]) * 2.3548).toBeCloseTo(1, 1);
+    expect(sd(v[1]) / sd(v[0])).toBeCloseTo(Math.pow(1 / 3, 0.425), 1);
+    // Across: uniform over the fan, so its spread is that of a uniform variable on [-1/2, 1/2].
+    expect(sd(u)).toBeCloseTo(1 / Math.sqrt(12), 1);
+  });
+
+  it('spreads an undulator beam as a Gaussian both ways', () => {
+    const state = applyCommand(DEFAULT_STATE, { type: 'profile', id: 'und6' }).state;
+    const { setup } = setupFor(state), sim = new PhotonSim(setup, seededRandom(8));
+    expect(setup.undulator).toBe(true);
+    const u: number[] = [], seen = new Set<object>();
+    for (let t = 0; t < 20; t += 1 / 30) {
+      sim.step(1 / 30);
+      for (const p of sim.packets) if (p.species === 'white' && !seen.has(p) && p.order === 0) { seen.add(p); u.push(p.u); }
+    }
+    const sd = Math.sqrt(u.reduce((s, x) => s + x * x, 0) / u.length);
+    expect(sd * 2.3548).toBeCloseTo(1, 1);
   });
 
   it('emits in bursts as each bunch passes, at the same average rate', () => {

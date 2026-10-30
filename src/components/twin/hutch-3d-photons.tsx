@@ -9,6 +9,7 @@ import { C1, SLITS_X, SOURCE_X, STOP_X, YB0 } from './hutch-parts';
 import { YB } from '../scene-kit';
 import { toThree } from './hutch-3d-layout';
 import { FLASH_LIFE, PhotonSim, WIDTH_SCALE, realDistance_m, type PhotonSetup, type V3 } from './photon-sim';
+import { moving } from './hutch-3d-cache';
 
 // Room for the packets in flight at WHITE_RATE (about 3000 on the undulator) and the carriers of their ionization.
 const MAX_PACKETS = 6000, MAX_FLASHES = 1000, MAX_SEGMENTS = 3600, MAX_CARRIERS = 8000;
@@ -39,7 +40,7 @@ export function Photons({ setup, animate, seed = 1, pass, pulse = null }: { setu
     const make = (geometry: THREE.BufferGeometry, count: number, opacity = 1) => {
       const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ toneMapped: false, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 }), count);
       mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
-      mesh.frustumCulled = false; mesh.renderOrder = 4; mesh.count = 0;
+      mesh.frustumCulled = false; mesh.renderOrder = 4; mesh.count = 0; moving(mesh);
       return mesh;
     };
     const streak = new THREE.CylinderGeometry(0.32, 0.05, 1, 6, 1, true); streak.translate(0, -0.5, 0);
@@ -177,5 +178,5 @@ export function BeamOutline({ setup, pass }: { setup: PhotonSetup; pass?: RefObj
   });
   useLayoutEffect(() => () => segments.forEach(m => m.geometry.dispose()), [segments]);
   useLayoutEffect(() => () => pool.current.forEach(m => m.dispose()), []);
-  return <>{segments.map((m, i) => <mesh key={i} geometry={m.geometry} material={pool.current[i]} renderOrder={2} />)}</>;
+  return <>{segments.map((m, i) => <mesh key={i} ref={moving} geometry={m.geometry} material={pool.current[i]} renderOrder={2} />)}</>;
 }

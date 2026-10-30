@@ -57,6 +57,24 @@ export const SLOW_MOTION = 299_792_458 / (SPEED * 0.01);
  * the earlier 260: a bending magnet's beam at I0 is then about 120 dots a second, each a little over a hundred photons.
  */
 export const WHITE_RATE = 1040, SELECTED_SHARE = 0.5;
+/**
+ * The storage ring's RF, Hz: electrons travel in bunches one RF period apart, 2.0 ns at the 499.654 MHz of a typical
+ * 3 GeV ring (Diamond, SLS). Slowed like everything else, light leaves the source in pulses BUNCH_HZ times a second.
+ */
+export const RF_HZ = 499.654e6, BUNCH_HZ = RF_HZ / SLOW_MOTION;
+/** A bunch's rms length: about 15 ps, so its light is 0.45 cm long (rms), in scene units at real size. */
+export const BUNCH_SIGMA = 299_792_458 * 15e-12 * 100;
+/**
+ * How the opening angle of the radiation scales with photon energy, as (E1 / E)^p about the fundamental E1: a bending
+ * magnet's vertical opening goes as (omega_c / omega)^0.425 (K.-J. Kim, AIP Conf. Proc. 184, 565 (1989)); an
+ * undulator's central cone as sqrt(lambda / 2L), so p = 0.5.
+ */
+export const OPENING_POWER = { 'bending-magnet': 0.425, undulator: 0.5 } as const;
+
+/** A standard normal number from two uniform ones (Box-Muller). */
+export function gaussian(random: Random): number {
+  return Math.sqrt(-2 * Math.log(1 - random())) * Math.cos(2 * Math.PI * random());
+}
 /** Fluorescence and scatter packets per second the drawing aims for, by boosting their weight; see `boost`. */
 const FLUORESCENCE_TARGET = 14, SCATTER_TARGET = 4;
 /** Opening of the bending-magnet fan drawn before the front-end slits, mrad. */
@@ -180,6 +198,8 @@ export interface PhotonSetup {
   /** Opening of the drawn fan before the slits (mrad) and the share of it the front-end slits accept. */
   fanMrad: number;
   slitShare: number;
+  /** An undulator's beam is Gaussian across both axes; a bending magnet's fan is uniform across and Gaussian in height. */
+  undulator: boolean;
   c2x: number;
   twoTheta: number;
   envelope: Envelope;
@@ -314,7 +334,7 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
     stages,
     white: { energy: energyGrid, cdf },
     collimating,
-    fanMrad, slitShare,
+    fanMrad, slitShare, undulator: profile.source.kind === 'undulator',
     c2x, twoTheta: 2 * drawnTheta_rad,
     envelope: beamEnvelope(state),
     sample: {
@@ -472,9 +492,14 @@ export class PhotonSim {
    */
   private emit(x = SOURCE_X) {
     const { setup, random } = this;
-    const u = random() - 0.5, v = random() - 0.5, selected = random() < SELECTED_SHARE;
+    const selected = random() < SELECTED_SHARE;
     const order = selected ? pick(setup.sourceCdf, random()) : -1;
     const energy = selected ? setup.orders[order].energy_eV : setup.white.energy[pick(setup.white.cdf, random())];
+    // Across the beam, as fractions of its drawn size (the fundamental's full width at half maximum): Gaussian, narrower
+    // for higher energies, except a bending magnet's horizontal fan, which is uniform. Tails are cut at 3.5 sigma.
+    const sigma = Math.pow(setup.fundamental_eV / energy, setup.undulator ? OPENING_POWER.undulator : OPENING_POWER['bending-magnet']) / 2.3548;
+    const normal = () => Math.max(-1.5, Math.min(1.5, gaussian(random) * sigma));
+    const u = setup.undulator ? normal() : random() - 0.5, v = normal();
     const p: Packet = { species: 'white', energy_eV: energy, color: selected ? setup.orders[order].color : energyColor(energy), x, u, v, order, endX: 0, end: null, origin: [0, 0, 0], dir: [1, 0, 0], travelled: 0, limit: Infinity };
     // The front-end slits take the middle of the fan.
     if (Math.abs(p.u) > setup.slitShare / 2) { p.endX = SLITS_X; p.end = { kind: 'heat', stage: 'front-end-slits', secondary: null, count: 0 }; }
@@ -565,7 +590,8 @@ export class PhotonSim {
       const { hz, phase_s } = this.pulse;
       if (Math.floor((now_s - phase_s) * hz) > Math.floor((before - phase_s) * hz)) {
         // A bunch is a few centimetres long in the drawing (tens of picoseconds, slowed like the light).
-        for (; this.owed > 0; this.owed--) this.emit(SOURCE_X + BUNCH_LENGTH * this.random());
+        // The light of a bunch, Gaussian along the line, BUNCH_SIGMA rms (15 ps, slowed like the light).
+        for (; this.owed > 0; this.owed--) this.emit(SOURCE_X + BUNCH_SIGMA * gaussian(this.random));
       }
     } else for (; this.owed > 0; this.owed--) this.emit();
     const { setup } = this;
@@ -656,8 +682,6 @@ export class PhotonSim {
   private elapsed = 0;
 }
 
-/** Length of a drawn electron bunch's light along the line, scene units. */
-const BUNCH_LENGTH = 3;
 
 /** How long an absorption flash lasts, seconds. */
 export const FLASH_LIFE = 0.35;

@@ -6,7 +6,7 @@
 import { Suspense, memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, OrbitControls } from '@react-three/drei';
-import { Bloom, EffectComposer, N8AO, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { Bloom, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { ToneMappingMode, type EffectComposer as EffectComposerImpl } from 'postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
@@ -27,7 +27,8 @@ export { texturesReady } from './hutch-3d-kit';
 import type { HutchSceneProps } from './hutch-scene';
 import { modeInfo } from './twin-state';
 import { BeamOutline, Photons } from './hutch-3d-photons';
-import { COLOR_RANGE_eV, ION_SLOWER, SLOW_MOTION, TRACK_SCALE, WIDTH_SCALE, energyColor, photonSetup, type PhotonSetup } from './photon-sim';
+import { installCache, markStaticDirty, moving, stillRedrawFits, type CacheSettings } from './hutch-3d-cache';
+import { BUNCH_HZ, COLOR_RANGE_eV, ION_SLOWER, RF_HZ, SLOW_MOTION, TRACK_SCALE, WIDTH_SCALE, energyColor, photonSetup, type PhotonSetup } from './photon-sim';
 
 const percent = (fraction: number) => fraction >= 0.9995 ? '100' : fraction < 0.001 ? (fraction * 100).toExponential(1) : (fraction * 100).toFixed(1);
 const short = (value: number) => value.toExponential(1).replace('e+', 'e');
@@ -301,15 +302,38 @@ function WallFittings({ m }: { m: Mats }) {
   </>;
 }
 
-/** Ambient occlusion, bloom on the beam and displays, a soft vignette and filmic tone mapping. Lighter on phones. */
-function Effects({ light, hq, composer }: { light: boolean; hq: boolean; composer: MutableRefObject<EffectComposerImpl | null> }) {
-  return <EffectComposer ref={composer} multisampling={hq ? 8 : light ? 0 : 4} enableNormalPass={false}>
-    <N8AO aoRadius={24} distanceFalloff={0.8} intensity={2.2} quality={hq ? 'ultra' : light ? 'performance' : 'low'} halfRes={!hq} />
+/**
+ * Ambient occlusion (inside the cached still image, see hutch-3d-cache.ts), bloom on the beam and displays, a soft
+ * vignette and filmic tone mapping. Lighter on phones.
+ */
+function Effects({ light, hq, supersampled, composer }: { light: boolean; hq: boolean; supersampled: boolean; composer: MutableRefObject<EffectComposerImpl | null> }) {
+  const multisampling = hq ? 8 : light ? 0 : 4;
+  // The composer's own multisampling now only smooths the moving layer: the still image arrives already resolved. In
+  // the Ultra view the canvas holds at least four pixels for each screen pixel, which the browser averages, so the dots
+  // are supersampled without it; at 4K on an Intel UHD 770 it cost 20 ms a frame.
+  return <><EffectComposer ref={composer} multisampling={supersampled ? 0 : multisampling} enableNormalPass={false}>
     {/* Bloom only on what is brighter than white: photon packets, lamps and displays */}
     <Bloom luminanceThreshold={1.15} luminanceSmoothing={0.2} intensity={0.35} mipmapBlur radius={0.4} />
     <Vignette offset={0.32} darkness={0.22} />
     <ToneMapping mode={ToneMappingMode.AGX} />
-  </EffectComposer>;
+  </EffectComposer>
+  <StillCache composer={composer} settings={{ multisampling, quality: hq ? 'Ultra' : light ? 'Performance' : 'Low', halfRes: !hq }} /></>;
+}
+
+/** Puts the cached still image under the composer, again whenever the composer, the camera or the quality changes. */
+function StillCache({ composer, settings }: { composer: MutableRefObject<EffectComposerImpl | null>; settings: CacheSettings }) {
+  const { scene, camera } = useThree();
+  const installed = useRef<{ composer: EffectComposerImpl; camera: THREE.Camera; key: string; undo: () => void } | null>(null);
+  const key = `${settings.multisampling} ${settings.quality} ${settings.halfRes}`;
+  // Before the composer renders (priority 1).
+  useFrame(() => {
+    const c = composer.current, i = installed.current;
+    if (!c || i && i.composer === c && i.camera === camera && i.key === key) return;
+    i?.undo();
+    installed.current = { composer: c, camera, key, undo: installCache(c, scene, camera, settings) };
+  });
+  useEffect(() => () => { installed.current?.undo(); installed.current = null; }, []);
+  return null;
 }
 
 /** What never changes with the instrument: the room, its fittings and the optical table. Memoised, so a slider step
@@ -377,8 +401,8 @@ const Room = memo(function Room({ m }: { m: Mats }) {
   </>;
 });
 
-/** The drawn electron bunches: how many go round the ring, and how many times a second. */
-const BUNCHES = 6, ORBIT_TURNS_PER_S = 0.7;
+/** The drawn electron bunches: six go round, passing the source once per RF period of the slowed ring (BUNCH_HZ). */
+const BUNCHES = 6, ORBIT_TURNS_PER_S = BUNCH_HZ / BUNCHES;
 
 /** Seconds for one swing of the Bragg axis there and back in a quick scan, slowed like everything else in the drawing. */
 const QUICK_SCAN_PERIOD_S = 4;
@@ -457,7 +481,7 @@ function World({ twin, live, animate, hq, ultra, setup, touring, scanBadge }: { 
   useLayoutEffect(() => placeCrystals(setTheta === null ? null : motor.current.position, 0));
   const electrons = useRef<THREE.Group>(null);
   const orbit = useMemo(() => new THREE.CatmullRomCurve3(ORBIT.map(p => new THREE.Vector3(...toThree(p)))), []);
-  // Light leaves the source as each drawn bunch passes it: six bunches going round 0.7 times a second.
+  // Light leaves the source as each drawn bunch passes it: one bunch every 2.0 ns, slowed, about 4.3 times a second.
   const pulse = useMemo(() => {
     const source = new THREE.Vector3(...toThree([SOURCE_X, YB0, 0]));
     let at = 0, nearest = Infinity;
@@ -484,7 +508,13 @@ function World({ twin, live, animate, hq, ultra, setup, touring, scanBadge }: { 
     }
     if (hrmGroup.current) hrmGroup.current.position.y += (hrmY - hrmGroup.current.position.y) * (animate ? Math.min(1, dt * 5) : 1);
     electrons.current?.children.forEach((e, i) => e.position.copy(orbit.getPointAt(((animate ? t * ORBIT_TURNS_PER_S : 0) + i / BUNCHES) % 1)));
+    // The crystals and the sliding mirror belong to the still image: redraw it while they move.
+    const placed = `${theta} ${rock} ${hrmGroup.current?.position.y.toFixed(3)}`;
+    if (placed !== stillPose.current) { stillPose.current = placed; markStaticDirty(); }
   });
+  // Any change of state redraws the still image.
+  useLayoutEffect(() => markStaticDirty());
+  const stillPose = useRef('');
   const gl = useThree(state => state.gl), invalidate = useThree(state => state.invalidate);
   // Shadows are redrawn once a change settles rather than on every slider step: what moves meanwhile (the crystals,
   // the sliding mirror) sits inside the tanks, where a shadow a moment late cannot be seen.
@@ -535,7 +565,7 @@ function World({ twin, live, animate, hq, ultra, setup, touring, scanBadge }: { 
       <Tube points={ORBIT} r={4.5} m={m.steel} />
       <TextPlate at={[86, 22, -26.4]} w={34} h={8} text="DIPOLE" bg="#16191d" fg="#cfd6de" />
     </Part>
-    <group ref={electrons}>{Array.from({ length: BUNCHES }, (_, i) => <mesh key={i}><sphereGeometry args={[1.6, 10, 8]} /><meshBasicMaterial color="#9ef0ff" toneMapped={false} /></mesh>)}</group>
+    <group ref={electrons}>{Array.from({ length: BUNCHES }, (_, i) => <mesh key={i} ref={moving}><sphereGeometry args={[1.6, 10, 8]} /><meshBasicMaterial color="#9ef0ff" toneMapped={false} /></mesh>)}</group>
     <GlowSprite at={[SOURCE_X, YB0, 0]} size={18} color="#fff1d6" />
 
     {/* Front end and the optics, joined by vacuum pipes */}
@@ -748,8 +778,10 @@ function StatusScreen({ mode, energy, theta, crystal, transmission }: { mode: Tw
 /* ---------- Frame pacing ---------- */
 /**
  * The canvas draws only when asked. While something moves (the beam pulses, the electrons, a rocking crystal) this asks
- * for 30 frames a second, and it holds off for a moment while the page is busy with a key press or a drag outside the
- * canvas, so the controls answer first. Turning the camera and every change of the instrument draw at once.
+ * for 30 frames a second, on the display's refresh: every second refresh at 60 Hz, every fourth at 120 Hz, so each frame
+ * stays up for the same time (a timer drifts against the refresh, and frames then last one, two or three refreshes).
+ * It holds off for a moment while the page is busy with a key press or a drag outside the canvas, so the controls
+ * answer first. Turning the camera and every change of the instrument draw at once.
  */
 function Pacer({ animate }: { animate: boolean }) {
   const { invalidate, gl } = useThree();
@@ -763,8 +795,21 @@ function Pacer({ animate }: { animate: boolean }) {
     };
     const types = ['keydown', 'pointerdown', 'pointermove', 'input'];
     types.forEach(t => window.addEventListener(t, busy, { capture: true, passive: true }));
-    const timer = setInterval(() => { if (performance.now() > busyUntil) invalidate(); }, 1000 / 30);
-    return () => { clearInterval(timer); types.forEach(t => window.removeEventListener(t, busy, { capture: true })); };
+    // The refresh interval: the shortest gaps between the first callbacks (a slow frame makes longer gaps, never shorter;
+    // the second shortest, to skip a stray one); then every nth refresh, n giving the nearest to 30 a second.
+    let raf = 0, previous = 0, every = 0, count = 0;
+    const gaps: number[] = [];
+    const tick = (t: number) => {
+      if (!every) {
+        if (previous) gaps.push(t - previous);
+        if (gaps.length >= 15) { const sorted = [...gaps].sort((a, b) => a - b); every = Math.max(1, Math.round((1000 / 30) / sorted[1])); }
+        else if (performance.now() > busyUntil) invalidate();
+      } else if (++count % every === 0 && performance.now() > busyUntil) invalidate();
+      previous = t;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); types.forEach(t => window.removeEventListener(t, busy, { capture: true })); };
   }, [animate, gl, invalidate]);
   return null;
 }
@@ -808,6 +853,9 @@ function Rig({ mode, whole, focusOn, reset, reduced, touring }: { mode: TwinStat
     if (!tw) {
       const s = sway.current;
       if (reduced || touring) { s.since = performance.now(); s.applied = 0; return; }
+      // Turning the camera redraws the whole still image; where that does not fit in a frame the view holds still, so
+      // the photons keep their frame rate.
+      if (!stillRedrawFits()) return;
       const a = swayAngle(performance.now() - s.since); if (a === s.applied) return;
       offset.subVectors(camera.position, c.target).applyAxisAngle(THREE.Object3D.DEFAULT_UP, a - s.applied);
       camera.position.copy(c.target).add(offset); s.applied = a; c.update();
@@ -988,7 +1036,7 @@ function PhotonLegend({ setup, rocking }: { setup: PhotonSetup; rocking: boolean
     <button type="button" className="hutch-legend-chip" aria-expanded={open} aria-controls="hutch-legend-text" onClick={() => setOpen(!open)}>
       <strong>Photons</strong><span>2 keV</span><i style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} /><span>45 keV</span>
     </button>
-    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{String.raw`${(SLOW_MOTION / 1e8).toFixed(1)}\times10^{8}`}</Tex> times, clock and all{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{count(setup.photonsPerPacket)}</Tex> photons, those that pass in its share of the slowed time</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter, Compton ones a little redder{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex>{rocking && <> · rocking angle <Tex plain>{String.raw`\times${power(rockScale)}`}</Tex></>} · chambers: photoelectron tracks <Tex plain>{String.raw`\times${TRACK_SCALE}`}</Tex>, electrons (blue) and ions (amber) drifting to the plates, sped up, with ions drawn <Tex plain>{String.raw`${ION_SLOWER}`}</Tex> times slower (about 1000 in reality) · flash: absorbed</p>
+    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{String.raw`${(SLOW_MOTION / 1e8).toFixed(1)}\times10^{8}`}</Tex> times, clock and all, so bunches leave every <Tex plain>{String.raw`${(1e9 / RF_HZ).toFixed(1)}\ \mathrm{ns}`}</Tex> ({(RF_HZ / 1e6).toFixed(0)} MHz RF){setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{count(setup.photonsPerPacket)}</Tex> photons, those that pass in its share of the slowed time</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter, Compton ones a little redder{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex>{rocking && <> · rocking angle <Tex plain>{String.raw`\times${power(rockScale)}`}</Tex></>} · chambers: photoelectron tracks <Tex plain>{String.raw`\times${TRACK_SCALE}`}</Tex>, electrons (blue) and ions (amber) drifting to the plates, sped up, with ions drawn <Tex plain>{String.raw`${ION_SLOWER}`}</Tex> times slower (about 1000 in reality) · flash: absorbed</p>
   </div>;
 }
 
@@ -1059,7 +1107,7 @@ function Hutch3D({ twin, live, labels, part: open, onPart, whole, reset, shot, o
           <Suspense fallback={null}><DetailContext.Provider value={ultra ? 2 : 1}><World twin={twin} live={live} animate={!reduced} hq={hq || ultra} ultra={ultra} setup={setup} touring={!!run} scanBadge={scanBadge} /></DetailContext.Provider></Suspense>
           <Rig mode={mode} whole={whole} focusOn={focusOn} reset={reset} reduced={reduced} touring={!!run} />
           {run && <Tour run={run} onStep={setStep} onEnd={video => onTour('done', video)} bar={bar} />}
-          <Effects light={coarse && !ultra} hq={hq || ultra} composer={composer} />
+          <Effects light={coarse && !ultra} hq={hq || ultra} supersampled={ultra && !hq} composer={composer} />
           <Snapshot shot={shot} light={coarse} onShot={onShot} setHq={setHq} composer={composer} />
           <Pacer animate={!reduced && visible} />
           <Projector overlay={overlay} showLabels={showLabels} />

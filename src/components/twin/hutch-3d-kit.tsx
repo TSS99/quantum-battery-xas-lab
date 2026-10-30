@@ -6,6 +6,7 @@
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { RoundedBox, useTexture } from '@react-three/drei';
+import { markStaticDirty } from './hutch-3d-cache';
 import { toThree, type V3 } from './hutch-3d-layout';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -122,7 +123,7 @@ export function useMaterials(ultra = false): Mats {
     let on = true;
     TEXTURES_4K.forEach((url, i) => {
       const image = new Image();
-      image.onload = () => { if (on) { textures[i].source.data = image; textures[i].source.needsUpdate = true; } };
+      image.onload = () => { if (on) { textures[i].source.data = image; textures[i].source.needsUpdate = true; markStaticDirty(); } };
       image.src = url;
     });
     return () => { on = false; };
