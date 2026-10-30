@@ -27,7 +27,7 @@ export { texturesReady } from './hutch-3d-kit';
 import type { HutchSceneProps } from './hutch-scene';
 import { modeInfo } from './twin-state';
 import { BeamOutline, Photons } from './hutch-3d-photons';
-import { COLOR_RANGE_eV, ION_SLOWER, TRACK_SCALE, WIDTH_SCALE, energyColor, photonSetup, type PhotonSetup } from './photon-sim';
+import { COLOR_RANGE_eV, ION_SLOWER, SLOW_MOTION, TRACK_SCALE, WIDTH_SCALE, energyColor, photonSetup, type PhotonSetup } from './photon-sim';
 
 const percent = (fraction: number) => fraction >= 0.9995 ? '100' : fraction < 0.001 ? (fraction * 100).toExponential(1) : (fraction * 100).toFixed(1);
 const short = (value: number) => value.toExponential(1).replace('e+', 'e');
@@ -974,6 +974,8 @@ function Projector({ overlay, showLabels }: { overlay: MutableRefObject<Overlay>
 
 /** One significant figure as a power of ten, for the legend: 9.1e10 becomes "9 x 10^10". */
 const power = (value: number) => { const e = Math.floor(Math.log10(value)), m = Math.round(value / 10 ** e); return m === 10 ? `10^{${e + 1}}` : String.raw`${m}\times10^{${e}}`; };
+/** A count to two significant figures, as a power of ten from 10 000. */
+const count = (value: number) => value < 1e4 ? String(Number(value.toPrecision(2))) : power(value);
 
 /** What the dots mean: X-rays are invisible, so the colours, the speed and the counts are spelled out. A chip with the
     energy bar; tap it for the rest. */
@@ -986,7 +988,7 @@ function PhotonLegend({ setup, rocking }: { setup: PhotonSetup; rocking: boolean
     <button type="button" className="hutch-legend-chip" aria-expanded={open} aria-controls="hutch-legend-text" onClick={() => setOpen(!open)}>
       <strong>Photons</strong><span>2 keV</span><i style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} /><span>45 keV</span>
     </button>
-    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{'10^{8}'}</Tex> times{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{power(setup.photonsPerPacket)}</Tex> photons</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter, Compton ones a little redder{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex>{rocking && <> · rocking angle <Tex plain>{String.raw`\times${power(rockScale)}`}</Tex></>} · chambers: photoelectron tracks <Tex plain>{String.raw`\times${TRACK_SCALE}`}</Tex>, electrons (blue) and ions (amber) drifting to the plates, sped up, with ions drawn <Tex plain>{String.raw`${ION_SLOWER}`}</Tex> times slower (about 1000 in reality) · flash: absorbed</p>
+    <p id="hutch-legend-text" hidden={!open}>Invisible in reality: false colour, slowed <Tex plain>{String.raw`${(SLOW_MOTION / 1e8).toFixed(1)}\times10^{8}`}</Tex> times, clock and all{setup.photonsPerPacket > 0 && <> · 1 dot ≈ <Tex plain>{count(setup.photonsPerPacket)}</Tex> photons, those that pass in its share of the slowed time</>}{setup.whitePerSelected > 1 && <> · at these settings the crystals pass 1 white photon in <Tex plain>{power(setup.whitePerSelected)}</Tex></>} · ◆ fluorescence and scatter, Compton ones a little redder{setup.sample.fluorescenceBoost > 1 && <> <Tex plain>{String.raw`\times${setup.sample.fluorescenceBoost}`}</Tex></>} · width <Tex plain>{String.raw`\times${WIDTH_SCALE}`}</Tex>{rocking && <> · rocking angle <Tex plain>{String.raw`\times${power(rockScale)}`}</Tex></>} · chambers: photoelectron tracks <Tex plain>{String.raw`\times${TRACK_SCALE}`}</Tex>, electrons (blue) and ions (amber) drifting to the plates, sped up, with ions drawn <Tex plain>{String.raw`${ION_SLOWER}`}</Tex> times slower (about 1000 in reality) · flash: absorbed</p>
   </div>;
 }
 

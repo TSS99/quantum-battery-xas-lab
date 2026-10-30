@@ -10,7 +10,8 @@ import { YB } from '../scene-kit';
 import { toThree } from './hutch-3d-layout';
 import { FLASH_LIFE, PhotonSim, WIDTH_SCALE, realDistance_m, type PhotonSetup, type V3 } from './photon-sim';
 
-const MAX_PACKETS = 2000, MAX_FLASHES = 500, MAX_SEGMENTS = 3600, MAX_CARRIERS = 4000;
+// Room for the packets in flight at WHITE_RATE (about 3000 on the undulator) and the carriers of their ionization.
+const MAX_PACKETS = 6000, MAX_FLASHES = 1000, MAX_SEGMENTS = 3600, MAX_CARRIERS = 8000;
 const ELECTRON: V3 = [0.62, 0.86, 1], POSITIVE_ION: V3 = [1, 0.62, 0.3];
 /** Colours brighter than the bloom threshold, so the packets glow. */
 const GLOW = 2.4;

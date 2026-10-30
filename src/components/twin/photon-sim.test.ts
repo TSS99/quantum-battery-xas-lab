@@ -7,9 +7,9 @@ import type { TwinState } from '@/lib/twin/types';
 import { SAMPLE_PRESETS } from '@/lib/twin/presets';
 import { comptonShifted } from '@/lib/twin/compton';
 import { electronRangeInGas_cm } from '@/lib/twin/ionization';
-import { CHAMBER_PLATE_OFFSET, XS } from './hutch-parts';
+import { CHAMBERS, CHAMBER_PLATE_OFFSET, XS } from './hutch-parts';
 import { YB } from '../scene-kit';
-import { COLOR_RANGE_eV, ELECTRON_DRIFT, ION_SLOWER, PhotonSim, TRACK_SCALE, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
+import { COLOR_RANGE_eV, ELECTRON_DRIFT, ION_SLOWER, PhotonSim, SLOW_MOTION, TRACK_SCALE, WHITE_RATE, absorptionDepth, beamEnvelope, boost, dipoleScatter, energyColor, escapeChance, photonSetup, secondCrystalX, type PhotonSetup } from './photon-sim';
 
 beforeAll(async () => { await Promise.all([loadXrayData(), loadOptics()]); });
 
@@ -172,6 +172,47 @@ describe('photon packets in the 3D hutch', () => {
     expect(film).toBeLessThan(0.1);
   });
 
+  it('replays light about 10^8 times slower, clock and all: one scene unit a centimetre at SPEED a second', () => {
+    expect(SLOW_MOTION).toBeCloseTo(299_792_458 / 2.6, -3);
+    expect(SLOW_MOTION).toBeGreaterThan(1e8);
+    expect(SLOW_MOTION).toBeLessThan(1.2e8);
+  });
+
+  it('makes a dot the photons that cross I0 in its share of the slowed time, about a hundred at a bending magnet', () => {
+    const { live, setup } = setupFor(DEFAULT_STATE), sim = new PhotonSim(setup, seededRandom(4));
+    sim.prewarm(6);
+    // Fundamental packets entering I0 in 20 s of the drawing, counted as they cross its front.
+    const crossed = new Set<object>();
+    for (let t = 0; t < 20; t += 1 / 60) {
+      sim.step(1 / 60);
+      for (const p of sim.packets) if (p.species === 'beam' && p.order === 0 && p.x >= CHAMBERS.I0.x0) crossed.add(p);
+    }
+    const perSecond = crossed.size / 20;
+    // The photons that really cross I0 in one second of the drawing, shared by the packets that do.
+    expect(setup.photonsPerPacket * perSecond / (live.flux! / SLOW_MOTION)).toBeCloseTo(1, 1);
+    expect(setup.photonsPerPacket).toBeGreaterThan(50);
+    expect(setup.photonsPerPacket).toBeLessThan(500);
+  });
+
+  it('lets photons arrive at random, with Poisson shot noise', () => {
+    const { setup } = setupFor(DEFAULT_STATE), sim = new PhotonSim(setup, seededRandom(5));
+    const seen = new Set<object>(), counts: number[] = [];
+    for (let window = 0; window < 300; window++) {
+      let n = 0;
+      for (let f = 0; f < 6; f++) {
+        sim.step(1 / 60);
+        for (const p of sim.packets) if (p.species === 'white' && !seen.has(p)) { seen.add(p); n++; }
+      }
+      counts.push(n);
+    }
+    const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+    const variance = counts.reduce((a, b) => a + (b - mean) ** 2, 0) / (counts.length - 1);
+    expect(mean / (WHITE_RATE * 0.1)).toBeCloseTo(1, 1);
+    // A Poisson count's variance equals its mean; evenly spaced arrivals would give almost none.
+    expect(variance / mean).toBeGreaterThan(0.8);
+    expect(variance / mean).toBeLessThan(1.25);
+  });
+
   it('emits in bursts as each bunch passes, at the same average rate', () => {
     const { setup } = setupFor(DEFAULT_STATE), sim = new PhotonSim(setup, seededRandom(2));
     sim.pulse = { hz: 4, phase_s: 0.1 };
@@ -185,10 +226,12 @@ describe('photon packets in the 3D hutch', () => {
       if (fresh.length) framesWithLight++;
       total += fresh.length;
     }
-    // Ten seconds at four bunches a second: light in about 40 of the 600 frames, and the steady rate on average.
+    // Ten seconds at four bunches a second: light in about 40 of the 600 frames, and the steady rate on average, give or
+    // take the arrivals still waiting for the next bunch (a quarter second's worth) and three standard deviations of
+    // Poisson noise.
     expect(framesWithLight).toBeGreaterThanOrEqual(39);
     expect(framesWithLight).toBeLessThanOrEqual(41);
-    expect(Math.abs(total - 10 * WHITE_RATE)).toBeLessThan(WHITE_RATE / 4 + 1);
+    expect(Math.abs(total - 10 * WHITE_RATE)).toBeLessThan(WHITE_RATE / 4 + 3 * Math.sqrt(10 * WHITE_RATE));
   });
 
   it('Compton scatters the share the tables give, each photon at the energy its angle sets', () => {

@@ -1,7 +1,9 @@
 /**
  * Photons for the 3D hutch: a small Monte Carlo of photon packets whose fates come from the twin's own physics, so
  * what the dots do is what the numbers say. X-rays are invisible and travel at the speed of light; here each dot is a
- * packet of many photons, coloured on a false energy scale and slowed about a hundred million times.
+ * packet of photons, coloured on a false energy scale, in a slow-motion replay (SLOW_MOTION, about 10^8): the clock
+ * runs slow by the same factor as the light, so a dot stands for the photons that really pass in its share of the
+ * replayed time, a few hundred at a bending magnet (see `photonsPerPacket`).
  *
  * - The source emits a white beam (the bending magnet or undulator spectrum of src/lib/twin/source.ts) across its
  *   fan; the front-end slits keep the accepted angle, the collimating mirror reflects each energy with its tabulated
@@ -44,8 +46,17 @@ export type Random = () => number;
 
 /** Packet speed in scene units (about a centimetre each) per second: light is about 10^8 times faster. */
 export const SPEED = 260;
-/** White packets emitted per second, and the share of them the drawing lets through the crystals. */
-export const WHITE_RATE = 260, SELECTED_SHARE = 0.5;
+/**
+ * How many times slower than reality the drawing runs: light against the dots' speed where the hardware is drawn at
+ * real size (one scene unit a centimetre, the hutch). The clock is slowed by the same factor, so one second of the
+ * drawing replays 1/SLOW_MOTION s, about 9 ns: the time between a few electron bunches.
+ */
+export const SLOW_MOTION = 299_792_458 / (SPEED * 0.01);
+/**
+ * White packets emitted per second, and the share of them the drawing lets through the crystals. 1040 is four times
+ * the earlier 260: a bending magnet's beam at I0 is then about 120 dots a second, each a little over a hundred photons.
+ */
+export const WHITE_RATE = 1040, SELECTED_SHARE = 0.5;
 /** Fluorescence and scatter packets per second the drawing aims for, by boosting their weight; see `boost`. */
 const FLUORESCENCE_TARGET = 14, SCATTER_TARGET = 4;
 /** Opening of the bending-magnet fan drawn before the front-end slits, mrad. */
@@ -189,7 +200,11 @@ export interface PhotonSetup {
     drawnThickness_cm: number;
   };
   detector: { halfAngle: number; fraction: number };
-  /** For the legend: photons each fundamental packet stands for, and how many white photons it takes to make one. */
+  /**
+   * For the legend: photons each fundamental packet stands for, and how many white photons it takes to make one. A
+   * second of the drawing replays 1/SLOW_MOTION s, so the photons that cross I0 in it, flux/SLOW_MOTION, are shared by
+   * the fundamental packets that cross it in that second.
+   */
   photonsPerPacket: number;
   whitePerSelected: number;
 }
@@ -312,7 +327,7 @@ export function photonSetup(state: TwinState, live: TwinStatus, drawnTheta_rad: 
       drawnThickness_cm: drawnSampleThickness(sample),
     },
     detector: { halfAngle: Math.acos(1 - 2 * detector), fraction: detector },
-    photonsPerPacket: live.flux && fundamentalAtI0 > 0 ? live.flux / fundamentalAtI0 : 0,
+    photonsPerPacket: live.flux && fundamentalAtI0 > 0 ? live.flux / SLOW_MOTION / fundamentalAtI0 : 0,
     whitePerSelected: monoFlux > 0 ? whiteFlux / monoFlux : 0,
   };
 }
@@ -364,7 +379,7 @@ export const TRACK_SCALE = 10;
 export const ELECTRON_DRIFT = 14, ION_SLOWER = 8;
 /** Real electron-ion pairs each drawn carrier stands for, and the fewest and most drawn per absorbed photon. */
 export const PAIRS_PER_DOT = 30;
-const MIN_DOTS = 3, MAX_DOTS = 16, TRACK_STEPS = 8, MAX_CARRIERS = 4000, MAX_TRACKS = 400;
+const MIN_DOTS = 3, MAX_DOTS = 16, TRACK_STEPS = 8, MAX_CARRIERS = 8000, MAX_TRACKS = 400;
 
 /**
  * Depth below the front face (cm, along the normal) where a beam photon absorbed in a slab was absorbed: the path
@@ -422,7 +437,9 @@ export class PhotonSim {
   selfAbsorbed = 0;
   /** While the second crystal rocks: its throughput for each order right now, in place of the set detune's. */
   secondCrystalPass: number[] | null = null;
-  private debt = 0;
+  /** Photons arrive at random (a Poisson process): the time of the next arrival, and those owed to the next bunch. */
+  private nextArrival = 0;
+  private owed = 0;
   constructor(public setup: PhotonSetup, private random: Random) {}
 
   /** Position of a packet in scene coordinates. */
@@ -534,22 +551,24 @@ export class PhotonSim {
   private flash(at: V3, kind: FlashKind, color: V3) { this.flashes.push({ at, kind, age: 0, color }); }
 
   /**
-   * Advance the drawing by dt seconds, to `now_s` on the scene's clock when given. With `pulse` set, the source
-   * shines only as an electron bunch passes, so the packets leave in bursts at the bunch rate, as synchrotron light
-   * does; the average rate is the same.
+   * Advance the drawing by dt seconds, to `now_s` on the scene's clock when given. Packets arrive as a Poisson process
+   * at WHITE_RATE, with the shot noise of real photon counting. With `pulse` set, the source shines only as an electron
+   * bunch passes, so the packets leave in bursts at the bunch rate, as synchrotron light does; the average rate is the
+   * same.
    */
   step(dt: number, now_s = this.time + dt) {
-    const { setup } = this;
     const before = now_s - dt;
     this.time = now_s;
-    this.debt += dt * WHITE_RATE;
+    this.elapsed += dt;
+    while (this.nextArrival <= this.elapsed) { this.owed++; this.nextArrival += -Math.log(1 - this.random()) / WHITE_RATE; }
     if (this.pulse) {
       const { hz, phase_s } = this.pulse;
       if (Math.floor((now_s - phase_s) * hz) > Math.floor((before - phase_s) * hz)) {
         // A bunch is a few centimetres long in the drawing (tens of picoseconds, slowed like the light).
-        while (this.debt >= 1) { this.debt -= 1; this.emit(SOURCE_X + BUNCH_LENGTH * this.random()); }
+        for (; this.owed > 0; this.owed--) this.emit(SOURCE_X + BUNCH_LENGTH * this.random());
       }
-    } else while (this.debt >= 1) { this.debt -= 1; this.emit(); }
+    } else for (; this.owed > 0; this.owed--) this.emit();
+    const { setup } = this;
     const travel = SPEED * dt;
     for (let i = this.packets.length - 1; i >= 0; i--) {
       const p = this.packets[i];
@@ -633,6 +652,8 @@ export class PhotonSim {
   /** Bunch passages: how many a second and the time of one, on the clock `step` is given. Null for a steady source. */
   pulse: { hz: number; phase_s: number } | null = null;
   private time = 0;
+  /** Seconds stepped since the start, for the arrivals (the scene's clock can jump when the view is restored). */
+  private elapsed = 0;
 }
 
 /** Length of a drawn electron bunch's light along the line, scene units. */
