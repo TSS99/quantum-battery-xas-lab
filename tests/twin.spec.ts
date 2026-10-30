@@ -257,7 +257,7 @@ test('3D hutch: the guided tour flies the camera with captions, Escape stops it,
   expect(errors).toEqual([]);
 });
 
-test('3D hutch: left alone, the view sways slowly; with reduced motion it holds still', async ({ page }) => {
+test('3D hutch: left alone, the view sways slowly where the GPU can redraw it each frame; with reduced motion it holds still', async ({ page }) => {
   // A label follows its part on screen, so its position shows whether the camera moves.
   const where = () => page.locator('.hutch-3d').getByRole('button', { name: 'It chamber', exact: true }).evaluate(el => getComputedStyle(el).getPropertyValue('--tx'));
   for (const reducedMotion of ['no-preference', 'reduce'] as const) {
@@ -266,8 +266,12 @@ test('3D hutch: left alone, the view sways slowly; with reduced motion it holds 
     await page.waitForTimeout(7_000);
     const before = await where();
     await page.waitForTimeout(2_000);
-    if (reducedMotion === 'reduce') expect(await where()).toBe(before);
-    else expect(await where()).not.toBe(before);
+    const sway = await page.locator('.hutch-3d').getAttribute('data-sway');
+    if (reducedMotion === 'reduce') { expect(sway).toBe('off'); expect(await where()).toBe(before); }
+    // Turning the camera redraws the cached still image every frame: where that is too slow (software rendering in
+    // this test runner, an integrated GPU at 4K) the view holds still so the photons keep their frame rate.
+    else if (sway === 'running') expect(await where()).not.toBe(before);
+    else { expect(sway).toBe('held'); expect(await where()).toBe(before); }
   }
 });
 

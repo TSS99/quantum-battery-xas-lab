@@ -2,7 +2,9 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Link2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Compass, Link2, X } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
+import { valenceSeries } from '@/lib/twin/oxidation';
 import { loadPaths, sigma2Einstein } from '@/lib/twin/exafs';
 import { ROOM_TEMPERATURE_K, einsteinTemperature_K, libraryMaterialId } from '@/lib/twin/sample';
 import { SAMPLE_GROUPS, SAMPLE_PRESETS } from '@/lib/twin/presets';
@@ -21,6 +23,8 @@ const ClusterView = dynamic(() => import('./cluster-view'), { ssr: false, loadin
 const WavePanel = dynamic(() => import('./wave-panel').then(m => m.WavePanel));
 const WhatIf = dynamic(() => import('./what-if').then(m => m.WhatIf));
 const NeighbourPanel = dynamic(() => import('./neighbour-panel').then(m => m.NeighbourPanel));
+const NearEdgePanel = dynamic(() => import('./near-edge-panel').then(m => m.NearEdgePanel));
+const OxidationPanel = dynamic(() => import('./oxidation-panel').then(m => m.OxidationPanel));
 
 /** Shell colours in distance order: the validated dark categorical slots (dataviz palette), fixed per position, never cycled. */
 const SHELL_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
@@ -48,6 +52,8 @@ export function SpectrumPage() {
   // "What if": changes to shells, a temperature of your own, and the k the electron wave is drawn at.
   const [tweaks, setTweaks] = useState<Record<string, ShellTweak>>({}), [ownTemperature, setOwnTemperature] = useState<number | null>(null);
   const [waveK, setWaveK] = useState(6);
+  const [tour, setTour] = useState<number | null>(null);
+  const reduced = useReducedMotion();
 
   // A sample named in the address, and the twin's state when this window was opened from it.
   useEffect(() => {
@@ -97,7 +103,7 @@ export function SpectrumPage() {
   const active = hover ?? selected;
   const activeShell = shown.find(s => s.id === active) ?? null, chosen = shown.find(s => s.id === selected) ?? null;
 
-  const frame = { following: fromTwin, linked: twin !== null, onFollow: () => setFollow(true), presetId, pick: (id: string) => { setPresetId(id); setFollow(false); } };
+  const frame = { following: fromTwin, linked: twin !== null, onFollow: () => setFollow(true), presetId, pick: (id: string) => { setPresetId(id); setFollow(false); }, onTour: () => setTour(0) };
   if (!materialId) return <Frame {...frame}>
     <p className="spectrum-empty">{sample.formula} at the {sample.absorber} {sample.edge} edge has no FEFF paths in the twin&apos;s library, so its spectrum cannot be split into shells. Choose a library sample above.</p>
   </Frame>;
@@ -124,9 +130,17 @@ export function SpectrumPage() {
   const ghostK = changed && base ? [{ y: k2(base.total), color: '#a7b1c1' }, ...(focus ? [{ y: k2(base.chi[focus.id]), color: colors[focus.id] }] : [])] : [];
   const ghostR = changed && base ? [{ y: base.totalR, color: '#a7b1c1' }, ...(focus ? [{ y: base.magnitude[focus.id], color: colors[focus.id] }] : [])] : [];
   const resetAll = () => { setTweaks({}); setOwnTemperature(null); };
+  const shift_eV = sample.edgeShift_eV ?? 0;
+  const currentPreset = fromTwin ? presets.find(p => libraryMaterialId(p.sample) === materialId && (p.sample.edgeShift_eV ?? 0) === shift_eV)?.id ?? null : presetId;
+  const series = valenceSeries(m.absorber);
+  const first = shown.find(s => s.kind === 'shell') ?? null;
+  const steps = tourSteps(m, shift_eV, series?.perValence_eV ?? null, first, first ? spectra.peak_A[first.id] : 0);
+  const step = tour === null ? null : steps[Math.min(tour, steps.length - 1)];
 
   return <Frame {...frame}
     site={m.sites.length > 1 ? { ids: m.sites.map(s => s.id), value: site, set: id => { setSiteId(id); setSelected(null); } } : undefined}>
+    {step && <TourBar step={step} index={tour!} count={steps.length} target={step.target} reduced={!!reduced}
+      onGo={i => { setTour(i); if (steps[i]?.shell && first) setSelected(first.id); if (steps[i]?.k) setWaveK(steps[i].k!); }} onClose={() => setTour(null)} />}
     <div className="spectrum-grid">
       <section className="twin-card spectrum-panel spectrum-3d" aria-labelledby="spectrum-cluster-title">
         <h2 id="spectrum-cluster-title" className="twin-kicker">Around the {m.absorber} atom · {m.formula}</h2>
@@ -134,7 +148,7 @@ export function SpectrumPage() {
           label={`${m.formula}: the ${atoms.length - 1} atoms within ${ready.cluster.rmax_A} angstrom of the ${atomName(m.absorber)} absorber, coloured by shell`} />
         <p className="spectrum-note">White: the {atomName(m.absorber)} atom that absorbs the X-ray. Coloured: the shells in the table. Pale grey: farther atoms; dark grey: atoms whose paths are too weak to keep. Drag to turn.</p>
       </section>
-      <section className="twin-card spectrum-panel" aria-labelledby="spectrum-plots-title">
+      <section id="spectrum-plots" className="twin-card spectrum-panel" aria-labelledby="spectrum-plots-title">
         <h2 id="spectrum-plots-title" className="twin-kicker">The spectrum, shell by shell</h2>
         <ShellPlot x={spectra.k} xMax={Math.min(14, spectra.window.kmax + 1)} curves={kCurves} total={k2(spectra.total)} scan={scan ? { x: scan.k, y: scan.chi.map((c, i) => c * scan.k[i] ** 2) } : null}
           selected={active} onHover={setHover} onSelect={pick} xLabel="k (Å⁻¹)" yTex={String.raw`k^2\chi(k)\ (\mathring{\mathrm{A}}^{-2})`}
@@ -172,12 +186,20 @@ export function SpectrumPage() {
         </table>
         <p className="spectrum-note"><TexProse>{`Model: the FEFF paths of ${m.formula} the twin uses, $S_0^2 = 0.9$, $\\sigma^2$ from an Einstein model at ${temperature_K.toFixed(0)} K. Transform as in the twin's Results: $k^2$ weight, Hanning window from $k = ${spectra.window.kmin}$ to $${spectra.window.kmax.toFixed(1)}\\ \\mathring{\\mathrm{A}}^{-1}$. The near edge region is left out.`}</TexProse></p>
       </section>
-      {focus && <section className="twin-card spectrum-panel spectrum-wave" aria-labelledby="spectrum-wave-title">
+      <section id="spectrum-edge" className="twin-card spectrum-panel spectrum-edge" aria-labelledby="spectrum-edge-title">
+        <h2 id="spectrum-edge-title" className="twin-kicker">Around the edge</h2>
+        <NearEdgePanel material={m} shift_eV={shift_eV} temperature_K={temperature_K} />
+      </section>
+      <section id="spectrum-oxidation" className="twin-card spectrum-panel spectrum-oxidation" aria-labelledby="spectrum-oxidation-title">
+        <h2 id="spectrum-oxidation-title" className="twin-kicker">The edge and valence · {m.absorber}</h2>
+        <OxidationPanel element={m.absorber} edge_eV={m.edge_energy_eV} currentId={currentPreset} />
+      </section>
+      {focus && <section id="spectrum-wave" className="twin-card spectrum-panel spectrum-wave" aria-labelledby="spectrum-wave-title">
         <h2 id="spectrum-wave-title" className="twin-kicker">The electron wave · {shellLabel(focus)}</h2>
         <WavePanel shell={focus} absorber={m.absorber} deltar_A={tweaks[focus.id]?.deltar_A ?? 0} k={waveK} setK={setWaveK} color={colors[focus.id]}
           chi={spectra.chi[focus.id][Math.round(waveK / (spectra.k[1] - spectra.k[0]))]} />
       </section>}
-      {focus && <section className="twin-card spectrum-panel spectrum-whatif" aria-labelledby="spectrum-whatif-title">
+      {focus && <section id="spectrum-whatif" className="twin-card spectrum-panel spectrum-whatif" aria-labelledby="spectrum-whatif-title">
         <h2 id="spectrum-whatif-title" className="twin-kicker">What if · {shellLabel(focus)}</h2>
         <WhatIf shell={focus} tweak={tweaks[focus.id] ?? {}} setTweak={t => setTweaks(all => ({ ...all, [focus.id]: t }))} sigma2_A2={sigma2Of(focus)}
           temperature_K={temperature_K} setTemperature={setOwnTemperature} spectra={spectra} base={base ?? spectra} onReset={resetAll} changed={changed} />
@@ -188,6 +210,45 @@ export function SpectrumPage() {
       </section>}
     </div>
   </Frame>;
+}
+
+interface TourStep { title: string; text: string; target: string; shell?: boolean; k?: number }
+
+/** Five steps from the edge to a bond distance, each with this sample's numbers; the valence step only where a series exists. */
+function tourSteps(m: FeffMaterial, shift_eV: number, perValence: number | null, first: Shell | null, peak: number): TourStep[] {
+  const name = atomName(m.absorber), e0 = m.edge_energy_eV + shift_eV;
+  const steps: TourStep[] = [{ title: 'The edge', target: 'spectrum-edge', text: `Absorption jumps at E₀ = ${e0.toFixed(1)} eV, where the X-ray can free a ${name} ${m.edge === 'K' ? '1s' : '2p'} electron. Below it ${name} hardly absorbs; above it, it does.` }];
+  if (perValence !== null) steps.push({ title: 'Valence moves the edge', target: 'spectrum-oxidation', text: `Across ${name} compounds the edge moves about ${perValence.toFixed(1)} eV per unit of valence: the more electrons the atom has given away, the harder its core electron is held.` });
+  if (first) {
+    const el = atomName(first.element!);
+    steps.push(
+      { title: 'The wiggles', target: 'spectrum-wave', shell: true, k: 6, text: `Above the edge the freed electron is a wave. Its echo from the ${first.count} ${el} neighbours comes back in or out of step as k changes, so absorption wiggles. Move k and watch.` },
+      { title: 'Shells become peaks', target: 'spectrum-plots', shell: true, text: `A Fourier transform turns the wiggles into peaks, one per shell. The first, ${first.count} ${el} at ${first.r_A.toFixed(2)} Å, peaks at ${peak.toFixed(2)} Å.` },
+      { title: 'From peak to distance', target: 'spectrum-whatif', shell: true, text: `That peak sits ${(first.r_A - peak).toFixed(2)} Å from the true distance, because the wave's phase shifts as it leaves and reflects; a fit with the calculated phase gives the true distance back. Move the distance: the peak follows it, and the height falls as 1/R².` },
+    );
+  }
+  return steps;
+}
+
+/** The tour's bar: the step, Back and Next, and where it points (scrolled into view and outlined). */
+function TourBar({ step, index, count, target, reduced, onGo, onClose }: { step: TourStep; index: number; count: number; target: string; reduced: boolean; onGo: (i: number) => void; onClose: () => void }) {
+  useEffect(() => {
+    const el = document.getElementById(target);
+    el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+    el?.classList.add('is-tour-target');
+    return () => el?.classList.remove('is-tour-target');
+  }, [target, reduced]);
+  return <aside className="spectrum-tour" aria-label="Guided tour" aria-live="polite">
+    <p className="twin-kicker">Step {index + 1} of {count} · {step.title}</p>
+    <p className="spectrum-tour-text">{step.text}</p>
+    <div className="spectrum-tour-actions">
+      <button type="button" className="twin-chip" disabled={index === 0} onClick={() => onGo(index - 1)}><ChevronLeft size={14} aria-hidden="true" />Back</button>
+      {index < count - 1
+        ? <button type="button" className="twin-chip is-accent" onClick={() => onGo(index + 1)}>Next<ChevronRight size={14} aria-hidden="true" /></button>
+        : <button type="button" className="twin-chip is-accent" onClick={onClose}>Done</button>}
+      <button type="button" className="twin-icon" aria-label="Close the tour" onClick={onClose}><X size={16} aria-hidden="true" /></button>
+    </div>
+  </aside>;
 }
 
 /** The other absorber sites' share, drawn grey. */
@@ -223,8 +284,8 @@ function Explain({ shell, absorber, peak, sigma2, temperature_K, share }: { shel
 }
 
 /** Header with the sample and site pickers and the link to the twin. `following`: showing the twin's sample; `linked`: the twin has answered. */
-function Frame({ children, following, linked, onFollow, presetId, pick, site }: {
-  children: React.ReactNode; following: boolean; linked: boolean; onFollow: () => void; presetId: string; pick: (id: string) => void;
+function Frame({ children, following, linked, onFollow, presetId, pick, site, onTour }: {
+  children: React.ReactNode; following: boolean; linked: boolean; onFollow: () => void; presetId: string; pick: (id: string) => void; onTour: () => void;
   site?: { ids: string[]; value: string; set: (id: string) => void };
 }) {
   return <div className="twin-app spectrum-app">
@@ -244,6 +305,7 @@ function Frame({ children, following, linked, onFollow, presetId, pick, site }: 
         {site && <label>Absorber site <select name="site" value={site.value} onChange={e => site.set(e.target.value)}>{site.ids.map(id => <option key={id} value={id}>{id}</option>)}</select></label>}
         {linked && !following && <button type="button" className="twin-chip" onClick={onFollow}><Link2 size={14} aria-hidden="true" />Follow the twin</button>}
         {following && <span className="twin-chip is-accent"><Link2 size={14} aria-hidden="true" />Following the twin</span>}
+        <button type="button" className="twin-chip is-accent" onClick={onTour}><Compass size={14} aria-hidden="true" />Guided tour</button>
         <Link className="twin-chip" href="/twin/"><ArrowLeft size={14} aria-hidden="true" />Beamline twin</Link>
       </div>
     </header>

@@ -56,6 +56,9 @@ Keys: 1 to 8 switch modes, I acquires, Space pauses, X enlarges the results, L t
 - **Electron wave:** the wave leaving the absorber and the wave reflected by the chosen neighbour, at true scale, with FEFF's phase. Whether they meet in step is the sign of that shell's χ(k); a test checks it.
 - **What if controls:** distance, number of neighbours, disorder σ² and temperature, drawn against dashed curves from before the change.
 - **Light against heavy neighbours:** FEFF's backscattering amplitude |F(k)| for oxygen, copper and platinum.
+- **Around the edge:** the normalized edge with its pre-edge, edge, white line and the start of the fine structure, each explained. The edge position is the sample's measured one; the near-edge shapes are the twin's teaching model.
+- **Edge and valence:** the element's series (Mn, Co, Cu, S, As) at their measured shifts, with the eV per unit of valence (`src/lib/twin/oxidation.ts`).
+- **Guided tour:** five steps from the edge to a bond distance, using the sample's own numbers.
 
 `src/lib/twin/shells.ts` groups the paths. The shells add up exactly to the twin's own path sum, and the transform is the Results one. The clusters in `src/data/twin/clusters/` are the atoms FEFF used, rebuilt by `scripts/twin/make-clusters.py` and checked against each site's stored input hash.
 

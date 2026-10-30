@@ -10,7 +10,7 @@ function collectErrors(page: Page) {
 test('Read the spectrum splits CuO into shells, and choosing one explains its peak and its offset', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('./spectrum/?sample=cuo-pellet');
-  const table = page.locator('.spectrum-table');
+  const table = page.locator('.spectrum-table-wrap .spectrum-table');
   // Six shells, the farther atoms and the multiple scattering paths.
   await expect(table.locator('tbody tr')).toHaveCount(8);
   await expect(table.locator('tbody tr').first()).toContainText('4 oxygen');
@@ -68,6 +68,38 @@ test('the neighbour panel compares light and heavy scatterers from their FEFF am
   await expect(legend).toContainText('oxygen: largest near k = 3.2 (this shell)');
   await expect(legend).toContainText('platinum: largest near k = 16.0');
   await expect(legend).toContainText('copper: largest near k = 7.0');
+});
+
+test('around the edge: the measured edge position and the valence series of the element', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  const edge = page.locator('#spectrum-edge');
+  // Cu K at 8979.0 eV (xraydb) plus CuO's measured +5.4 eV.
+  await expect(edge).toContainText('8984.4 eV');
+  await expect(edge).toContainText('+5.4 eV from the metal');
+  const series = page.locator('#spectrum-oxidation');
+  await expect(series.locator('tbody tr')).toHaveCount(3);
+  await expect(series.locator('tbody tr.is-active')).toContainText('CuO');
+  await expect(series).toContainText('About 2.7 eV per unit of valence');
+});
+
+test('the guided tour walks from the edge to a bond distance with this sample\'s numbers', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.getByRole('button', { name: 'Guided tour' }).click();
+  const tour = page.getByRole('complementary', { name: 'Guided tour' });
+  await expect(tour).toContainText('Step 1 of 5');
+  await expect(tour).toContainText('E₀ = 8984.4 eV');
+  await expect(page.locator('#spectrum-edge')).toHaveClass(/is-tour-target/);
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await expect(tour).toContainText('2.7 eV per unit of valence');
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await expect(tour).toContainText('4 oxygen neighbours');
+  await expect(page.locator('.spectrum-table').getByRole('button', { name: '4 O at 1.96 Å' })).toHaveAttribute('aria-pressed', 'true');
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await expect(tour).toContainText('peaks at 1.50 Å');
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await expect(tour).toContainText('0.45 Å from the true distance');
+  await tour.getByRole('button', { name: 'Done' }).click();
+  await expect(tour).toHaveCount(0);
 });
 
 test('Read the spectrum says when a heavy neighbour peaks near its true distance', async ({ page }) => {

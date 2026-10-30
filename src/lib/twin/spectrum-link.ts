@@ -21,4 +21,4 @@ export interface LinkedScan {
 
 export type SpectrumMessage =
   | { type: 'hello' }
-  | { type: 'state'; sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge' | 'libraryId'>; temperature_K: number; scan: LinkedScan | null };
+  | { type: 'state'; sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge' | 'libraryId' | 'edgeShift_eV'>; temperature_K: number; scan: LinkedScan | null };

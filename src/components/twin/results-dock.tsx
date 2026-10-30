@@ -210,15 +210,15 @@ function useSpectrumLink(twin: TwinState, latest: StoredAcquisition | undefined)
       return { n: latest.n, materialId: libraryMaterialId(latest.config), k: exafs.autobk.k, chi: exafs.autobk.chi, r: exafs.xftf.r, magnitude: exafs.xftf.magnitude, kmax };
     } catch { return null; }
   }, [linked, latest]);
-  const { formula, absorber, edge, libraryId } = twin.sample, temperature_K = twin.environment.temperature_K;
+  const { formula, absorber, edge, libraryId, edgeShift_eV } = twin.sample, temperature_K = twin.environment.temperature_K;
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') return;
-    const message: SpectrumMessage = { type: 'state', sample: { formula, absorber, edge, libraryId }, temperature_K, scan };
+    const message: SpectrumMessage = { type: 'state', sample: { formula, absorber, edge, libraryId, edgeShift_eV }, temperature_K, scan };
     const channel = new BroadcastChannel(SPECTRUM_CHANNEL);
     channel.onmessage = (event: MessageEvent<SpectrumMessage>) => { if (event.data?.type === 'hello') { setLinked(true); channel.postMessage(message); } };
     channel.postMessage(message);
     return () => channel.close();
-  }, [formula, absorber, edge, libraryId, temperature_K, scan]);
+  }, [formula, absorber, edge, libraryId, edgeShift_eV, temperature_K, scan]);
   return () => setLinked(true);
 }
 

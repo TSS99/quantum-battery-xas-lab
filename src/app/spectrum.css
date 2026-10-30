@@ -4,7 +4,7 @@
 .spectrum-controls {display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
 .spectrum-controls label {display:grid;gap:4px;font:500 10.5px/1.4 var(--tw-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-muted)}
 .spectrum-controls select {min-width:200px;font:14px var(--font-sans);letter-spacing:0;text-transform:none}
-.spectrum-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);grid-template-areas:"cluster plots" "explain table" "wave whatif" "neighbour whatif";align-items:start;gap:14px}
+.spectrum-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);grid-template-areas:"cluster plots" "explain table" "edge oxidation" "wave whatif" "neighbour whatif";align-items:start;gap:14px}
 .spectrum-panel {padding:14px 16px}
 .spectrum-panel > .twin-kicker {margin-bottom:10px}
 .spectrum-3d {grid-area:cluster}
@@ -12,6 +12,19 @@
 .spectrum-explain {grid-area:explain}
 .spectrum-table-wrap {grid-area:table}
 .spectrum-wave {grid-area:wave}
+.spectrum-edge {grid-area:edge}
+.spectrum-oxidation {grid-area:oxidation}
+.near-edge-panel svg,.oxidation-panel svg {display:block;width:100%;height:auto}
+.near-edge-list {display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none;font-size:14px;line-height:1.55;color:var(--tw-body)}
+.near-edge-list strong {color:var(--tw-text);font-weight:600}
+.oxidation-table {margin-top:10px}
+.oxidation-table i {margin-right:8px;vertical-align:middle}
+.spectrum-panel {scroll-margin:140px 0 200px}
+.spectrum-panel.is-tour-target {box-shadow:0 0 0 2px var(--tw-accent-line),0 0 30px rgb(140 227 255/.18)}
+.spectrum-tour {position:fixed;left:50%;bottom:14px;z-index:20;width:min(760px,calc(100% - 32px));transform:translateX(-50%);padding:14px 16px;border:1px solid var(--tw-accent-line);border-radius:12px;background:rgb(23 34 53/.96);box-shadow:0 18px 40px rgb(0 0 0/.4)}
+.spectrum-tour-text {margin:6px 0 10px;font-size:15px;line-height:1.55;color:var(--tw-text)}
+.spectrum-tour-actions {display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.spectrum-tour-actions .twin-icon {margin-left:auto}
 .spectrum-whatif {grid-area:whatif}
 .spectrum-neighbour {grid-area:neighbour}
 .wave-panel svg,.neighbour-panel svg {display:block;width:100%;height:auto}
@@ -47,7 +60,7 @@
 .spectrum-table tbody th button[aria-pressed="true"] {border-color:var(--tw-accent-line);background:var(--tw-accent-soft)}
 @media (max-width:900px) {
   .twin-app.spectrum-app {padding:14px 16px 24px}
-  .spectrum-grid {grid-template-columns:minmax(0,1fr);grid-template-areas:"cluster" "explain" "plots" "table" "wave" "whatif" "neighbour"}
+  .spectrum-grid {grid-template-columns:minmax(0,1fr);grid-template-areas:"cluster" "explain" "plots" "table" "edge" "oxidation" "wave" "whatif" "neighbour"}
   .what-if-readout {grid-template-columns:minmax(0,1fr)}
   .spectrum-controls select {min-width:0;width:100%}
   .spectrum-controls label {flex:1 1 180px}

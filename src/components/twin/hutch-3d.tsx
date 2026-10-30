@@ -852,10 +852,13 @@ function Rig({ mode, whole, focusOn, reset, reduced, touring }: { mode: TwinStat
     const tw = tween.current, c = controls.current; if (!c) return;
     if (!tw) {
       const s = sway.current;
+      // The sway's state, on the view for the tests and for anyone inspecting: running, held (too slow here) or off.
+      const state = reduced || touring ? 'off' : stillRedrawFits() ? 'running' : 'held', view = gl.domElement.closest('.hutch-3d');
+      if (view && view.getAttribute('data-sway') !== state) view.setAttribute('data-sway', state);
       if (reduced || touring) { s.since = performance.now(); s.applied = 0; return; }
       // Turning the camera redraws the whole still image; where that does not fit in a frame the view holds still, so
       // the photons keep their frame rate.
-      if (!stillRedrawFits()) return;
+      if (state === 'held') return;
       const a = swayAngle(performance.now() - s.since); if (a === s.applied) return;
       offset.subVectors(camera.position, c.target).applyAxisAngle(THREE.Object3D.DEFAULT_UP, a - s.applied);
       camera.position.copy(c.target).add(offset); s.applied = a; c.update();
