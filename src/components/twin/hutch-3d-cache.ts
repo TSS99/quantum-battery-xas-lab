@@ -22,11 +22,13 @@ export function markStaticDirty() { version++; }
 
 /**
  * How long a frame that redraws the still image takes, ms (smoothed; zero until measured): its GPU work shows up as
- * the gap to the next frame. The idle sway turns the camera, which redraws the still image every frame, so it runs
- * only where that fits in a frame.
+ * the gap to the next frame. Frames in the first two seconds are left out (shaders compile, textures upload). The idle
+ * sway turns the camera, which redraws the still image every frame: it starts as a trial while the cost is unknown,
+ * which measures it within a few frames, and holds still for good once a redraw is found not to fit in a frame.
  */
 let stillFrame_ms = 0;
 export const stillRedrawFits = (frame_ms = 1000 / 30) => stillFrame_ms === 0 || stillFrame_ms <= frame_ms * 1.3;
+const WARM_UP_MS = 2000;
 
 /** Put an object (not its children: three.js layers are not inherited) on the moving layer. */
 export function moving(object: THREE.Object3D | null) { object?.layers.set(MOVING_LAYER); }
@@ -67,11 +69,14 @@ export function installCache(composer: EffectComposer, scene: THREE.Scene, camer
   let ao = makeAO(scene, camera, settings);
   let still: THREE.WebGLRenderTarget | null = null, lit: THREE.WebGLRenderTarget | null = null;
   let seen = -1, width = 0, height = 0, redrew = false, last = 0;
+  const installed = performance.now();
   const view = new THREE.Matrix4(), projection = new THREE.Matrix4();
 
   pass.render = (renderer, inputBuffer) => {
     const now = performance.now();
-    if (redrew && last && now - last < 1000) stillFrame_ms = stillFrame_ms ? 0.7 * stillFrame_ms + 0.3 * (now - last) : now - last;
+    // While anything animates a frame is asked for every 33 ms, so the gap after a redraw is its cost; a gap over 30 s
+    // is the view left alone with nothing moving. (Software rendering at 4K takes seconds a frame: it must still count.)
+    if (redrew && last && now - installed > WARM_UP_MS && now - last < 30000) stillFrame_ms = stillFrame_ms ? 0.7 * stillFrame_ms + 0.3 * (now - last) : now - last;
     last = now; redrew = false;
     const w = inputBuffer!.width, h = inputBuffer!.height;
     if (w !== width || h !== height || !still || !lit) {
