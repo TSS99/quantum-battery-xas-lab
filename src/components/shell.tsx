@@ -23,7 +23,10 @@ const routes = [
   ['/validation/', 'Methods & validation', 'Equations, checks and agreement with xraydb'],
 ] as const;
 // Full-screen consoles: outside the eight modules, linked from the header, the menus and the footer.
-const consoles = [['/twin/', 'Beamline twin', 'Operate a working XAS beamline, full screen']] as const;
+const consoles = [
+  ['/twin/', 'Beamline twin', 'Operate a working XAS beamline, full screen'],
+  ['/spectrum/', 'Read the spectrum', 'Which atoms make each part of an EXAFS spectrum'],
+] as const;
 
 export function Shell({ children, elementNames, trails }: { children: React.ReactNode; elementNames: Record<string, string>; trails: Record<string, [string, string][]> }) {
   const pathname = usePathname(), { state, set, notice, canUndo, undoPreset } = useLab();

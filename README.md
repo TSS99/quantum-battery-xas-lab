@@ -49,6 +49,8 @@ The Explore/Research switch changes explanatory depth. It does not change the mo
 
 Keys: 1 to 8 switch modes, I acquires, Space pauses, X enlarges the results, L toggles labels, T opens training, / opens the command bar ("set energy 8979", "detune 30 %", "insert harmonic mirror", "acquire 3 scans"; a typo is corrected and confirmed before it runs), [ and ] hide the side panels, and \` opens the console.
 
+**Read the spectrum:** `/spectrum/` (the atom button in the twin's Results opens it beside the twin, following its sample, temperature and latest scan) splits a library sample's EXAFS into shells of neighbours. Each shell has its own curve in k²χ(k) and |χ(R)|, its atoms light up in a 3D cluster, and choosing one explains its wiggle, its peak and how far that peak sits from the true distance (about 0.3 to 0.5 Å short for light neighbours, close to it for heavy ones such as Pt and Au). `src/lib/twin/shells.ts` groups the paths. The shells add up exactly to the twin's own path sum, and the transform is the Results one. The clusters in `src/data/twin/clusters/` are the atoms FEFF used, rebuilt by `scripts/twin/make-clusters.py` and checked against each site's stored input hash.
+
 **Calculators and teaching:** `/tools/` has four calculators taken from the twin (ion chamber gas, harmonic rejection mirror angle, fluorescence self absorption and X-ray dose), each with worked examples computed at build time, and `/instructors/` explains class links and result files.
 
 ### Without a browser: command line and MCP server

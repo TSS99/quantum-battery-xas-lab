@@ -24,7 +24,7 @@ import { defaultEdgeWidth, defaultNearEdgeFeatures, type NearEdgeFeatures } from
 import FEFF_INDEX from '../../data/twin/feff/index.json';
 import { ETOK, chiSum, loadPaths, sigma2Einstein } from './exafs';
 import { emissionLines } from './tables';
-import type { EnvironmentConfig, ExafsPathParameters, FeffMaterial, Provenance, SampleConfig } from './types';
+import type { EnvironmentConfig, ExafsParameters, ExafsPathParameters, FeffMaterial, Provenance, SampleConfig } from './types';
 
 /** k^2 in inverse square angstrom per eV above the edge, as in src/lib/xas-general.ts. */
 const K_PER_EV = 0.2624684;
@@ -166,6 +166,14 @@ export async function loadLibraryFineStructure(sample: Pick<SampleConfig, 'formu
   return true;
 }
 
+/** The path parameters of the library model: S0^2 and each path's Einstein sigma^2 at the sample temperature. */
+export function libraryParameters(material: FeffMaterial, temperature_K = ROOM_TEMPERATURE_K): ExafsParameters {
+  const thetaE_K = einsteinTemperature_K(material.id);
+  const paths: Record<string, ExafsPathParameters> = {};
+  for (const site of material.sites) for (const path of site.paths) paths[`${site.id}/${path.id}`] = { sigma2_A2: sigma2Einstein(path, thetaE_K, temperature_K) };
+  return { s02: LIBRARY_S02, paths };
+}
+
 /**
  * The library's FEFF path sum on the teaching near edge: the edge onset, pre-edge peak and white
  * line of `teachingFineStructure` without its oscillation, plus chi(k) from every path of the
@@ -178,10 +186,8 @@ export function libraryFineStructure(edgeEnergy_eV: number, material: FeffMateri
   const cached = libraryModels.get(key);
   if (cached) return cached;
   const thetaE_K = einsteinTemperature_K(material.id);
-  const paths: Record<string, ExafsPathParameters> = {};
-  for (const site of material.sites) for (const path of site.paths) paths[`${site.id}/${path.id}`] = { sigma2_A2: sigma2Einstein(path, thetaE_K, temperature_K) };
   const k = Array.from({ length: Math.round(FEFF_K_MAX / FEFF_K_STEP) + 1 }, (_, i) => i * FEFF_K_STEP);
-  const chi = chiSum(material, { s02: LIBRARY_S02, paths }, k).chi;
+  const chi = chiSum(material, libraryParameters(material, temperature_K), k).chi;
   const near = teachingFineStructure(edgeEnergy_eV, { oscillation: 0 });
   const width = defaultEdgeWidth(edgeEnergy_eV);
   const model: FineStructureModel = {

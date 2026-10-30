@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEv
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useReducedMotion } from 'motion/react';
-import { Aperture, Download, ExternalLink, Maximize2, Minimize2, Pause, Play, Square, Upload } from 'lucide-react';
+import { Aperture, Atom, Download, ExternalLink, Maximize2, Minimize2, Pause, Play, Square, Upload } from 'lucide-react';
 import { Num, Tex, Unit } from '../tex';
 import { Plot, type Series } from '../plot';
 import { download } from '../ui';
@@ -22,6 +22,7 @@ import { writeXdi } from '@/lib/twin/xdi';
 import { importAcquisition } from '@/lib/twin/import';
 import { larchScript } from '@/lib/twin/larch-export';
 import { muOf, reduceAcquisition } from '@/lib/twin/reduction';
+import { SPECTRUM_CHANNEL, type LinkedScan, type SpectrumMessage } from '@/lib/twin/spectrum-link';
 import type { Acquisition, FeffMaterial, Provenance, TwinMode, TwinState } from '@/lib/twin/types';
 import { RESULT_TABS, type ResultTab } from './twin-state';
 import { storedAcquisition, useTwin, type StoredAcquisition } from './twin-store';
@@ -196,6 +197,31 @@ function FineStructureNote({ acquisition }: { acquisition: Acquisition }) {
   return <p className="twin-readout">Fine structure: <TexProse>{tex}</TexProse>.</p>;
 }
 
+/**
+ * Keeps a Read the spectrum window (/spectrum/) on the twin's sample, temperature and latest scan. The scan is reduced
+ * only once such a window has said hello or been opened from here.
+ */
+function useSpectrumLink(twin: TwinState, latest: StoredAcquisition | undefined) {
+  const [linked, setLinked] = useState(false);
+  const scan = useMemo<LinkedScan | null>(() => {
+    if (!linked || !latest) return null;
+    try {
+      const { exafs, kmax } = reduceAcquisition(latest.acquisition, latest.mode);
+      return { n: latest.n, materialId: libraryMaterialId(latest.config), k: exafs.autobk.k, chi: exafs.autobk.chi, r: exafs.xftf.r, magnitude: exafs.xftf.magnitude, kmax };
+    } catch { return null; }
+  }, [linked, latest]);
+  const { formula, absorber, edge, libraryId } = twin.sample, temperature_K = twin.environment.temperature_K;
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const message: SpectrumMessage = { type: 'state', sample: { formula, absorber, edge, libraryId }, temperature_K, scan };
+    const channel = new BroadcastChannel(SPECTRUM_CHANNEL);
+    channel.onmessage = (event: MessageEvent<SpectrumMessage>) => { if (event.data?.type === 'hello') { setLinked(true); channel.postMessage(message); } };
+    channel.postMessage(message);
+    return () => channel.close();
+  }, [formula, absorber, edge, libraryId, temperature_K, scan]);
+  return () => setLinked(true);
+}
+
 /** Bottom dock: result tabs, Acquire (one scan in the worker), the acquisition gallery, Enlarge and Pop out. */
 export function ResultsDock() {
   const { store: { twin, view }, dispatch, acquisitions: stored, setAcquisitions: setStored } = useTwin();
@@ -211,6 +237,7 @@ export function ResultsDock() {
   const handled = useRef(0), saved = useRef<Acquisition | null>(null);
   const [popUp, setPopUp] = useState<PopUp | null>(null), [popTab, setPopTab] = useState<ResultTab>('mu');
   const popRef = useRef<PopUp | null>(null);
+  const linkSpectrum = useSpectrumLink(twin, stored.at(-1));
   useEffect(() => {
     popRef.current = popUp;
     if (!popUp) return;
@@ -366,6 +393,12 @@ export function ResultsDock() {
   };
   const panel = panelFor(view.tab);
 
+  const readSpectrum = () => {
+    linkSpectrum();
+    const win = window.open(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/spectrum/?from=twin`, 'xaslab-spectrum', 'popup,width=1280,height=880');
+    if (!win) dispatch({ type: 'note', text: 'The browser blocked the second window. Allow pop-ups for this site to read the spectrum beside the twin.' });
+    else win.focus();
+  };
   const popOut = () => {
     if (popUp && !popUp.win.closed) { popUp.win.focus(); return; }
     const opened = openPopUp();
@@ -383,6 +416,7 @@ export function ResultsDock() {
         {replaying
           ? <button type="button" className="twin-acquire is-stop" onClick={() => { cancel(); setScanState(null); setPaused(false); dispatch({ type: 'note', text: 'Scan stopped; nothing was stored.' }); }}><Square size={14} aria-hidden="true" />Stop</button>
           : <button type="button" className="twin-acquire" aria-keyshortcuts="I" disabled={!tables} onClick={() => dispatch({ type: 'acquire' })}><Aperture size={15} aria-hidden="true" />Acquire</button>}
+        <button type="button" className="twin-icon" title="Read the spectrum: which atoms make each part" onClick={readSpectrum}><Atom size={16} aria-hidden="true" /><span className="sr-only">Read the spectrum</span></button>
         <button type="button" className="twin-icon" title="Pop out" onClick={popOut}><ExternalLink size={16} aria-hidden="true" /><span className="sr-only">Pop out</span></button>
         <button type="button" className="twin-icon" aria-pressed={view.enlarged} aria-keyshortcuts="X" title="Enlarge (X)" onClick={() => dispatch({ type: 'enlarge' })}>{view.enlarged ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}<span className="sr-only">Enlarge</span></button>
       </div>

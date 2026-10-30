@@ -10,6 +10,8 @@ export const PAGES: SitePage[] = site.pages;
 export const ELEMENTS_PAGE = site.elements;
 /** The beamline twin runs full screen outside the eight modules and has its own card. */
 export const TWIN_PAGE = site.twin;
+/** Read the spectrum: the shells behind an EXAFS spectrum, full screen like the twin and opened from its Results. */
+export const SPECTRUM_PAGE = site.spectrum;
 /** The calculators (/tools/ and /tools/<name>/) share one card, like the element pages. */
 export const TOOLS_PAGE = site.tools;
 export type ToolPage = (typeof site.tools.pages)[number];
@@ -88,6 +90,16 @@ export function twinMetadata(): Metadata {
 /** JSON-LD for the twin: Overview > Beamline twin. */
 export function twinJsonLd() {
   return { '@context': 'https://schema.org', '@graph': [webSite, webApplication, breadcrumbs([[TWIN_PAGE.name, TWIN_PAGE.slug]])] };
+}
+
+/** Read the spectrum shares the twin's card. */
+export function spectrumMetadata(): Metadata {
+  return routeMetadata({ path: SPECTRUM_PAGE.slug, title: SPECTRUM_PAGE.title, description: SPECTRUM_PAGE.description, ogSlug: TWIN_PAGE.slug, ogAlt: SPECTRUM_PAGE.ogAlt });
+}
+
+/** JSON-LD for Read the spectrum: Overview > Read the spectrum. */
+export function spectrumJsonLd() {
+  return { '@context': 'https://schema.org', '@graph': [webSite, webApplication, breadcrumbs([[SPECTRUM_PAGE.name, SPECTRUM_PAGE.slug]])] };
 }
 
 /** Metadata for the calculator index or one calculator, with the shared calculators card. */

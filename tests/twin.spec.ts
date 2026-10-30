@@ -408,6 +408,23 @@ test('Pop out shows the results in a second window with its own view list', asyn
   expect(errors).toEqual([]);
 });
 
+test('Read the spectrum opens beside the twin and follows its sample', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page, '#mode=transmission&seed=7');
+  const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Read the spectrum' }).click()]);
+  await expect(popup).toHaveURL(/\/spectrum\/\?from=twin$/);
+  await expect(popup.getByText('Following the twin')).toBeVisible();
+  // The twin starts on the Cu foil: twelve copper neighbours first.
+  await expect(popup.locator('.spectrum-table').getByRole('button', { name: /^12 Cu at 2\.5\d Å$/ })).toBeVisible();
+  await popup.getByRole('combobox', { name: 'Sample' }).selectOption('cuo-pellet');
+  await expect(popup.getByRole('button', { name: 'Follow the twin' })).toBeVisible();
+  await expect(popup.locator('.spectrum-table').getByRole('button', { name: '4 O at 1.96 Å' })).toBeVisible();
+  await popup.getByRole('button', { name: 'Follow the twin' }).click();
+  await expect(popup.locator('.spectrum-table').getByRole('button', { name: /^12 Cu at 2\.5\d Å$/ })).toBeVisible();
+  await popup.close();
+  expect(errors).toEqual([]);
+});
+
 test('the XRF counting window moves by dragging its edge and by the keyboard controls', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page, '#mode=xrf&seed=7');

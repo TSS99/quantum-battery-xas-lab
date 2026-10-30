@@ -3,7 +3,7 @@ import { axeViolations } from './axe';
 
 // Every top-level page at desktop and phone width: no console errors, no sideways scrolling, no broken maths and no
 // axe violations.
-const PAGES = ['', 'spectra/', 'quantum/', 'crystal/', 'electronic/', 'beamline/', 'experiments/', 'validation/', 'elements/', 'elements/fe/', 'tools/', 'tools/ion-chamber-gas/', 'tools/harmonic-rejection-mirror/', 'tools/self-absorption/', 'tools/x-ray-dose/', 'instructors/', 'twin/'];
+const PAGES = ['', 'spectra/', 'quantum/', 'crystal/', 'electronic/', 'beamline/', 'experiments/', 'validation/', 'elements/', 'elements/fe/', 'tools/', 'tools/ion-chamber-gas/', 'tools/harmonic-rejection-mirror/', 'tools/self-absorption/', 'tools/x-ray-dose/', 'instructors/', 'twin/', 'spectrum/'];
 
 for (const width of [1440, 390]) {
   test(`every page is clean at ${width} px: console, overflow, maths and axe`, async ({ page }) => {

@@ -13,6 +13,13 @@
     "description": "Run a working X-ray absorption beamline: monochromator, mirrors, ion chambers and a fluorescence detector. Scan, fit the EXAFS, train on faults and calibrate from your own data.",
     "ogAlt": "Beamline twin card: an XAS beamline from the source to the detectors"
   },
+  "spectrum": {
+    "slug": "spectrum",
+    "name": "Read the spectrum",
+    "title": "Read the spectrum: which atoms make each part of an EXAFS spectrum",
+    "description": "Split an EXAFS spectrum into its shells of neighbours and see them around the absorbing atom in 3D: each shell's wave in chi(k), its peak in |chi(R)| and how far that peak sits from the true distance.",
+    "ogAlt": "Beamline twin card: an XAS beamline from the source to the detectors"
+  },
   "elements": {
     "slug": "elements",
     "name": "Elements",
