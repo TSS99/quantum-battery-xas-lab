@@ -86,7 +86,9 @@ test('the guided tour walks from the edge to a bond distance with this sample\'s
   await page.goto('./spectrum/?sample=cuo-pellet');
   await page.getByRole('button', { name: 'Guided tour' }).click();
   const tour = page.getByRole('complementary', { name: 'Guided tour' });
-  await expect(tour).toContainText('Step 1 of 5');
+  await expect(tour).toContainText('Step 1 of 6');
+  await expect(page.locator('#spectrum-explorer')).toHaveClass(/is-tour-target/);
+  await tour.getByRole('button', { name: 'Next' }).click();
   await expect(tour).toContainText('E₀ = 8984.4 eV');
   await expect(page.locator('#spectrum-edge')).toHaveClass(/is-tour-target/);
   await tour.getByRole('button', { name: 'Next' }).click();
@@ -100,6 +102,41 @@ test('the guided tour walks from the edge to a bond distance with this sample\'s
   await expect(tour).toContainText('0.45 Å from the true distance');
   await tour.getByRole('button', { name: 'Done' }).click();
   await expect(tour).toHaveCount(0);
+});
+
+test('how XAS works: scanning the energy takes the core electron from staying put to a jump to a free wave', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./spectrum/?sample=mno2-pellet');
+  const explorer = page.locator('#spectrum-explorer'), caption = page.locator('.xas-explorer-caption');
+  await expect(caption).toContainText('Too little energy to free a manganese 1s electron');
+  await explorer.getByRole('button', { name: 'Pre-edge', exact: true }).click();
+  await expect(caption).toContainText('nearly full 3d level');
+  await explorer.getByRole('button', { name: 'Edge', exact: true }).click();
+  await expect(caption).toContainText('empty 4p states');
+  // 150 eV above the edge: k = sqrt(0.2625 x 150) = 6.27 per angstrom, a wavelength of 1.00 angstrom.
+  await explorer.getByRole('button', { name: 'EXAFS', exact: true }).click();
+  await expect(caption).toContainText('λ = 1.00 Å');
+  await page.getByRole('slider', { name: 'Photon energy above the edge' }).fill('0');
+  await expect(caption).toContainText('Too little energy');
+  expect(errors).toEqual([]);
+});
+
+test('how XAS works names the levels of the absorber: sulfur 1s to empty 3p, no 3d', async ({ page }) => {
+  await page.goto('./spectrum/?sample=na2so4-pellet');
+  const explorer = page.locator('#spectrum-explorer'), caption = page.locator('.xas-explorer-caption');
+  await explorer.getByRole('button', { name: 'Edge', exact: true }).click();
+  await expect(caption).toContainText('empty 3p states');
+  await explorer.getByRole('button', { name: 'Pre-edge', exact: true }).click();
+  await expect(caption).toContainText('empty bound state');
+});
+
+test('the reading cards and the chapters take you to the panel to try', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  await expect(page.locator('.read-card')).toHaveCount(5);
+  await page.locator('.read-card').filter({ hasText: 'Edge position' }).getByRole('button', { name: 'Try it on this sample' }).click();
+  await expect(page.locator('#spectrum-oxidation')).toBeInViewport();
+  await page.getByRole('navigation', { name: 'Chapters' }).getByRole('button', { name: /Shells/ }).click();
+  await expect(page.locator('#spectrum-plots')).toBeInViewport();
 });
 
 test('Read the spectrum says when a heavy neighbour peaks near its true distance', async ({ page }) => {

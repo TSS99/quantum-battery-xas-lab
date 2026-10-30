@@ -25,6 +25,12 @@ const WhatIf = dynamic(() => import('./what-if').then(m => m.WhatIf));
 const NeighbourPanel = dynamic(() => import('./neighbour-panel').then(m => m.NeighbourPanel));
 const NearEdgePanel = dynamic(() => import('./near-edge-panel').then(m => m.NearEdgePanel));
 const OxidationPanel = dynamic(() => import('./oxidation-panel').then(m => m.OxidationPanel));
+const XasExplorer = dynamic(() => import('./xas-explorer').then(m => m.XasExplorer), { loading: () => <p className="spectrum-empty">Loading the explorer…</p> });
+const ReadCards = dynamic(() => import('./read-cards').then(m => m.ReadCards));
+
+/** The page in reading order: how XAS works, then the edge, valence, the atoms and shells, the wave, what if. */
+const CHAPTERS = [['spectrum-explorer', 'How XAS works'], ['spectrum-read', 'Reading it'], ['spectrum-edge', 'The edge'], ['spectrum-oxidation', 'Valence'],
+  ['spectrum-atoms', 'Atoms'], ['spectrum-plots', 'Shells'], ['spectrum-wave', 'The wave'], ['spectrum-whatif', 'What if']] as const;
 
 /** Shell colours in distance order: the validated dark categorical slots (dataviz palette), fixed per position, never cycled. */
 const SHELL_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
@@ -141,8 +147,20 @@ export function SpectrumPage() {
     site={m.sites.length > 1 ? { ids: m.sites.map(s => s.id), value: site, set: id => { setSiteId(id); setSelected(null); } } : undefined}>
     {step && <TourBar step={step} index={tour!} count={steps.length} target={step.target} reduced={!!reduced}
       onGo={i => { setTour(i); if (steps[i]?.shell && first) setSelected(first.id); if (steps[i]?.k) setWaveK(steps[i].k!); }} onClose={() => setTour(null)} />}
+    <nav className="spectrum-chapters" aria-label="Chapters">
+      {CHAPTERS.map(([id, label], i) => <button key={id} type="button" className="twin-chip" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })}><span className="spectrum-chapter-n">{i + 1}</span>{label}</button>)}
+    </nav>
     <div className="spectrum-grid">
-      <section className="twin-card spectrum-panel spectrum-3d" aria-labelledby="spectrum-cluster-title">
+      <section id="spectrum-explorer" className="twin-card spectrum-panel spectrum-explorer" aria-labelledby="spectrum-explorer-title">
+        <h2 id="spectrum-explorer-title" className="twin-kicker">How XAS works · {m.formula}</h2>
+        <p className="spectrum-lede">X-ray absorption spectroscopy shines X-rays of rising energy through a sample and records how much it absorbs. Scan the energy and watch what happens inside one {atomName(m.absorber)} atom.</p>
+        <XasExplorer material={m} shift_eV={shift_eV} temperature_K={temperature_K} shell={first} />
+      </section>
+      <section id="spectrum-read" className="twin-card spectrum-panel spectrum-read" aria-labelledby="spectrum-read-title">
+        <h2 id="spectrum-read-title" className="twin-kicker">Reading a spectrum</h2>
+        <ReadCards />
+      </section>
+      <section id="spectrum-atoms" className="twin-card spectrum-panel spectrum-3d" aria-labelledby="spectrum-cluster-title">
         <h2 id="spectrum-cluster-title" className="twin-kicker">Around the {m.absorber} atom · {m.formula}</h2>
         <ClusterView atoms={atoms} colors={colors} faint={shown.filter(s => s.kind === 'far').map(s => s.id)} active={active} legs={legs} onHover={setHover} onSelect={pick}
           label={`${m.formula}: the ${atoms.length - 1} atoms within ${ready.cluster.rmax_A} angstrom of the ${atomName(m.absorber)} absorber, coloured by shell`} />
@@ -217,7 +235,8 @@ interface TourStep { title: string; text: string; target: string; shell?: boolea
 /** Five steps from the edge to a bond distance, each with this sample's numbers; the valence step only where a series exists. */
 function tourSteps(m: FeffMaterial, shift_eV: number, perValence: number | null, first: Shell | null, peak: number): TourStep[] {
   const name = atomName(m.absorber), e0 = m.edge_energy_eV + shift_eV;
-  const steps: TourStep[] = [{ title: 'The edge', target: 'spectrum-edge', text: `Absorption jumps at E₀ = ${e0.toFixed(1)} eV, where the X-ray can free a ${name} ${m.edge === 'K' ? '1s' : '2p'} electron. Below it ${name} hardly absorbs; above it, it does.` }];
+  const steps: TourStep[] = [{ title: 'How XAS works', target: 'spectrum-explorer', text: `X-rays of rising energy pass through the sample. Press Scan the energy: below the edge little is absorbed; at the edge the X-ray frees a ${name} core electron and absorption jumps; above it, the freed electron's echo makes the wiggles.` },
+    { title: 'The edge', target: 'spectrum-edge', text: `Absorption jumps at E₀ = ${e0.toFixed(1)} eV, where the X-ray can free a ${name} ${m.edge === 'K' ? '1s' : '2p'} electron. Below it ${name} hardly absorbs; above it, it does.` }];
   if (perValence !== null) steps.push({ title: 'Valence moves the edge', target: 'spectrum-oxidation', text: `Across ${name} compounds the edge moves about ${perValence.toFixed(1)} eV per unit of valence: the more electrons the atom has given away, the harder its core electron is held.` });
   if (first) {
     const el = atomName(first.element!);

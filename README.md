@@ -52,6 +52,13 @@ The Explore/Research switch changes explanatory depth. It does not change the mo
 
 Keys: 1 to 8 switch modes, I acquires, Space pauses, X enlarges the results, L toggles labels, T opens training, / opens the command bar ("set energy 8979", "detune 30 %", "insert harmonic mirror", "acquire 3 scans"; a typo is corrected and confirmed before it runs), [ and ] hide the side panels, and \` opens the console.
 
+**Read the spectrum** opens with **How XAS works**, one energy slider (or Scan) driving three linked pictures:
+- the beam through the sample, dimming between I₀ and Iₜ as absorption rises;
+- the absorber's levels, showing what the photon does to the core electron (nothing below the edge, a weak jump into a nearly full level at the pre‑edge, a jump into empty states at the edge, a freed electron wave, drawn at its wavelength, beyond);
+- the spectrum building up to the cursor.
+
+Five **Reading a spectrum** cards follow. Each sketches one feature for two materials or states: edge position, edge shape, and wiggle speed, height and fade. Each links to the panel where it can be tried, and a chapter bar runs through the page.
+
 **Read the spectrum:** `/spectrum/` (the atom button in the twin's Results opens it beside the twin, following its sample, temperature and latest scan) splits a library sample's EXAFS into shells of neighbours. Each shell has its own curve in k²χ(k) and |χ(R)|, its atoms light up in a 3D cluster, and choosing one explains its wiggle, its peak and how far that peak sits from the true distance (about 0.3 to 0.5 Å short for light neighbours, close to it for heavy ones such as Pt and Au). Below the plots:
 - **Electron wave:** the wave leaving the absorber and the wave reflected by the chosen neighbour, at true scale, with FEFF's phase. Whether they meet in step is the sign of that shell's χ(k); a test checks it.
 - **What if controls:** distance, number of neighbours, disorder σ² and temperature, drawn against dashed curves from before the change.
