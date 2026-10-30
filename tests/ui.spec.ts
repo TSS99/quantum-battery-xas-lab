@@ -418,6 +418,20 @@ test('element links handle unavailable storage and reject nonexistent shells', a
   await expect(page.getByRole('status').filter({ hasText: 'This edge is outside' })).toBeVisible();
 });
 
+test('the landing page and footer link the desktop installers of this version', async ({ page }) => {
+  const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+  const release = `https://github.com/TSS99/quantum-battery-xas-lab/releases/download/v${version}/`;
+  await page.goto('./');
+  const downloads = page.locator('#desktop');
+  await expect(downloads.getByRole('link', { name: 'Windows installer' })).toHaveAttribute('href', release + `XAS.Lab_${version}_x64-setup.exe`);
+  await expect(downloads.getByRole('link', { name: '.msi' })).toHaveAttribute('href', release + `XAS.Lab_${version}_x64_en-US.msi`);
+  await expect(downloads.getByRole('link', { name: 'macOS disk image' })).toHaveAttribute('href', release + `XAS.Lab_${version}_universal.dmg`);
+  await expect(downloads.getByRole('link', { name: 'Linux AppImage' })).toHaveAttribute('href', release + `XAS.Lab_${version}_amd64.AppImage`);
+  await expect(downloads.getByRole('link', { name: '.deb' })).toHaveAttribute('href', release + `XAS.Lab_${version}_amd64.deb`);
+  await expect(downloads.getByRole('link', { name: '.rpm' })).toHaveAttribute('href', release + `XAS.Lab-${version}-1.x86_64.rpm`);
+  await expect(page.locator('.site-footer').getByRole('link', { name: 'Desktop app' })).toHaveAttribute('href', /\/#desktop$/);
+});
+
 test('the beamline twin is linked from the header and landing page, and the Methods page lists its models and tests', async ({ page }) => {
   await page.goto('./');
   await expect(page.locator('.hero-actions').getByRole('link', { name: 'Operate the beamline twin' })).toHaveAttribute('href', /\/twin\/$/);

@@ -78,6 +78,30 @@ export function StatementBand({ text }: { text: string }) {
   return <section className="statement-band"><div className="statement-inner"><RevealText text={text} /></div></section>;
 }
 
+// Installers attached to this version's release by .github/workflows/desktop.yml, named the way Tauri names them.
+const version = process.env.NEXT_PUBLIC_APP_VERSION;
+const release = `https://github.com/TSS99/quantum-battery-xas-lab/releases/download/v${version}/`;
+const installers = [
+  { system: 'Windows', detail: 'Windows 10 and 11, 64 bit', main: [`XAS.Lab_${version}_x64-setup.exe`, 'Windows installer'], more: [[`XAS.Lab_${version}_x64_en-US.msi`, '.msi']] },
+  { system: 'macOS', detail: 'One app for Intel and Apple silicon', main: [`XAS.Lab_${version}_universal.dmg`, 'macOS disk image'], more: [] },
+  { system: 'Linux', detail: '64 bit', main: [`XAS.Lab_${version}_amd64.AppImage`, 'Linux AppImage'], more: [[`XAS.Lab_${version}_amd64.deb`, '.deb'], [`XAS.Lab-${version}-1.x86_64.rpm`, '.rpm']] },
+];
+
+/** Download links for the desktop app; left out of the desktop app's own build. */
+export function DesktopDownloads() {
+  if (process.env.NEXT_PUBLIC_DESKTOP) return null;
+  return <section id="desktop" className="landing-section desktop-downloads">
+    <RevealText text="Take the lab offline" />
+    <p className="landing-lead">The desktop app is the whole site in one window, working without internet from its first launch. Version {version}.</p>
+    <div className="module-cards">{installers.map(({ system, detail, main: [file, label], more }) => <div key={system} className="download-card">
+      <h3>{system}</h3><p>{detail}</p>
+      <a className="button secondary" href={release + file}>{label}</a>
+      {more.length > 0 && <p>Also as {more.map(([alt, name], i) => <span key={alt}>{i > 0 && ' or '}<a href={release + alt}>{name}</a></span>)}</p>}
+    </div>)}</div>
+    <p className="download-note">The installers are not signed yet. On Windows choose More info, then Run anyway; on macOS open the app the first time from its right click menu. <a href={`https://github.com/TSS99/quantum-battery-xas-lab/releases/tag/v${version}`} target="_blank" rel="noreferrer">Release notes and all files</a></p>
+  </section>;
+}
+
 export function CtaBand() {
   return <section className="cta-band">
     <RevealText text="Rehearse your next beamtime first" />

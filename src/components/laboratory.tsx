@@ -7,7 +7,7 @@ import { Num, Tex, Unit, formulaTex } from './tex';
 import { Disclosure, Metric, Panel, Range, TryThis } from './ui';
 import { ActiveSpacePlan } from './active-space';
 import { WorkflowRail } from './workflow';
-import { CtaBand, RevealText, StatementBand } from './landing';
+import { CtaBand, DesktopDownloads, RevealText, StatementBand } from './landing';
 import { ModuleShowcase, ValidationCards } from './showcase';
 import type { ValidationCard } from '@/lib/validation-cards';
 import { Plot } from './plot';
@@ -68,6 +68,7 @@ function Overview({ validation }: { validation: ValidationCard[] }) {
     ].map(c => <Link key={c.href} href={'/' + c.href + '/'} onClick={() => set({ expert: c.expert })} className="module-card"><h2>{c.audience}</h2><p>{c.text}</p><span className="card-more">Open<span aria-hidden="true"> ›</span></span></Link>)}</div></section>
     {validation.length > 0 && <ValidationCards cards={validation} />}
     <WorkflowRail/>
+    <DesktopDownloads />
     <StatementBand text="Open source, private by design, and checked against the reference tools" />
     <CtaBand />
   </>;

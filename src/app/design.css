@@ -121,6 +121,12 @@ a {color:var(--accent)}
 .landing-section {padding-top:96px;text-align:center}
 .landing-section .module-cards {margin-top:40px;text-align:left}
 .workflow-section {margin-top:56px}
+.desktop-downloads {scroll-margin-top:96px}
+.landing-lead {max-width:62ch;margin:18px auto 0;font-size:18px}
+.download-card {display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:24px;border:1px solid var(--hairline);border-radius:4px;background:var(--surface-1)}
+.download-card h3 {font-size:24px;font-weight:400;color:var(--text);letter-spacing:-.015em}
+.download-card p {font-size:14px;color:var(--muted)}
+.download-note {max-width:62ch;margin:24px auto 0;font-size:14px;color:var(--muted)}
 .statement-band {margin:120px -32px 0;padding:12px;background:linear-gradient(100deg,#77808c 0%,#b8835c 32%,#8a6bc9 62%,#5d77d8 86%,#77808c 100%)}
 .statement-inner {position:relative;isolation:isolate;display:grid;place-items:center;min-height:440px;padding:64px 24px;text-align:center;background:radial-gradient(70% 90% at 50% 40%,#4a4d55,#2b2d31 70%,#202124)}
 .statement-inner::after {content:"";z-index:-1}
@@ -168,7 +174,7 @@ a {color:var(--accent)}
 }
 @media(max-width:480px) {
   .hero-title {font-size:36px}
-  .hero-sub,.landing-intro p,.module-row-copy p {font-size:16px}
+  .hero-sub,.landing-intro p,.module-row-copy p,.landing-lead {font-size:16px}
   .footer-cols {grid-template-columns:minmax(0,1fr)}
   .statement-inner {min-height:320px}
 }

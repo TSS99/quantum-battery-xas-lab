@@ -128,7 +128,7 @@ export function Shell({ children, elementNames, trails }: { children: React.Reac
           <div className="footer-cols">
             <div><h2>Lab</h2><ul>{[...routes.slice(1, 6), ...consoles].map(([href, name]) => <li key={href}><Link href={href}>{name}</Link></li>)}</ul></div>
             <div><h2>Reference</h2><ul><li><Link href="/elements/">Elements</Link></li><li><Link href="/tools/">Calculators</Link></li><li><Link href="/instructors/">For instructors</Link></li><li><Link href="/validation/">Methods</Link></li><li><Link href="/experiments/">Experiments</Link></li></ul></div>
-            <div><h2>Project</h2><ul><li><a href={REPO} target="_blank" rel="noreferrer"><Github size={14} aria-hidden="true" /> Source code</a></li><li><a href={REPO + '/issues'} target="_blank" rel="noreferrer">Report an issue</a></li></ul></div>
+            <div><h2>Project</h2><ul><li><a href={REPO} target="_blank" rel="noreferrer"><Github size={14} aria-hidden="true" /> Source code</a></li><li><a href={REPO + '/issues'} target="_blank" rel="noreferrer">Report an issue</a></li>{!process.env.NEXT_PUBLIC_DESKTOP && <li><Link href="/#desktop">Desktop app</Link></li>}</ul></div>
           </div>
         </div>
         <div className="footer-bottom"><span>XAS Lab · built by TSS99</span><span>Calculations run in your browser.</span></div>
