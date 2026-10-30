@@ -10,6 +10,9 @@ export function InstallApp() {
   const [status, setStatus] = useState('');
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production' || !('serviceWorker' in navigator)) return;
+    // The desktop app ships every file and needs no worker; in WebView2 a worker cannot even reach the app's files (its
+    // requests skip the app's asset handler), so one left from an earlier version is removed.
+    if (process.env.NEXT_PUBLIC_DESKTOP) { navigator.serviceWorker.getRegistrations().then(all => all.forEach(r => r.unregister()), () => undefined); return; }
     const installed = matchMedia('(display-mode: standalone)').matches;
     const onMessage = (event: MessageEvent) => {
       if (event.data?.type !== 'precached') return;
