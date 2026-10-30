@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import FEFF_INDEX from '../../data/twin/feff/index.json';
 import { chiSum, loadPaths } from './exafs';
 import { libraryParameters } from './sample';
-import { clusterAtoms, clusterIds, groupShells, loadCluster, shellSpectra } from './shells';
+import { clusterAtoms, clusterIds, groupShells, loadCluster, pathCurves, shellSpectra } from './shells';
 
 const ids = FEFF_INDEX.map(m => m.id);
 const maxAbs = (values: number[]) => values.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
@@ -62,5 +62,49 @@ describe('shells of the FEFF library', () => {
       expect(Math.abs(shift), note).toBeLessThan(0.8);
       if (z <= 54) expect(shift, note).toBeGreaterThan(0.05);
     }
+  });
+
+  describe('what if', () => {
+    const rms = (values: number[], k: number[], from: number, to: number) => {
+      const picked = values.filter((_, i) => k[i] >= from && k[i] <= to);
+      return Math.sqrt(picked.reduce((s, v) => s + v * v, 0) / picked.length);
+    };
+
+    it('scales a shell with its number of neighbours and leaves the others alone', async () => {
+      const material = await loadPaths('cuo'), shells = groupShells(material);
+      const base = shellSpectra(material, shells), doubled = shellSpectra(material, shells, undefined, undefined, { 'Cu1/s1': { scale: 2 } });
+      expect(maxAbs(doubled.chi['Cu1/s1'].map((v, i) => v - 2 * base.chi['Cu1/s1'][i]))).toBeLessThan(1e-12 * maxAbs(base.chi['Cu1/s1']));
+      expect(maxAbs(doubled.chi['Cu1/s2'].map((v, i) => v - base.chi['Cu1/s2'][i]))).toBe(0);
+    });
+
+    it.each(['cu', 'cuo', 'nio'])('%s: moving the first shell out moves its |chi(R)| peak out by as much', async id => {
+      const material = await loadPaths(id), shells = groupShells(material), first = shells.find(s => s.id.endsWith('/s1'))!;
+      const base = shellSpectra(material, shells), moved = shellSpectra(material, shells, undefined, undefined, { [first.id]: { deltar_A: 0.2 } });
+      // The transform's grid is 0.031 angstrom.
+      expect(moved.peak_A[first.id] - base.peak_A[first.id]).toBeCloseTo(0.2, 1);
+    });
+
+    it('damps a shell by exp(-2 k^2 delta sigma^2) when its disorder grows', async () => {
+      const material = await loadPaths('cu'), shells = groupShells(material);
+      const base = shellSpectra(material, shells, undefined, undefined, { 'Cu1/s1': { sigma2_A2: 0.005 } });
+      const blurred = shellSpectra(material, shells, undefined, undefined, { 'Cu1/s1': { sigma2_A2: 0.01 } });
+      const ratio = rms(blurred.chi['Cu1/s1'], base.k, 9.5, 10.5) / rms(base.chi['Cu1/s1'], base.k, 9.5, 10.5);
+      expect(ratio / Math.exp(-2 * 100 * 0.005)).toBeCloseTo(1, 1);
+    });
+
+    // The wave drawing puts the returning wave 2kR + phase(k) behind the outgoing one at the absorber; in step there
+    // should mean a positive chi, as the path sum says.
+    it.each(['cu', 'cuo', 'pt'])('%s: the drawn wave meets itself in step where the first shell chi(k) is positive', async id => {
+      const material = await loadPaths(id), shells = groupShells(material), first = shells.find(s => s.id.endsWith('/s1'))!;
+      const spectra = shellSpectra(material, shells), path = first.paths[0];
+      let agree = 0, counted = 0;
+      spectra.k.forEach((k, i) => {
+        const chi = spectra.chi[first.id][i];
+        if (k < 3 || k > 14 || Math.abs(chi) < 0.3 * rms(spectra.chi[first.id], spectra.k, k - 1, k + 1)) return;
+        counted++;
+        if (Math.sign(Math.sin(2 * k * path.reff + pathCurves(path, k).phase)) === Math.sign(chi)) agree++;
+      });
+      expect(agree / counted).toBeGreaterThan(0.95);
+    });
   });
 });

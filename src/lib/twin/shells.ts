@@ -2,7 +2,7 @@ import { xftf } from '../exafs';
 import { chiSum } from './exafs';
 import { TWIN_REDUCTION } from './reduction';
 import { ROOM_TEMPERATURE_K, libraryParameters } from './sample';
-import type { FeffMaterial, FeffPath } from './types';
+import type { ExafsParameters, FeffMaterial, FeffPath } from './types';
 
 /**
  * The FEFF paths of one library material grouped the way a spectroscopist reads them: shells of like neighbours at one
@@ -89,9 +89,34 @@ export function transform(k: number[], chi: number[], kmax: number = TWIN_REDUCT
   });
 }
 
-export function shellSpectra(material: FeffMaterial, shells: Shell[], temperature_K = ROOM_TEMPERATURE_K, kmax: number = TWIN_REDUCTION.kmax): ShellSpectra {
+/**
+ * "What if" changes to one shell's paths: a change of distance, a factor on the number of neighbours (each path's
+ * degeneracy) and a disorder sigma^2 in place of the Einstein value.
+ */
+export interface ShellTweak { deltar_A?: number; scale?: number; sigma2_A2?: number }
+
+/** The library parameters with the tweaks applied to each tweaked shell's paths. */
+export function tweakedParameters(material: FeffMaterial, shells: Shell[], temperature_K: number, tweaks: Record<string, ShellTweak> = {}): ExafsParameters {
+  const params = libraryParameters(material, temperature_K);
+  for (const shell of shells) {
+    const tweak = tweaks[shell.id];
+    if (!tweak) continue;
+    for (const path of shell.paths) {
+      const key = `${shell.siteId}/${path.id}`;
+      params.paths![key] = {
+        ...params.paths![key],
+        ...(tweak.deltar_A !== undefined && { deltar_A: tweak.deltar_A }),
+        ...(tweak.scale !== undefined && { degen: path.degen * tweak.scale }),
+        ...(tweak.sigma2_A2 !== undefined && { sigma2_A2: tweak.sigma2_A2 }),
+      };
+    }
+  }
+  return params;
+}
+
+export function shellSpectra(material: FeffMaterial, shells: Shell[], temperature_K = ROOM_TEMPERATURE_K, kmax: number = TWIN_REDUCTION.kmax, tweaks: Record<string, ShellTweak> = {}): ShellSpectra {
   const k = Array.from({ length: Math.round(K_TOP / TWIN_REDUCTION.kstep) + 1 }, (_, i) => i * TWIN_REDUCTION.kstep);
-  const sum = chiSum(material, libraryParameters(material, temperature_K), k);
+  const sum = chiSum(material, tweakedParameters(material, shells, temperature_K, tweaks), k);
   const owner = new Map<string, string>(shells.flatMap(s => s.paths.map(p => [`${s.siteId}/${p.id}`, s.id] as const)));
   const chi: Record<string, number[]> = Object.fromEntries(shells.map(s => [s.id, new Array<number>(k.length).fill(0)]));
   for (const c of sum.contributions) {
@@ -112,6 +137,19 @@ export function shellSpectra(material: FeffMaterial, shells: Shell[], temperatur
     k, total: sum.chi, chi, r: whole.r, totalR: whole.magnitude, totalReal: whole.real, magnitude, real, peak_A,
     window: { kmin: TWIN_REDUCTION.kmin, kmax, dk: TWIN_REDUCTION.dk },
   };
+}
+
+/**
+ * A path's FEFF curves at k, linearly interpolated on its (uneven) grid: the total phase (the absorber's 2 delta plus
+ * the neighbour's backscattering phase) and the effective backscattering amplitude |F(k)| of the neighbour.
+ */
+export function pathCurves(path: FeffPath, k: number) {
+  const grid = path.k, kk = Math.min(grid[grid.length - 1], Math.max(grid[0], k));
+  let i = 0;
+  while (i < grid.length - 2 && grid[i + 1] < kk) i++;
+  const f = (kk - grid[i]) / (grid[i + 1] - grid[i]);
+  const at = (values: number[]) => values[i] * (1 - f) + values[i + 1] * f;
+  return { phase: at(path.real_phc) + at(path.pha_feff), amplitude: at(path.mag_feff) };
 }
 
 /** The atoms FEFF used around each absorber site (scripts/twin/make-clusters.py), absorber first. */

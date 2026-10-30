@@ -1,12 +1,12 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, Link2 } from 'lucide-react';
 import { loadPaths, sigma2Einstein } from '@/lib/twin/exafs';
 import { ROOM_TEMPERATURE_K, einsteinTemperature_K, libraryMaterialId } from '@/lib/twin/sample';
 import { SAMPLE_GROUPS, SAMPLE_PRESETS } from '@/lib/twin/presets';
-import { clusterAtoms, groupShells, loadCluster, shellSpectra, transform, type ClusterAtom, type ClusterFile, type Shell } from '@/lib/twin/shells';
+import { clusterAtoms, groupShells, loadCluster, shellSpectra, transform, type ClusterAtom, type ClusterFile, type Shell, type ShellTweak } from '@/lib/twin/shells';
 import { SPECTRUM_CHANNEL, type SpectrumMessage } from '@/lib/twin/spectrum-link';
 import type { FeffMaterial } from '@/lib/twin/types';
 import { Num, Tex } from '../tex';
@@ -14,8 +14,13 @@ import { TexProse } from '../twin/tex-prose';
 import { ShellPlot, type ShellCurve } from './shell-plot';
 import { atomName } from './atoms';
 
+
 // three.js loads after the page, like the twin's hutch.
 const ClusterView = dynamic(() => import('./cluster-view'), { ssr: false, loading: () => <p className="spectrum-empty">Loading the 3D cluster…</p> });
+// The wave, the "what if" controls and the neighbour comparison sit below the first screen and load after it.
+const WavePanel = dynamic(() => import('./wave-panel').then(m => m.WavePanel));
+const WhatIf = dynamic(() => import('./what-if').then(m => m.WhatIf));
+const NeighbourPanel = dynamic(() => import('./neighbour-panel').then(m => m.NeighbourPanel));
 
 /** Shell colours in distance order: the validated dark categorical slots (dataviz palette), fixed per position, never cycled. */
 const SHELL_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
@@ -40,6 +45,9 @@ export function SpectrumPage() {
   const [error, setError] = useState<string | null>(null);
   const [siteId, setSiteId] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null), [selected, setSelected] = useState<string | null>(null);
+  // "What if": changes to shells, a temperature of your own, and the k the electron wave is drawn at.
+  const [tweaks, setTweaks] = useState<Record<string, ShellTweak>>({}), [ownTemperature, setOwnTemperature] = useState<number | null>(null);
+  const [waveK, setWaveK] = useState(6);
 
   // A sample named in the address, and the twin's state when this window was opened from it.
   useEffect(() => {
@@ -54,7 +62,7 @@ export function SpectrumPage() {
   const preset = presets.find(p => p.id === presetId) ?? presets[0];
   const fromTwin = follow && twin !== null;
   const sample = fromTwin ? twin.sample : preset.sample;
-  const temperature_K = fromTwin ? twin.temperature_K : ROOM_TEMPERATURE_K;
+  const sampleTemperature = fromTwin ? twin.temperature_K : ROOM_TEMPERATURE_K, temperature_K = ownTemperature ?? sampleTemperature;
   const materialId = libraryMaterialId(sample);
   const scan = fromTwin && twin.scan && twin.scan.materialId === materialId ? twin.scan : null;
 
@@ -64,14 +72,18 @@ export function SpectrumPage() {
     setError(null);
     Promise.all([loadPaths(materialId), loadCluster(materialId)]).then(([m, c]) => {
       if (!live) return;
-      setMaterial(m); setCluster(c); setSiteId(m.sites[0].id); setSelected(null); setHover(null);
+      setMaterial(m); setCluster(c); setSiteId(m.sites[0].id); setSelected(null); setHover(null); setTweaks({}); setOwnTemperature(null);
     }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
     return () => { live = false; };
   }, [materialId]);
 
   const ready = material && cluster && material.id === materialId && cluster.id === materialId ? { material, cluster } : null;
   const shells = useMemo(() => ready ? groupShells(ready.material) : [], [ready?.material]);
-  const spectra = useMemo(() => ready ? shellSpectra(ready.material, shells, temperature_K, scan?.kmax) : null, [ready?.material, shells, temperature_K, scan?.kmax]);
+  // Sliders recompute the path sum; deferring keeps them smooth.
+  const shownTweaks = useDeferredValue(tweaks), shownTemperature = useDeferredValue(temperature_K);
+  const changed = Object.keys(shownTweaks).length > 0 || shownTemperature !== sampleTemperature;
+  const spectra = useMemo(() => ready ? shellSpectra(ready.material, shells, shownTemperature, scan?.kmax, shownTweaks) : null, [ready?.material, shells, shownTemperature, scan?.kmax, shownTweaks]);
+  const base = useMemo(() => ready && changed ? shellSpectra(ready.material, shells, sampleTemperature, scan?.kmax) : spectra, [ready?.material, shells, sampleTemperature, scan?.kmax, changed, spectra]);
   const site = siteId && ready?.material.sites.some(s => s.id === siteId) ? siteId : ready?.material.sites[0].id ?? null;
   const shown = shells.filter(s => s.siteId === site);
   const atoms = useMemo(() => ready && site ? clusterAtoms(ready.cluster, site, shells) : [], [ready?.cluster, site, shells]);
@@ -104,7 +116,14 @@ export function SpectrumPage() {
   const labelAt = Object.fromEntries(shown.filter(s => s.kind === 'shell').map(s => [s.id, spectra.peak_A[s.id]]));
   const pick = (id: string) => setSelected(current => current === id ? null : id);
   const legs = activeShell ? legsOf(activeShell, atoms) : [];
-  const sigma2 = chosen && chosen.kind === 'shell' ? chosen.paths.reduce((s, p) => s + p.degen * sigma2Einstein(p, einsteinTemperature_K(m.id), temperature_K), 0) / chosen.count : null;
+  const einsteinSigma2 = (s: Shell) => s.paths.reduce((sum, p) => sum + p.degen * sigma2Einstein(p, einsteinTemperature_K(m.id), temperature_K), 0) / s.count;
+  const sigma2Of = (s: Shell) => tweaks[s.id]?.sigma2_A2 ?? einsteinSigma2(s);
+  const sigma2 = chosen && chosen.kind === 'shell' ? sigma2Of(chosen) : null;
+  // The wave and the "what if" controls act on the chosen shell, or the first one.
+  const focus = (chosen?.kind === 'shell' ? chosen : null) ?? shown.find(s => s.kind === 'shell') ?? null;
+  const ghostK = changed && base ? [{ y: k2(base.total), color: '#a7b1c1' }, ...(focus ? [{ y: k2(base.chi[focus.id]), color: colors[focus.id] }] : [])] : [];
+  const ghostR = changed && base ? [{ y: base.totalR, color: '#a7b1c1' }, ...(focus ? [{ y: base.magnitude[focus.id], color: colors[focus.id] }] : [])] : [];
+  const resetAll = () => { setTweaks({}); setOwnTemperature(null); };
 
   return <Frame {...frame}
     site={m.sites.length > 1 ? { ids: m.sites.map(s => s.id), value: site, set: id => { setSiteId(id); setSelected(null); } } : undefined}>
@@ -119,16 +138,18 @@ export function SpectrumPage() {
         <h2 id="spectrum-plots-title" className="twin-kicker">The spectrum, shell by shell</h2>
         <ShellPlot x={spectra.k} xMax={Math.min(14, spectra.window.kmax + 1)} curves={kCurves} total={k2(spectra.total)} scan={scan ? { x: scan.k, y: scan.chi.map((c, i) => c * scan.k[i] ** 2) } : null}
           selected={active} onHover={setHover} onSelect={pick} xLabel="k (Å⁻¹)" yTex={String.raw`k^2\chi(k)\ (\mathring{\mathrm{A}}^{-2})`}
-          title={`k squared chi of k for ${m.formula}, split into ${shown.length} shells`} band={{ from: spectra.window.kmin, to: spectra.window.kmax, label: 'Transform window' }} />
+          title={`k squared chi of k for ${m.formula}, split into ${shown.length} shells`} band={{ from: spectra.window.kmin, to: spectra.window.kmax, label: 'Transform window' }}
+          ghosts={ghostK} markers={[{ x: waveK, text: `k = ${waveK.toFixed(1)}`, color: '#8ce3ff' }]} />
         <ShellPlot x={spectra.r} xMax={6} curves={rCurves} total={spectra.totalR} scan={scan ? { x: scan.r, y: scan.magnitude } : null}
           selected={active} onHover={setHover} onSelect={pick} xLabel="R (Å), not phase corrected" yTex={String.raw`|\chi(R)|\ (\mathring{\mathrm{A}}^{-3})`}
-          title={`magnitude of chi of R for ${m.formula}, split into ${shown.length} shells`} labelAt={labelAt}
+          title={`magnitude of chi of R for ${m.formula}, split into ${shown.length} shells`} labelAt={labelAt} ghosts={ghostR}
           markers={activeShell && activeShell.kind === 'shell' ? [{ x: activeShell.r_A, text: `true ${activeShell.r_A.toFixed(2)} Å`, color: colors[activeShell.id], dashed: true }] : []} />
         <p className="spectrum-legend">
           <span><i style={{ borderTopColor: '#d4dae3' }} />Total (all paths)</span>
           {scan && <span><i style={{ borderTopColor: '#8ce3ff', borderTopStyle: 'dotted' }} />Your scan #{scan.n}</span>}
           {shown.map(s => <span key={s.id}><i style={{ borderTopColor: colors[s.id], borderTopStyle: s.kind === 'shell' ? 'solid' : s.kind === 'far' ? 'dotted' : 'dashed' }} />{shellLabel(s)}</span>)}
           {others && <span><i style={{ borderTopColor: UNUSED_SITE, borderTopStyle: 'dotted' }} />Other sites</span>}
+          {changed && <span><i style={{ borderTopColor: '#a7b1c1', borderTopStyle: 'dashed' }} />Before your changes</span>}
         </p>
       </section>
       <section className="twin-card spectrum-panel spectrum-explain" aria-live="polite" aria-labelledby="spectrum-explain-title">
@@ -151,6 +172,20 @@ export function SpectrumPage() {
         </table>
         <p className="spectrum-note"><TexProse>{`Model: the FEFF paths of ${m.formula} the twin uses, $S_0^2 = 0.9$, $\\sigma^2$ from an Einstein model at ${temperature_K.toFixed(0)} K. Transform as in the twin's Results: $k^2$ weight, Hanning window from $k = ${spectra.window.kmin}$ to $${spectra.window.kmax.toFixed(1)}\\ \\mathring{\\mathrm{A}}^{-1}$. The near edge region is left out.`}</TexProse></p>
       </section>
+      {focus && <section className="twin-card spectrum-panel spectrum-wave" aria-labelledby="spectrum-wave-title">
+        <h2 id="spectrum-wave-title" className="twin-kicker">The electron wave · {shellLabel(focus)}</h2>
+        <WavePanel shell={focus} absorber={m.absorber} deltar_A={tweaks[focus.id]?.deltar_A ?? 0} k={waveK} setK={setWaveK} color={colors[focus.id]}
+          chi={spectra.chi[focus.id][Math.round(waveK / (spectra.k[1] - spectra.k[0]))]} />
+      </section>}
+      {focus && <section className="twin-card spectrum-panel spectrum-whatif" aria-labelledby="spectrum-whatif-title">
+        <h2 id="spectrum-whatif-title" className="twin-kicker">What if · {shellLabel(focus)}</h2>
+        <WhatIf shell={focus} tweak={tweaks[focus.id] ?? {}} setTweak={t => setTweaks(all => ({ ...all, [focus.id]: t }))} sigma2_A2={sigma2Of(focus)}
+          temperature_K={temperature_K} setTemperature={setOwnTemperature} spectra={spectra} base={base ?? spectra} onReset={resetAll} changed={changed} />
+      </section>}
+      {focus && <section className="twin-card spectrum-panel spectrum-neighbour" aria-labelledby="spectrum-neighbour-title">
+        <h2 id="spectrum-neighbour-title" className="twin-kicker">Light and heavy neighbours</h2>
+        <NeighbourPanel path={focus.paths[0]} color={colors[focus.id]} />
+      </section>}
     </div>
   </Frame>;
 }

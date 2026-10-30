@@ -26,6 +26,8 @@ interface Props {
   markers?: Marker[];
   /** Labels drawn on the curves at these points, by curve id. */
   labelAt?: Record<string, number>;
+  /** Curves as they were before a "what if" change, drawn dashed underneath. */
+  ghosts?: { y: number[]; color: string }[];
   height?: number;
 }
 
@@ -33,7 +35,7 @@ interface Props {
  * One EXAFS view split into shells: every shell's curve, the total and, from the twin, the scan. Pointing at the plot
  * picks the shell that contributes most there; clicking keeps it. The shell table beside it offers the same by keyboard.
  */
-export function ShellPlot({ x, xMax, curves, total, scan, selected, onHover, onSelect, xLabel, yTex, title, band, markers = [], labelAt = {}, height = 220 }: Props) {
+export function ShellPlot({ x, xMax, curves, total, scan, selected, onHover, onSelect, xLabel, yTex, title, band, markers = [], labelAt = {}, ghosts = [], height = 220 }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
   useEffect(() => {
@@ -44,7 +46,7 @@ export function ShellPlot({ x, xMax, curves, total, scan, selected, onHover, onS
   }, []);
   const end = Math.max(2, x.findIndex(v => v > xMax));
   const xs = x.slice(0, end);
-  const visible = [total, ...curves.map(c => c.y)].map(y => y.slice(0, end));
+  const visible = [total, ...curves.map(c => c.y), ...ghosts.map(g => g.y)].map(y => y.slice(0, end));
   const scanShown = scan ? scan.x.map((v, i) => [v, scan.y[i]] as const).filter(([v]) => v <= xMax) : [];
   let low = 0, high = 0;
   for (const y of visible) for (const v of y) { low = Math.min(low, v); high = Math.max(high, v); }
@@ -94,6 +96,7 @@ export function ShellPlot({ x, xMax, curves, total, scan, selected, onHover, onS
       </g>)}
       {band && <g><rect x={px(band.from)} y={T} width={px(Math.min(band.to, xMax)) - px(band.from)} height={H - T - B} fill="#9cc5e8" opacity=".07" />
         <text x={px(band.from) + 5} y={T + 13} fill={MUTED} fontSize="11.5" fontFamily={TEX_FONT}>{band.label}</text></g>}
+      {ghosts.map((g, i) => <path key={'ghost' + i} d={path(xs, g.y.slice(0, end))} fill="none" stroke={g.color} strokeDasharray="4 4" strokeWidth="1.6" opacity="0.6" />)}
       {curves.map(c => <path key={c.id} d={path(xs, c.y.slice(0, end))} fill="none" stroke={c.color} strokeDasharray={c.dash}
         strokeWidth={selected === c.id ? 2.6 : 1.6} opacity={selected && selected !== c.id ? 0.18 : 0.95} />)}
       <path d={path(xs, total.slice(0, end))} fill="none" stroke={INK} strokeWidth="2" opacity={selected ? 0.55 : 0.9} />
