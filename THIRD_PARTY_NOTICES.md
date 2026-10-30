@@ -14,10 +14,13 @@ XAS Lab's own code is under the MIT License (see LICENSE). These parts come from
 
 ## Fonts
 
+The OFL fonts are bundled in `src/fonts/` (the latin files of Fontsource 5.3.0, Google Fonts' own files) with their licence texts, `src/fonts/OFL-*.txt`.
+
 | Font | Use | Licence |
 | --- | --- | --- |
-| IBM Plex Sans, IBM Plex Mono | Interface text and readouts | SIL Open Font License 1.1 |
-| Instrument Serif | Beamline twin titles | SIL Open Font License 1.1 |
+| Outfit | Site interface text | SIL Open Font License 1.1 |
+| IBM Plex Sans, IBM Plex Mono | Beamline twin and Read the spectrum text and readouts | SIL Open Font License 1.1 |
+| Instrument Serif | Beamline twin and Read the spectrum titles | SIL Open Font License 1.1 |
 | KaTeX fonts | Equations | MIT (KaTeX) |
 
 ## Libraries

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
-import { Outfit } from 'next/font/google';
+import { outfit } from './fonts';
 import { LabProvider } from '@/components/lab-context';
 import { Shell } from '@/components/shell';
 import { SITE_NAME, SITE_URL, referenceTrails, sitePage } from '@/lib/site';
@@ -21,8 +21,6 @@ const texDigits = localFont({
   adjustFontFallback: false,
 });
 
-// Interface type: Outfit, self-hosted at build time so the installed app works offline.
-const outfit = Outfit({ subsets: ['latin'], weight: ['300', '400', '500'], variable: '--font-outfit', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL + '/'),
