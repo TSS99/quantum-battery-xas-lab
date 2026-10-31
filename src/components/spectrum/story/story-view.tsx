@@ -1,9 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { loadPaths } from '@/lib/twin/exafs';
+import { clusterAtoms, groupShells, loadCluster, type ClusterFile } from '@/lib/twin/shells';
 import { libraryMaterialId } from '@/lib/twin/sample';
 import { SAMPLE_PRESETS } from '@/lib/twin/presets';
 import type { XanesFile } from '@/lib/twin/xanes';
@@ -12,9 +13,11 @@ import { setAddress, ViewSwitch, type SpectrumView } from '../view-switch';
 
 const SceneShine = dynamic(() => import('./scene-shine').then(m => m.SceneShine));
 const SceneJump = dynamic(() => import('./scene-jump').then(m => m.SceneJump));
+const SceneRipple = dynamic(() => import('./scene-ripple').then(m => m.SceneRipple));
+const SceneEcho = dynamic(() => import('./scene-echo').then(m => m.SceneEcho));
 
 /** The scenes in order, with the word the progress rail shows for each. */
-const SCENES = [['story-shine', 'Shine'], ['story-jump', 'Jump']] as const;
+const SCENES = [['story-shine', 'Shine'], ['story-jump', 'Jump'], ['story-ripple', 'Ripple'], ['story-echo', 'Echo']] as const;
 
 /** The materials offered, in plain words; another library sample named in the address is offered by its own name. */
 const STORY_SAMPLES = [
@@ -37,20 +40,28 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
     return named && library.some(p => p.id === named) ? named : 'cu-foil';
   });
   const preset = library.find(p => p.id === presetId)!, materialId = libraryMaterialId(preset.sample)!;
-  const [data, setData] = useState<{ material: FeffMaterial; xanes: XanesFile } | null>(null);
+  const [data, setData] = useState<{ material: FeffMaterial; xanes: XanesFile; cluster: ClusterFile } | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     setError(null);
-    Promise.all([loadPaths(materialId), import('@/lib/twin/xanes-files').then(f => f.loadXanes(materialId))])
-      .then(([material, xanes]) => { if (live) setData({ material, xanes }); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
+    Promise.all([loadPaths(materialId), import('@/lib/twin/xanes-files').then(f => f.loadXanes(materialId)), loadCluster(materialId)])
+      .then(([material, xanes, cluster]) => { if (live) setData({ material, xanes, cluster }); }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
     return () => { live = false; };
   }, [materialId]);
   const current = useCurrentScene();
   const offered = STORY_SAMPLES.some(s => s.id === presetId) ? STORY_SAMPLES : [...STORY_SAMPLES, { id: preset.id, name: preset.name, what: `the ${preset.name}` }];
   const what = offered.find(s => s.id === presetId)!.what;
   const ready = data && data.material.id === materialId ? data : null;
-  const props = ready && { material: ready.material, xanes: ready.xanes, e0: ready.material.edge_energy_eV + (preset.sample.edgeShift_eV ?? 0), what };
+  // The story reads the first absorber site: its shells, the nearest one, and that shell's atoms.
+  const site = useMemo(() => {
+    if (!ready) return null;
+    const siteId = ready.material.sites[0].id, shells = groupShells(ready.material).filter(s => s.siteId === siteId);
+    const first = shells.find(s => s.kind === 'shell') ?? null;
+    const neighbours = first ? clusterAtoms(ready.cluster, siteId, shells).filter(a => a.shellId === first.id).map(a => ({ element: a.element, xyz: a.xyz })) : [];
+    return { shells, first, neighbours };
+  }, [ready]);
+  const props = ready && site && { material: ready.material, xanes: ready.xanes, e0: ready.material.edge_energy_eV + (preset.sample.edgeShift_eV ?? 0), what, ...site };
 
   return <div className="story">
     <header className="story-head">
@@ -75,6 +86,8 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
     {props && <>
       <SceneShine {...props} />
       <SceneJump {...props} />
+      <SceneRipple {...props} />
+      <SceneEcho {...props} />
     </>}
   </div>;
 }

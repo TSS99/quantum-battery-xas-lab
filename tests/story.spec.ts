@@ -33,8 +33,8 @@ test('the story is the default view, and the switch opens every panel and comes 
   const errors = collectErrors(page);
   await page.goto('./spectrum/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Read the spectrum');
-  await expect(page.locator('.story-scene')).toHaveCount(2);
-  await expect(page.locator('.story-scene .story-step')).toHaveText(['Step 1', 'Step 2']);
+  await expect(page.locator('.story-scene')).toHaveCount(4);
+  await expect(page.locator('.story-scene .story-step')).toHaveText(['Step 1', 'Step 2', 'Step 3', 'Step 4']);
   // At most one control under each picture.
   for (const control of await page.locator('.story-control').all()) await expect(control.locator(':scope > *')).toHaveCount(1);
   await page.getByRole('button', { name: 'Detailed', exact: true }).click();
@@ -42,14 +42,14 @@ test('the story is the default view, and the switch opens every panel and comes 
   await expect(page.locator('.spectrum-table-wrap .spectrum-table tbody tr').first()).toContainText('12 copper');
   await page.getByRole('button', { name: 'Simple', exact: true }).click();
   await expect(page).not.toHaveURL(/view=/);
-  await expect(page.locator('.story-scene')).toHaveCount(2);
+  await expect(page.locator('.story-scene')).toHaveCount(4);
   expect(errors).toEqual([]);
 });
 
 test('the story stays short and plain: few words, a low reading grade, no symbols', async ({ page }) => {
   for (const sample of ['cu-foil', 'pt-foil', 'licoo2-pellet']) {
     await page.goto(`./spectrum/?sample=${sample}`);
-    await expect(page.locator('.story-scene')).toHaveCount(2);
+    await expect(page.locator('.story-scene')).toHaveCount(4);
     const scenes = await sceneWords(page);
     const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
     for (const s of scenes) {
@@ -87,6 +87,36 @@ test('step 2: below the jump the X-ray passes by; above it the electron is knock
   // Platinum is read at its L3 edge: the electron comes from the second layer.
   await page.goto('./spectrum/?sample=pt-foil');
   await expect(page.locator('#story-jump .story-body')).toContainText('out of the second layer of a platinum atom');
+});
+
+test('step 3: the wave leaves alone, then the real neighbours send their echoes', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cu-foil');
+  const scene = page.locator('#story-ripple');
+  await scene.scrollIntoViewIfNeeded();
+  const show = scene.getByRole('button', { name: 'Show the neighbours' });
+  await expect(scene.getByRole('img')).toHaveAccessibleName(/real Cu crystal, alone/);
+  await show.click();
+  await expect(scene.getByRole('button', { name: 'Hide the neighbours' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(scene.getByRole('img')).toHaveAccessibleName(/with the echoes of its 12 nearest copper neighbours/);
+  await expect(scene.locator('.story-key')).toContainText('the nearest copper atoms are 2.5');
+});
+
+test('step 4: the ring says in step exactly where the computed wiggle is above the middle', async ({ page }) => {
+  for (const sample of ['cu-foil', 'cuo-pellet']) {
+    await page.goto(`./spectrum/?sample=${sample}`);
+    const scene = page.locator('#story-echo'), caption = scene.locator('.story-caption');
+    const wiggle = scene.getByRole('img', { name: /The wiggle of the nearest/ });
+    // The ring is the echo's phase at the absorber; the line is the shell's chi(k) from the path sum: they must agree.
+    await expect(caption).toContainText('a little more');
+    let checked = 0;
+    for (let e = 40; e <= 480; e += 23) {
+      await scene.getByRole('slider', { name: /X-ray energy/ }).fill(String(e));
+      const text = (await caption.textContent())!;
+      if (text.includes('a little more')) { await expect(wiggle).toHaveAccessibleName(/above the middle/); checked++; }
+      if (text.includes('a little less')) { await expect(wiggle).toHaveAccessibleName(/below the middle/); checked++; }
+    }
+    expect(checked, sample).toBeGreaterThan(8);
+  }
 });
 
 test('the story keeps still for readers who ask for less motion', async ({ page }) => {

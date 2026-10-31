@@ -39,6 +39,8 @@
 .story-meter {width:100%;height:auto}
 .story-key {display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;font-size:13.5px;color:var(--tw-muted)}
 .story-key i {display:inline-block;width:10px;height:10px;margin-right:7px;border-radius:50%;background:#5fb8e6;opacity:.6;vertical-align:-1px}
+.story-key i.is-crest {background:#8ce3ff;opacity:1}
+.story-key i.is-trough {background:#ff9650;opacity:1}
 .story-key i.is-core {background:#f0fcff;opacity:1;box-shadow:0 0 8px #8ce3ff}
 @media (max-width:860px) {
   .story-scene {grid-template-columns:minmax(0,1fr);gap:22px;padding:44px 0}

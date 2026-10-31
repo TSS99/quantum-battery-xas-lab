@@ -7,7 +7,8 @@
  */
 
 export interface WaveCurves { central: number; backscatter: number; amplitude: number; lambda: number }
-export interface PlanePoint { x: number; y: number }
+/** A point in the plane's coordinates; z, its height off the plane, for atoms that echo from above or below it. */
+export interface PlanePoint { x: number; y: number; z?: number }
 
 /** Nearest the absorber and the neighbours the drawn amplitude stops growing as 1/r, angstrom. */
 const CORE_A = 0.3;
@@ -17,20 +18,33 @@ const CORE_A = 0.3;
  * neighbour's echo. Neighbours are given in the plane; their distance from the absorber sets the echo's start.
  */
 export function waveField(k: number, neighbours: PlanePoint[], c: WaveCurves, outgoing = true) {
+  const phasor = wavePhasor(k, neighbours, c, outgoing);
+  return (x: number, y: number, wt: number) => {
+    const [cos, sin] = phasor(x, y);
+    return cos * Math.cos(wt) + sin * Math.sin(wt);
+  };
+}
+
+/**
+ * The same field split in time: at (x, y) it is C cos(wt) + S sin(wt), every part sharing one frequency, so an
+ * animation computes C and S once per k and only mixes them per frame.
+ */
+export function wavePhasor(k: number, neighbours: PlanePoint[], c: WaveCurves, outgoing = true) {
   const dc = c.central / 2;
   const sources = neighbours.map(n => {
-    const R = Math.hypot(n.x, n.y);
+    const R = Math.hypot(n.x, n.y, n.z ?? 0);
     // The wave that reaches the neighbour, scattered: amplitude |F| e^{-R/lambda} / R, phase kR + dc + phi.
-    return { x: n.x, y: n.y, amplitude: c.amplitude * Math.exp(-R / c.lambda) / R, phase: k * R + dc + c.backscatter };
+    return { x: n.x, y: n.y, z: n.z ?? 0, amplitude: c.amplitude * Math.exp(-R / c.lambda) / R, phase: k * R + dc + c.backscatter };
   });
-  return (x: number, y: number, wt: number) => {
+  return (x: number, y: number): [number, number] => {
     const r = Math.max(CORE_A, Math.hypot(x, y));
-    let value = outgoing ? Math.exp(-r / c.lambda) / r * Math.cos(k * r + dc - wt) : 0;
+    let cos = 0, sin = 0;
+    if (outgoing) { const a = Math.exp(-r / c.lambda) / r, p = k * r + dc; cos += a * Math.cos(p); sin += a * Math.sin(p); }
     for (const s of sources) {
-      const d = Math.max(CORE_A, Math.hypot(x - s.x, y - s.y));
-      value += s.amplitude * Math.exp(-d / c.lambda) / d * Math.cos(s.phase + k * d - wt);
+      const d = Math.max(CORE_A, Math.hypot(x - s.x, y - s.y, s.z)), a = s.amplitude * Math.exp(-d / c.lambda) / d, p = s.phase + k * d;
+      cos += a * Math.cos(p); sin += a * Math.sin(p);
     }
-    return value;
+    return [cos, sin];
   };
 }
 
@@ -46,6 +60,14 @@ export function echoAtAbsorber(k: number, R: number, c: WaveCurves): number {
  */
 export function shellSlice(atoms: [number, number, number][]): { points: PlanePoint[]; total: number } {
   if (!atoms.length) return { points: [], total: 0 };
+  const { u, v, n } = slicePlane(atoms);
+  const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const points = atoms.filter(a => Math.abs(dot(a, n)) < 0.35).map(a => ({ x: dot(a, u), y: dot(a, v) }));
+  return { points, total: atoms.length };
+}
+
+/** The slice's axes in the crystal: u through the first atom, v at right angles in the plane, n its normal. */
+export function slicePlane(atoms: [number, number, number][]) {
   const norm = (v: number[]) => { const l = Math.hypot(...v); return v.map(x => x / l); };
   const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   const cross = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -53,7 +75,5 @@ export function shellSlice(atoms: [number, number, number][]): { points: PlanePo
   let best = atoms.length > 1 ? atoms.slice(1).reduce((b, a) => Math.hypot(...cross(u, norm(a))) > Math.hypot(...cross(u, norm(b))) ? a : b) : null;
   if (!best || Math.hypot(...cross(u, norm(best))) < 0.2) best = (Math.abs(u[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0]) as [number, number, number];
   const v = norm(best.map((x, i) => x - dot(best!, u) * u[i]));
-  const n = cross(u, v);
-  const points = atoms.filter(a => Math.abs(dot(a, n)) < 0.35).map(a => ({ x: dot(a, u), y: dot(a, v) }));
-  return { points, total: atoms.length };
+  return { u, v, n: cross(u, v) };
 }

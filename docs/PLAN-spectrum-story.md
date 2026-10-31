@@ -96,7 +96,7 @@ away) and the wiggles (which neighbours, and how far). Then two buttons: the Det
    only when asked for (its tests open `?view=detailed`, the twin opens it); the story frame with the progress dots
    and the material picker; scenes 1 and 2; story tests (word budget, reading grade, no symbols, one control per
    scene, no sideways scroll at 375 px).
-2. **v1.26.0 The wave.** Scenes 3 and 4: ripples alone, then with echoes; the energy slider with the wiggle line and
+2. **v1.26.0 The wave** (done, in 3D: the wave on a sheet through the real crystal; neighbours off the sheet echo onto it from their true distance). Scenes 3 and 4: ripples alone, then with echoes; the energy slider with the wiggle line and
    the in step or out of step ring. The wave map scales to the column.
 3. **v1.27.0 Distances.** Scenes 5 and 6: the distance slider; the half target over bumps corrected for phase. Unit
    test: copper's first ring bump within 0.05 Å of 2.56 Å.

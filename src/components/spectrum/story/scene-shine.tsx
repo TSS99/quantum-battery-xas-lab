@@ -51,7 +51,7 @@ export function SceneShine({ material, xanes, e0, what }: SceneProps) {
           <text x={px(0) + 8} y={H - B - 10} fill="#8ce3ff" fontSize="15">the jump, {eV(e0)} eV</text>
         </g>}
         {reached === FROM && <text x={W / 2} y={(T + H - B) / 2} textAnchor="middle" fill="#a7b1c1" fontSize="16">Slide the energy to record the graph</text>}
-        {reached >= 200 && <text x={px(200)} y={py(Math.max(...absorbed.slice(100 - FROM, 300 - FROM))) - 14} textAnchor="middle" fill="#a7b1c1" fontSize="15">small wiggles</text>}
+        {reached >= 200 && <text x={px(200)} y={py(Math.max(...absorbed.slice(100 - FROM, 300 - FROM))) - 14} textAnchor="middle" fill="#a7b1c1" fontSize="15">small wiggles: step 4</text>}
         <path d={line} fill="none" stroke="#f3f6fa" strokeWidth="2.4" strokeLinejoin="round" />
         <circle cx={px(d)} cy={py(now)} r="7" fill="#ffc46b" stroke="#121a2b" strokeWidth="2" />
       </svg>
