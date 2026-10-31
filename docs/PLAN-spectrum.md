@@ -37,8 +37,11 @@ Fluff
    by number of atoms, with an arrow to each peak ("true 1.96 A -> peak 1.50 A"); k weight 1, 2, 3 for the plots and the
    transform; measured chi(k) (Larch autobk of the Larch examples) drawn with the model for Cu, Ni, Pt, Fe2O3, FeO.
    The plot is a lazy chunk, so the page stays within its 321 KB budget.
-3. **Atoms and distance.** Translucent shell spheres and a radial ruler matching the R axis; farther atoms hidden until
-   asked; distinct shell colours.
+3. **Atoms and distance** (v1.22.0, done). The chosen shell as a see-through sphere at its distance, named in the
+   corner; farther atoms hidden until asked; a distance strip under the 3D view (a bar per distance, height by number
+   of atoms, every shell labelled). Colours: the validator puts aqua and green 11.9 apart (normal vision, floor 15), and
+   with six shells on screen no order of the documented palette passes every pair, so identity rides on labels and
+   position (strip, lanes, table), as the dataviz rules require, instead of colour alone.
 4. **Real wave picture.** A 2D interference map on a slice through the cluster: outgoing spherical wave, echoes with
    FEFF amplitude and phase, 1/r and mean free path decay; the brightness at the absorber follows chi(k).
 5. **Cut fluff.** At most 600 words, one takeaway line per panel, model notes in one fold, reading cards from real

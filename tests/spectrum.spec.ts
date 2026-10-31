@@ -194,3 +194,17 @@ test('a measured spectrum of the same material is drawn with the model, where th
   await page.locator('.spectrum-table').getByRole('button', { name: '4 O at 1.96 Å' }).click();
   await expect(page.locator('#spectrum-plots .spectrum-legend')).not.toContainText('Measured');
 });
+
+test('the atoms panel lays the shells out by distance and shows the chosen one as a sphere', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  const atoms = page.locator('#spectrum-atoms');
+  await expect(atoms.getByRole('img', { name: /Distances from the copper atom: 4 O at 1\.96 angstrom, 2 O at 2\.78 angstrom/ })).toBeVisible();
+  const far = atoms.getByRole('button', { name: 'Show farther atoms' });
+  await expect(far).toHaveAttribute('aria-pressed', 'false');
+  await far.click();
+  await expect(far).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.spectrum-table').getByRole('button', { name: '4 Cu at 2.90 Å' }).click();
+  await expect(atoms).toContainText('4 Cu · 2.90 Å: the sphere through these atoms');
+  expect(errors).toEqual([]);
+});

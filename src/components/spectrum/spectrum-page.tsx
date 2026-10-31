@@ -28,6 +28,7 @@ const NearEdgePanel = dynamic(() => import('./near-edge-panel').then(m => m.Near
 const OxidationPanel = dynamic(() => import('./oxidation-panel').then(m => m.OxidationPanel));
 const XasExplorer = dynamic(() => import('./xas-explorer').then(m => m.XasExplorer), { loading: () => <p className="spectrum-empty">Loading the explorer…</p> });
 const ReadCards = dynamic(() => import('./read-cards').then(m => m.ReadCards));
+const DistanceStrip = dynamic(() => import('./distance-strip').then(m => m.DistanceStrip));
 const ShellPlot = dynamic(() => import('./shell-plot').then(m => m.ShellPlot), { loading: () => <p className="spectrum-empty">Loading the plot…</p> });
 
 /** The page in reading order: how XAS works, then the edge, valence, the atoms and shells, the wave, what if. */
@@ -69,6 +70,7 @@ export function SpectrumPage() {
   const [kweight, setKweight] = useState(2);
   const [added, setAdded] = useState(1);
   const [measured, setMeasured] = useState<{ id: string; k: number[]; chi: number[]; label: string } | null>(null);
+  const [showFar, setShowFar] = useState(false);
   const [tour, setTour] = useState<number | null>(null);
   const reduced = useReducedMotion();
 
@@ -200,8 +202,13 @@ export function SpectrumPage() {
       <section id="spectrum-atoms" className="twin-card spectrum-panel spectrum-3d" aria-labelledby="spectrum-cluster-title">
         <h2 id="spectrum-cluster-title" className="twin-kicker">Around the {m.absorber} atom · {m.formula}</h2>
         <ClusterView atoms={atoms} colors={colors} faint={shown.filter(s => s.kind === 'far').map(s => s.id)} active={active} legs={legs} onHover={setHover} onSelect={pick}
+          hideFar={!showFar} sphere={activeShell?.kind === 'shell' ? { radius: activeShell.r_A + (tweaks[activeShell.id]?.deltar_A ?? 0), color: colors[activeShell.id], label: `${activeShell.count} ${activeShell.element} · ${activeShell.r_A.toFixed(2)} Å` } : null}
           label={`${m.formula}: the ${atoms.length - 1} atoms within ${ready.cluster.rmax_A} angstrom of the ${atomName(m.absorber)} absorber, coloured by shell`} />
-        <p className="spectrum-note">White: the {atomName(m.absorber)} atom that absorbs the X-ray. Coloured: the shells in the table. Pale grey: farther atoms; dark grey: atoms whose paths are too weak to keep. Drag to turn.</p>
+        <div className="spectrum-cluster-bar">
+          <p className="spectrum-note">White: the {atomName(m.absorber)} atom that absorbs. Point at a shell to see it as a sphere at its distance. Drag to turn.</p>
+          <button type="button" className="twin-chip" aria-pressed={showFar} onClick={() => setShowFar(v => !v)}>Show farther atoms</button>
+        </div>
+        <DistanceStrip atoms={atoms} shells={shown} colors={colors} active={active} onHover={setHover} onSelect={pick} absorber={atomName(m.absorber)} rmax={ready.cluster.rmax_A} />
       </section>
       <section id="spectrum-plots" className="twin-card spectrum-panel" aria-labelledby="spectrum-plots-title">
         <h2 id="spectrum-plots-title" className="twin-kicker">The spectrum, shell by shell</h2>

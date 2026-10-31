@@ -66,6 +66,12 @@
 .neighbour-legend i {display:inline-block;width:20px;border-top:2.5px solid}
 .spectrum-cluster {height:min(46vh,420px);min-height:280px;border-radius:10px;background:radial-gradient(circle at 50% 45%,rgb(140 227 255/.08),transparent 65%),#121a2b;cursor:grab}
 .spectrum-cluster:active {cursor:grabbing}
+.spectrum-cluster-bar {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin-top:8px}
+.spectrum-cluster-bar .spectrum-note {margin:0;flex:1 1 260px}
+.distance-strip {display:block;width:100%;height:auto;margin-top:10px}
+.spectrum-cluster {position:relative}
+.cluster-label {position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:8px;margin:0;padding:4px 10px;border:1px solid var(--tw-line-2);border-radius:999px;background:rgb(18 26 43/.85);color:var(--tw-text);font:500 12.5px var(--font-sans);pointer-events:none}
+.cluster-label i {width:10px;height:10px;border-radius:50%}
 .spectrum-note {margin:8px 0 0;font-size:12.5px;color:var(--tw-muted)}
 .spectrum-empty {margin:0;padding:24px 0;font-size:14px;color:var(--tw-muted)}
 .spectrum-prose p {margin:0 0 10px;font-size:14.5px;line-height:1.6;color:var(--tw-body)}
