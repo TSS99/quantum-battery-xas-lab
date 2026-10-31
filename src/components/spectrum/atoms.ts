@@ -11,3 +11,9 @@ export const ATOMS: Record<string, { name: string; radius_A: number }> = {
 };
 
 export const atomName = (symbol: string) => ATOMS[symbol]?.name ?? symbol;
+
+/** Shell colours in distance order: the validated dark categorical slots (dataviz palette), fixed per position, never cycled. */
+export const SHELL_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
+
+/** Atom colours for the 3D pictures (Jmol's scheme where it reads on the dark stage). */
+export const ATOM_COLORS: Record<string, string> = { O: '#ff5a4a', S: '#f2d24b', Cu: '#d0875a', Ni: '#9fc7a1', Co: '#8fa8e6', Fe: '#e0915a', Mn: '#b08ad8', Pt: '#dcdcdc', Au: '#e8c25a', Zn: '#8f93c9', Ti: '#c0c5cc', Cr: '#93a6c9', Li: '#c88ff0', P: '#ff9a3c', C: '#9aa0a6' };

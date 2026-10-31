@@ -3,13 +3,15 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Shell } from '@/lib/twin/shells';
 import type { FeffMaterial } from '@/lib/twin/types';
 import type { XanesFile } from '@/lib/twin/xanes';
+import type { CrystalAtom } from './crystal-3d';
 import type { Neighbour } from './wave-3d';
 
 /**
  * What every scene gets: the chosen material's FEFF paths and computed near edge, its edge energy, its name in words,
- * the shells of its first absorber site, the nearest of them, and that shell's atoms from the FEFF cluster.
+ * the shells of its first absorber site, the nearest of them, that shell's atoms from the FEFF cluster, and the absorber
+ * with the atoms of every named shell (ring: the shell's place in distance order).
  */
-export interface SceneProps { material: FeffMaterial; xanes: XanesFile; e0: number; what: string; shells: Shell[]; first: Shell | null; neighbours: Neighbour[] }
+export interface SceneProps { material: FeffMaterial; xanes: XanesFile; e0: number; what: string; shells: Shell[]; first: Shell | null; neighbours: Neighbour[]; crystal: CrystalAtom[] }
 
 /** 8979 as "8,979": energies in eV, read aloud and on screen the same way everywhere. */
 export const eV = (value: number) => Math.round(value).toLocaleString('en-US');

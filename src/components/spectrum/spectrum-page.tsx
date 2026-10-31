@@ -16,7 +16,7 @@ import { Num, Tex } from '../tex';
 import { TexProse } from '../twin/tex-prose';
 import type { ShellCurve, Stick } from './shell-plot';
 import type { WiggleCurve } from './read-cards';
-import { atomName } from './atoms';
+import { atomName, SHELL_COLORS } from './atoms';
 import { setAddress, ViewSwitch, type SpectrumView } from './view-switch';
 
 
@@ -37,8 +37,6 @@ const ShellPlot = dynamic(() => import('./shell-plot').then(m => m.ShellPlot), {
 const CHAPTERS = [['spectrum-explorer', 'How XAS works'], ['spectrum-read', 'Reading it'], ['spectrum-edge', 'The edge'], ['spectrum-oxidation', 'Valence'],
   ['spectrum-atoms', 'Atoms'], ['spectrum-plots', 'Shells'], ['spectrum-wave', 'The wave'], ['spectrum-whatif', 'What if']] as const;
 
-/** Shell colours in distance order: the validated dark categorical slots (dataviz palette), fixed per position, never cycled. */
-const SHELL_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
 const FAR = { color: '#8a929c', dash: '2 4' }, MULTIPLE = { color: '#9085e9', dash: '7 4' };
 /** Multiple scattering paths drawn in 3D when that group is chosen, strongest first. */
 const MS_DRAWN = 8;

@@ -15,9 +15,11 @@ const SceneShine = dynamic(() => import('./scene-shine').then(m => m.SceneShine)
 const SceneJump = dynamic(() => import('./scene-jump').then(m => m.SceneJump));
 const SceneRipple = dynamic(() => import('./scene-ripple').then(m => m.SceneRipple));
 const SceneEcho = dynamic(() => import('./scene-echo').then(m => m.SceneEcho));
+const SceneDistance = dynamic(() => import('./scene-distance').then(m => m.SceneDistance));
+const SceneRings = dynamic(() => import('./scene-rings').then(m => m.SceneRings));
 
 /** The scenes in order, with the word the progress rail shows for each. */
-const SCENES = [['story-shine', 'Shine'], ['story-jump', 'Jump'], ['story-ripple', 'Ripple'], ['story-echo', 'Echo']] as const;
+const SCENES = [['story-shine', 'Shine'], ['story-jump', 'Jump'], ['story-ripple', 'Ripple'], ['story-echo', 'Echo'], ['story-distance', 'Distance'], ['story-rings', 'Chart']] as const;
 
 /** The materials offered, in plain words; another library sample named in the address is offered by its own name. */
 const STORY_SAMPLES = [
@@ -50,6 +52,8 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
     return () => { live = false; };
   }, [materialId]);
   const current = useCurrentScene();
+  // On a narrow screen the rail scrolls sideways; keep the current step in it.
+  useEffect(() => { document.querySelector(`.story-rail a[href="#${current}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [current]);
   const offered = STORY_SAMPLES.some(s => s.id === presetId) ? STORY_SAMPLES : [...STORY_SAMPLES, { id: preset.id, name: preset.name, what: `the ${preset.name}` }];
   const what = offered.find(s => s.id === presetId)!.what;
   const ready = data && data.material.id === materialId ? data : null;
@@ -57,9 +61,11 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
   const site = useMemo(() => {
     if (!ready) return null;
     const siteId = ready.material.sites[0].id, shells = groupShells(ready.material).filter(s => s.siteId === siteId);
-    const first = shells.find(s => s.kind === 'shell') ?? null;
-    const neighbours = first ? clusterAtoms(ready.cluster, siteId, shells).filter(a => a.shellId === first.id).map(a => ({ element: a.element, xyz: a.xyz })) : [];
-    return { shells, first, neighbours };
+    const first = shells.find(s => s.kind === 'shell') ?? null, named = shells.filter(s => s.kind === 'shell').map(s => s.id);
+    const atoms = clusterAtoms(ready.cluster, siteId, shells);
+    const neighbours = first ? atoms.filter(a => a.shellId === first.id).map(a => ({ element: a.element, xyz: a.xyz })) : [];
+    const crystal = [atoms[0], ...atoms.filter(a => a.shellId && named.includes(a.shellId))].map(a => ({ element: a.element, xyz: a.xyz, ring: a.shellId ? named.indexOf(a.shellId) : -1 }));
+    return { shells, first, neighbours, crystal };
   }, [ready]);
   const props = ready && site && { material: ready.material, xanes: ready.xanes, e0: ready.material.edge_energy_eV + (preset.sample.edgeShift_eV ?? 0), what, ...site };
 
@@ -88,6 +94,8 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
       <SceneJump {...props} />
       <SceneRipple {...props} />
       <SceneEcho {...props} />
+      <SceneDistance {...props} />
+      <SceneRings {...props} />
     </>}
   </div>;
 }

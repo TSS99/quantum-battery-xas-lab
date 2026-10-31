@@ -33,8 +33,8 @@ test('the story is the default view, and the switch opens every panel and comes 
   const errors = collectErrors(page);
   await page.goto('./spectrum/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Read the spectrum');
-  await expect(page.locator('.story-scene')).toHaveCount(4);
-  await expect(page.locator('.story-scene .story-step')).toHaveText(['Step 1', 'Step 2', 'Step 3', 'Step 4']);
+  await expect(page.locator('.story-scene')).toHaveCount(6);
+  await expect(page.locator('.story-scene .story-step')).toHaveText(['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6']);
   // At most one control under each picture.
   for (const control of await page.locator('.story-control').all()) await expect(control.locator(':scope > *')).toHaveCount(1);
   await page.getByRole('button', { name: 'Detailed', exact: true }).click();
@@ -42,14 +42,14 @@ test('the story is the default view, and the switch opens every panel and comes 
   await expect(page.locator('.spectrum-table-wrap .spectrum-table tbody tr').first()).toContainText('12 copper');
   await page.getByRole('button', { name: 'Simple', exact: true }).click();
   await expect(page).not.toHaveURL(/view=/);
-  await expect(page.locator('.story-scene')).toHaveCount(4);
+  await expect(page.locator('.story-scene')).toHaveCount(6);
   expect(errors).toEqual([]);
 });
 
 test('the story stays short and plain: few words, a low reading grade, no symbols', async ({ page }) => {
   for (const sample of ['cu-foil', 'pt-foil', 'licoo2-pellet']) {
     await page.goto(`./spectrum/?sample=${sample}`);
-    await expect(page.locator('.story-scene')).toHaveCount(4);
+    await expect(page.locator('.story-scene')).toHaveCount(6);
     const scenes = await sceneWords(page);
     const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
     for (const s of scenes) {
@@ -117,6 +117,31 @@ test('step 4: the ring says in step exactly where the computed wiggle is above t
     }
     expect(checked, sample).toBeGreaterThan(8);
   }
+});
+
+test('step 5: farther neighbours make more wiggles in the same range of energy', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cu-foil');
+  const scene = page.locator('#story-distance'), readout = scene.locator('.story-readout');
+  const wiggles = async () => Number((await readout.locator('b').first().textContent())!);
+  const slider = scene.getByRole('slider', { name: 'Distance to the copper neighbours' });
+  await expect(readout).toContainText('2.56');
+  const counts: number[] = [];
+  for (const d of ['-0.5', '0', '0.5']) { await slider.fill(d); await expect(readout).toContainText((2.56 + Number(d)).toFixed(2).slice(0, 3)); counts.push(await wiggles()); }
+  expect(counts[1]).toBeGreaterThan(counts[0]);
+  expect(counts[2]).toBeGreaterThan(counts[1]);
+});
+
+test('step 6: each ring adds a bump at its true distance', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cu-foil');
+  const scene = page.locator('#story-rings'), chart = scene.getByRole('img', { name: /Distance chart/ });
+  await expect(chart).toHaveAccessibleName(/bumps at 2\.5\d angstrom$/);
+  await expect(scene.locator('.story-caption')).toContainText('Ring 1: 12 copper atoms at 2.5');
+  await scene.getByRole('button', { name: 'Add the next ring' }).click();
+  // fcc copper: 6 atoms at a = 3.61 angstrom; the bump within 0.05 of it, not 0.3 short as in the plain transform.
+  await expect(chart).toHaveAccessibleName(/bumps at 2\.5\d angstrom, 3\.(5[6-9]|6\d) angstrom$/);
+  for (let i = 0; i < 3; i++) await scene.getByRole('button', { name: 'Add the next ring' }).click();
+  await expect(scene.locator('.story-caption')).toContainText('All 5 rings together');
+  await expect(scene.getByRole('button', { name: 'Start again' })).toBeVisible();
 });
 
 test('the story keeps still for readers who ask for less motion', async ({ page }) => {

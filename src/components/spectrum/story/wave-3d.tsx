@@ -3,14 +3,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { DataTexture, DoubleSide, LinearFilter, RGBAFormat, type Group } from 'three';
 import { slicePlane, wavePhasor, type WaveCurves } from '@/lib/twin/wave-field';
-import { ATOMS } from '../atoms';
+import { ATOM_COLORS, ATOMS } from '../atoms';
 
 const GRID = 160;
 const CREST = [140, 227, 255], TROUGH = [255, 150, 80];
 /** One drawn wave period every two seconds: the electron's real frequency is far beyond any drawing. */
 const DRAWN_HZ = 0.5;
-/** Atom colours (Jmol's scheme where it reads on the dark stage); the absorber is white. */
-const COLOR: Record<string, string> = { O: '#ff5a4a', S: '#f2d24b', Cu: '#d0875a', Ni: '#9fc7a1', Co: '#8fa8e6', Fe: '#e0915a', Mn: '#b08ad8', Pt: '#dcdcdc', Au: '#e8c25a', Zn: '#8f93c9', Ti: '#c0c5cc', Cr: '#93a6c9', Li: '#c88ff0', P: '#ff9a3c', C: '#9aa0a6' };
 
 export interface Neighbour { element: string; xyz: [number, number, number] }
 
@@ -99,7 +97,7 @@ function Pond({ absorber, neighbours, k, curves, echoes, ring, reach, reduced }:
     </mesh>}
     {echoes && placed.map((p, i) => <mesh key={i} position={[p.x, p.z, -p.y]}>
       <sphereGeometry args={[radius(p.element), 28, 18]} />
-      <meshStandardMaterial color={COLOR[p.element] ?? '#b0b8c4'} roughness={0.35} metalness={0.35} />
+      <meshStandardMaterial color={ATOM_COLORS[p.element] ?? '#b0b8c4'} roughness={0.35} metalness={0.35} />
     </mesh>)}
   </group>;
 }

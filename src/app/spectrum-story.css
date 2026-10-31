@@ -10,6 +10,8 @@
 .story-pick {display:flex;align-items:center;gap:8px;font-size:14px;color:var(--tw-muted)}
 .story-pick select {min-height:36px;font:15px var(--font-sans)}
 .story-rail {position:sticky;top:0;z-index:15;display:flex;gap:4px;margin:0 -22px;padding:8px 22px;overflow-x:auto;background:rgb(20 29 49/.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--tw-line)}
+.story-rail {scrollbar-width:none}
+.story-rail::-webkit-scrollbar {display:none}
 .story-rail a {display:inline-flex;flex:none;align-items:center;gap:7px;padding:5px 11px 5px 6px;border-radius:999px;color:var(--tw-muted);font:500 13.5px/1 var(--font-sans);text-decoration:none}
 .story-rail a span {display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--tw-line);font:500 12px var(--tw-mono)}
 .story-rail a[aria-current="step"] {color:var(--tw-text);background:var(--tw-accent-soft)}
