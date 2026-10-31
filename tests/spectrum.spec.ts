@@ -134,7 +134,7 @@ test('how XAS works names the levels of the absorber: sulfur 1s to empty 3p, no 
 
 test('the reading cards and the chapters take you to the panel to try', async ({ page }) => {
   await page.goto('./spectrum/?sample=cuo-pellet');
-  await expect(page.locator('.read-card')).toHaveCount(5);
+  await expect(page.locator('.read-card')).toHaveCount(3);
   await page.locator('.read-card').filter({ hasText: 'Edge position' }).getByRole('button', { name: 'Try it on this sample' }).click();
   await expect(page.locator('#spectrum-oxidation')).toBeInViewport();
   await page.getByRole('navigation', { name: 'Chapters' }).getByRole('button', { name: /Shells/ }).click();
@@ -161,9 +161,9 @@ test('the near edge is computed for each crystal: the chromate card and the edge
   await page.goto('./spectrum/?sample=k2cro4-pellet');
   const card = page.locator('.read-card').filter({ hasText: 'Edge shape' });
   await expect(card).toContainText('K₂CrO₄, tetrahedral');
-  await expect(card).toContainText(/tetrahedral chromate's is \d+× the octahedral oxide's/);
+  await expect(card).toContainText(/K₂CrO₄'s is \d+× Cr₂O₃'s/);
   const edge = page.locator('#spectrum-edge');
-  await expect(edge).toContainText('FEFF10 calculation for this crystal');
+  await expect(page.locator('.spectrum-model')).toContainText('FEFF10 full multiple scattering for this crystal');
   await expect(edge).toContainText(/Pre-edge at \D?1\d\.\d eV/);
   await page.goto('./spectrum/?sample=ceo2-pellet');
   await expect(page.locator('#spectrum-edge')).toContainText('FEFF, a one electron calculation, gives one');
@@ -219,4 +219,15 @@ test('the wave map draws the shell in a slice through the real cluster, whole or
   await page.getByRole('slider', { name: 'Electron wavenumber k' }).fill('7.5');
   await expect(wave.locator('.wave-verdict')).toContainText(/k\s*=\s*7\.50/);
   expect(errors).toEqual([]);
+});
+
+test('the page reads in few words: the prose stays within 450 words, the model notes in one fold', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  await expect(page.locator('.read-card')).toHaveCount(3);
+  await expect(page.locator('.wave-map')).toBeVisible();
+  const words = await page.evaluate(() => [...document.querySelectorAll('.spectrum-grid p, .spectrum-grid li')]
+    .filter(e => !e.closest('svg, table, details, .read-card-legend, .spectrum-legend, .neighbour-legend'))
+    .reduce((n, e) => n + (e as HTMLElement).innerText.split(/\s+/).filter(Boolean).length, 0));
+  expect(words).toBeLessThanOrEqual(450);
+  await expect(page.locator('details.spectrum-model summary')).toHaveText('Model and sources');
 });

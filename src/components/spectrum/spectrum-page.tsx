@@ -15,6 +15,7 @@ import type { FeffMaterial } from '@/lib/twin/types';
 import { Num, Tex } from '../tex';
 import { TexProse } from '../twin/tex-prose';
 import type { ShellCurve, Stick } from './shell-plot';
+import type { WiggleCurve } from './read-cards';
 import { atomName } from './atoms';
 
 
@@ -164,6 +165,13 @@ export function SpectrumPage() {
   const maxCount = Math.max(1, ...shown.filter(s => s.kind === 'shell').map(s => s.count));
   const sticks: Stick[] = shown.filter(s => s.kind === 'shell' && (view !== 'build' || shown.indexOf(s) < count))
     .map(s => ({ id: s.id, x: s.r_A + (tweaks[s.id]?.deltar_A ?? 0), peak: spectra.peak_A[s.id], share: s.count / maxCount, color: colors[s.id] }));
+  // The wiggle card: this sample's nearest and farthest named shells, each scaled to its own largest wiggle.
+  const named = shown.filter(s => s.kind === 'shell'), farthest = named.at(-1) ?? null;
+  const wiggle = (s: Shell): WiggleCurve => {
+    const y = spectra.chi[s.id].map((v, i) => v * spectra.k[i] ** 2), top = Math.max(...y.map(Math.abs)) || 1;
+    return { label: `${s.count} ${s.element} at ${s.r_A.toFixed(2)} Å`, k: spectra.k, y: y.map(v => v / top) };
+  };
+  const wiggleNear = named[0] && farthest && farthest.r_A - named[0].r_A > 0.3 ? wiggle(named[0]) : null, wiggleFar = wiggleNear ? wiggle(farthest!) : null;
   const pick = (id: string) => setSelected(current => current === id ? null : id);
   const legs = activeShell ? legsOf(activeShell, atoms) : [];
   const einsteinSigma2 = (s: Shell) => s.paths.reduce((sum, p) => sum + p.degen * sigma2Einstein(p, einsteinTemperature_K(m.id), temperature_K), 0) / s.count;
@@ -197,8 +205,10 @@ export function SpectrumPage() {
       </section>
       <section id="spectrum-read" className="twin-card spectrum-panel spectrum-read" aria-labelledby="spectrum-read-title">
         <h2 id="spectrum-read-title" className="twin-kicker">Reading a spectrum</h2>
-        <ReadCards />
+        <ReadCards near={wiggleNear} far={wiggleFar} />
       </section>
+      {/* Each sticky panel sits in a cell as tall as its row, so it stays beside its taller neighbour and stops there. */}
+      <div className="spectrum-sticky-cell spectrum-3d-cell">
       <section id="spectrum-atoms" className="twin-card spectrum-panel spectrum-3d" aria-labelledby="spectrum-cluster-title">
         <h2 id="spectrum-cluster-title" className="twin-kicker">Around the {m.absorber} atom · {m.formula}</h2>
         <ClusterView atoms={atoms} colors={colors} faint={shown.filter(s => s.kind === 'far').map(s => s.id)} active={active} legs={legs} onHover={setHover} onSelect={pick}
@@ -210,6 +220,7 @@ export function SpectrumPage() {
         </div>
         <DistanceStrip atoms={atoms} shells={shown} colors={colors} active={active} onHover={setHover} onSelect={pick} absorber={atomName(m.absorber)} rmax={ready.cluster.rmax_A} />
       </section>
+      </div>
       <section id="spectrum-plots" className="twin-card spectrum-panel" aria-labelledby="spectrum-plots-title">
         <h2 id="spectrum-plots-title" className="twin-kicker">The spectrum, shell by shell</h2>
         <div className="spectrum-plot-controls">
@@ -248,11 +259,13 @@ export function SpectrumPage() {
           <span><i className="spectrum-legend-bar" aria-hidden="true" />Bars: true distances, height by number of atoms</span>
         </p>
       </section>
-      <section className="twin-card spectrum-panel spectrum-explain" aria-live="polite" aria-labelledby="spectrum-explain-title">
-        <h2 id="spectrum-explain-title" className="twin-kicker">{chosen ? shellLabel(chosen) : 'How to read it'}</h2>
-        <Explain shell={chosen} absorber={m.absorber} peak={chosen ? spectra.peak_A[chosen.id] : 0} sigma2={sigma2} temperature_K={temperature_K}
-          share={chosen ? peakOf(spectra.magnitude[chosen.id]) / peakOf(spectra.totalR) : 0} />
-      </section>
+      <div className="spectrum-sticky-cell spectrum-explain-cell">
+        <section className="twin-card spectrum-panel spectrum-explain" aria-live="polite" aria-labelledby="spectrum-explain-title">
+          <h2 id="spectrum-explain-title" className="twin-kicker">{chosen ? shellLabel(chosen) : 'How to read it'}</h2>
+          <Explain shell={chosen} absorber={m.absorber} peak={chosen ? spectra.peak_A[chosen.id] : 0} sigma2={sigma2} temperature_K={temperature_K}
+            share={chosen ? peakOf(spectra.magnitude[chosen.id]) / peakOf(spectra.totalR) : 0} />
+        </section>
+      </div>
       <section className="twin-card spectrum-panel spectrum-table-wrap" aria-labelledby="spectrum-table-title">
         <h2 id="spectrum-table-title" className="twin-kicker">Shells{m.sites.length > 1 ? ` of site ${site}` : ''}</h2>
         <table className="spectrum-table">
@@ -266,7 +279,6 @@ export function SpectrumPage() {
             <td>{s.kind === 'shell' ? <><Num>{spectra.peak_A[s.id].toFixed(2)}</Num> Å</> : 'spread'}</td>
           </tr>)}</tbody>
         </table>
-        <p className="spectrum-note"><TexProse>{`Model: the FEFF paths of ${m.formula} the twin uses, $S_0^2 = 0.9$, $\\sigma^2$ from an Einstein model at ${temperature_K.toFixed(0)} K. Transform as in the twin's Results: $k^{${kweight}}$ weight (the Results use $k^2$), Hanning window from $k = ${spectra.window.kmin}$ to $${spectra.window.kmax.toFixed(1)}\\ \\mathring{\\mathrm{A}}^{-1}$. The near edge region is left out.`}</TexProse></p>
       </section>
       <section id="spectrum-edge" className="twin-card spectrum-panel spectrum-edge" aria-labelledby="spectrum-edge-title">
         <h2 id="spectrum-edge-title" className="twin-kicker">Around the edge</h2>
@@ -281,15 +293,28 @@ export function SpectrumPage() {
         <WavePanel shell={focus} absorber={m.absorber} atoms={atoms.filter(a => a.shellId === focus.id).map(a => a.xyz)} deltar_A={tweaks[focus.id]?.deltar_A ?? 0} k={waveK} setK={setWaveK} color={colors[focus.id]}
           chi={spectra.chi[focus.id][Math.round(waveK / (spectra.k[1] - spectra.k[0]))]} />
       </section>}
-      {focus && <section id="spectrum-whatif" className="twin-card spectrum-panel spectrum-whatif" aria-labelledby="spectrum-whatif-title">
-        <h2 id="spectrum-whatif-title" className="twin-kicker">What if · {shellLabel(focus)}</h2>
-        <WhatIf shell={focus} tweak={tweaks[focus.id] ?? {}} setTweak={t => setTweaks(all => ({ ...all, [focus.id]: t }))} sigma2_A2={sigma2Of(focus)}
-          temperature_K={temperature_K} setTemperature={setOwnTemperature} spectra={spectra} base={base ?? spectra} onReset={resetAll} changed={changed} />
-      </section>}
+      {focus && <div className="spectrum-sticky-cell spectrum-whatif-cell">
+        <section id="spectrum-whatif" className="twin-card spectrum-panel spectrum-whatif" aria-labelledby="spectrum-whatif-title">
+          <h2 id="spectrum-whatif-title" className="twin-kicker">What if · {shellLabel(focus)}</h2>
+          <WhatIf shell={focus} tweak={tweaks[focus.id] ?? {}} setTweak={t => setTweaks(all => ({ ...all, [focus.id]: t }))} sigma2_A2={sigma2Of(focus)}
+            temperature_K={temperature_K} setTemperature={setOwnTemperature} spectra={spectra} base={base ?? spectra} onReset={resetAll} changed={changed} />
+        </section>
+      </div>}
       {focus && <section className="twin-card spectrum-panel spectrum-neighbour" aria-labelledby="spectrum-neighbour-title">
         <h2 id="spectrum-neighbour-title" className="twin-kicker">Light and heavy neighbours</h2>
         <NeighbourPanel path={focus.paths[0]} color={colors[focus.id]} />
       </section>}
+      <details className="twin-card spectrum-panel spectrum-model">
+        <summary>Model and sources</summary>
+        <ul className="spectrum-model-list">
+          <li><TexProse>{`Shells and plots: the FEFF6L paths of ${m.formula} the twin uses, $S_0^2 = 0.9$, $\\sigma^2$ from an Einstein model at ${temperature_K.toFixed(0)} K. Transform as in the twin's Results, Hanning window from $k = ${spectra.window.kmin}$ to $${spectra.window.kmax.toFixed(1)}\\ \\mathring{\\mathrm{A}}^{-1}$, here weighted by $k^{${kweight}}$ (the Results use $k^2$). The near edge is left out of the shells.`}</TexProse></li>
+          <li>Near edge: FEFF10 full multiple scattering for this crystal, placed at the sample&apos;s edge. Against measured Cu, Ni and Pt foil, Fe₂O₃ and FeO it is within normalized RMS 0.10 to 0.15; peak heights can be off by a third (oxide white lines run tall).</li>
+          {series && <li>Valence: edge positions measured beside the metal ({series.source}).</li>}
+          <li>Neighbours: FEFF&apos;s backscattering amplitude |F(k)| of a first shell path, each scaled to its own maximum.</li>
+          <li>Wave map: a spherical wave model with FEFF&apos;s amplitude, phases and mean free path; the echo&apos;s sign at the absorber is checked against χ(k).</li>
+          <li>Measured overlays: the xraylarch examples (MIT), background removed with Larch&apos;s AUTOBK.</li>
+        </ul>
+      </details>
     </div>
   </Frame>;
 }
@@ -346,8 +371,7 @@ function legsOf(shell: Shell, atoms: ClusterAtom[]): [number, number, number][][
 function Explain({ shell, absorber, peak, sigma2, temperature_K, share }: { shell: Shell | null; absorber: string; peak: number; sigma2: number | null; temperature_K: number; share: number }) {
   const name = atomName(absorber);
   if (!shell) return <div className="spectrum-prose">
-    <p>When the {name} atom absorbs an X-ray it sends out an electron wave. Each neighbour reflects part of that wave back. Coming home in step or out of step with itself, the returning wave makes absorption a little stronger or weaker, so the spectrum wiggles: that is <Tex plain>{'\\chi(k)'}</Tex>.</p>
-    <p>Neighbours at one distance wiggle together, and a Fourier transform turns each group into a peak in <Tex plain>{'|\\chi(R)|'}</Tex>. Point at a peak, an atom or a row to see which neighbours make it; choose one to read about it here.</p>
+    <p>The {name} atom sends out an electron wave and each neighbour echoes part of it back. In step or out of step, the echo nudges absorption up or down: the wiggles, <Tex plain>{'\\chi(k)'}</Tex>. Each distance becomes one peak in <Tex plain>{'|\\chi(R)|'}</Tex>. Choose a shell, peak or atom to read about it.</p>
   </div>;
   if (shell.kind === 'ms') return <div className="spectrum-prose">
     <p>Paths where the electron bounces off two or more atoms before it returns. They are strongest along straight lines of atoms, where the nearer atom focuses the wave onto the farther one. The lines drawn are the {Math.min(MS_DRAWN, shell.paths.length)} shortest.</p>

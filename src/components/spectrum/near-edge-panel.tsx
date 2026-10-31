@@ -50,10 +50,10 @@ export function NearEdgePanel({ material, xanes, shift_eV, temperature_K }: { ma
       })}
     </svg>
     <ul className="near-edge-list">
-      <li><strong>Edge <Tex plain>E_0</Tex> = <Num>{e0.toFixed(1)}</Num> eV.</strong> A {name} {material.edge === 'K' ? '1s' : '2p'} electron can now be freed.{shift_eV ? <> <Num>{(shift_eV > 0 ? '+' : '') + shift_eV.toFixed(1)}</Num> eV from the metal (measured): higher valence holds the core electron harder.</> : null}</li>
-      <li><strong>{preEdge ? <>Pre-edge at <Num>{preEdge.at_eV.toFixed(1)}</Num> eV.</> : 'No pre-edge peak.'}</strong> {preEdge ? <>A jump into an empty bound level, <Num>{preEdge.height.toFixed(2)}</Num> of the step. Stronger when the site has no centre of symmetry.</> : <>No empty level below the edge to jump into.</>}</li>
-      <li><strong>{white ? 'White line' : 'Main peak'} at +<Num>{peak.at_eV.toFixed(1)}</Num> eV, <Num>{peak.height.toFixed(2)}</Num>× the step.</strong> Many empty states at once; its shape fingerprints the neighbours&apos; arrangement.</li>
+      <li><strong>Edge <Tex plain>E_0</Tex> = <Num>{e0.toFixed(1)}</Num> eV:</strong> a {name} {material.edge === 'K' ? '1s' : '2p'} electron is freed.{shift_eV ? <> <Num>{(shift_eV > 0 ? '+' : '') + shift_eV.toFixed(1)}</Num> eV from the metal (measured).</> : null}</li>
+      <li><strong>{preEdge ? <>Pre-edge at <Num>{preEdge.at_eV.toFixed(1)}</Num> eV, <Num>{preEdge.height.toFixed(2)}</Num> of the step:</> : 'No pre-edge peak:'}</strong> {preEdge ? 'a jump to an empty bound level, strong without a centre of symmetry.' : 'no empty level below the edge.'}</li>
+      <li><strong>{white ? 'White line' : 'Main peak'} at +<Num>{peak.at_eV.toFixed(1)}</Num> eV, <Num>{peak.height.toFixed(2)}</Num>× the step:</strong> its shape fingerprints the neighbours&apos; arrangement.</li>
     </ul>
-    <p className="spectrum-note">Near edge: FEFF10 calculation for this crystal (full multiple scattering), placed at the sample&apos;s edge. The shape comes from this crystal&apos;s atoms; peak heights can be off by a third (checked against measured Cu, Ni, Pt, FeO, Fe₂O₃).{XANES_LIMITS[material.id] ? ' ' + XANES_LIMITS[material.id] : ''} Above about <Num>{kStart.toFixed(0)}</Num> eV (<Tex plain>{'k = 2\\ \\mathring{\\mathrm{A}}^{-1}'}</Tex>) single reflections take over: the shells below.</p>
+    {XANES_LIMITS[material.id] && <p className="spectrum-note">{XANES_LIMITS[material.id]}</p>}
   </div>;
 }

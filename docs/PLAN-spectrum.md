@@ -47,5 +47,8 @@ Fluff
    decay, to scale with a 1 A bar; Whole wave or Echoes alone (the echoes are physically far weaker). The ring at the
    absorber gives sin(2kR + phase), checked against the path sum's chi(k) sign for Cu, CuO and Pt (sigma^2 = 0). The
    panel now uses the shell's distance (was the first path's: 1.95 against 1.96 for CuO).
-5. **Cut fluff.** At most 600 words, one takeaway line per panel, model notes in one fold, reading cards from real
-   library pairs or dropped, layout holes closed, tour updated.
+5. **Cut fluff** (v1.24.0, done). Prose 685 to 347 words (a test holds it at 450 or fewer); one takeaway per panel;
+   every model note and source in one "Model and sources" fold; reading cards 5 to 3, all real data (computed Cu and
+   CuO edges, computed Cr2O3 and K2CrO4, this sample's nearest and farthest shells); the atoms, the explanation and What
+   if stay in view beside their taller neighbours (sticky inside cells as tall as their rows). The main peak is the
+   first local maximum within 45 eV that reaches 90 % of the highest (chromate's was cut at the +30 eV window edge).

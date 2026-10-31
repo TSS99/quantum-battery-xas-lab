@@ -4,12 +4,17 @@
 .spectrum-controls {display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
 .spectrum-controls label {display:grid;gap:4px;font:500 10.5px/1.4 var(--tw-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-muted)}
 .spectrum-controls select {min-width:200px;font:14px var(--font-sans);letter-spacing:0;text-transform:none}
-.spectrum-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);grid-template-areas:"explorer explorer" "read read" "edge oxidation" "cluster plots" "explain table" "wave whatif" "neighbour whatif";align-items:start;gap:14px}
+.spectrum-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);grid-template-areas:"explorer explorer" "read read" "edge oxidation" "cluster plots" "explain table" "wave whatif" "neighbour whatif" "model model";align-items:start;gap:14px}
+/* The atoms and the What if controls stay in view beside their taller neighbours, the plots and the wave. */
+@media (min-width:901px) {.spectrum-sticky-cell {align-self:stretch} .spectrum-3d,.spectrum-whatif,.spectrum-explain {position:sticky;top:64px}}
+.spectrum-model {grid-area:model}
+.spectrum-model summary {cursor:pointer;font:500 10.5px/1.4 var(--tw-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-muted)}
+.spectrum-model-list {display:grid;gap:6px;margin:10px 0 0;padding-left:18px;font-size:13.5px;line-height:1.55;color:var(--tw-body)}
 .spectrum-panel {padding:14px 16px}
 .spectrum-panel > .twin-kicker {margin-bottom:10px}
-.spectrum-3d {grid-area:cluster}
+.spectrum-3d-cell {grid-area:cluster}
 #spectrum-plots {grid-area:plots}
-.spectrum-explain {grid-area:explain}
+.spectrum-explain-cell {grid-area:explain}
 .spectrum-table-wrap {grid-area:table}
 .spectrum-wave {grid-area:wave}
 .spectrum-explorer {grid-area:explorer}
@@ -50,7 +55,7 @@
 .spectrum-tour-text {margin:6px 0 10px;font-size:15px;line-height:1.55;color:var(--tw-text)}
 .spectrum-tour-actions {display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .spectrum-tour-actions .twin-icon {margin-left:auto}
-.spectrum-whatif {grid-area:whatif}
+.spectrum-whatif-cell {grid-area:whatif}
 .spectrum-neighbour {grid-area:neighbour}
 .wave-panel svg,.neighbour-panel svg {display:block;width:100%;height:auto}
 .wave-map {display:block;width:100%;height:auto;border-radius:10px;background:#121a2b}
@@ -99,7 +104,7 @@
 .spectrum-table tbody th button[aria-pressed="true"] {border-color:var(--tw-accent-line);background:var(--tw-accent-soft)}
 @media (max-width:900px) {
   .twin-app.spectrum-app {padding:14px 16px 24px}
-  .spectrum-grid {grid-template-columns:minmax(0,1fr);grid-template-areas:"explorer" "read" "edge" "oxidation" "cluster" "explain" "plots" "table" "wave" "whatif" "neighbour"}
+  .spectrum-grid {grid-template-columns:minmax(0,1fr);grid-template-areas:"explorer" "read" "edge" "oxidation" "cluster" "explain" "plots" "table" "wave" "whatif" "neighbour" "model"}
   .xas-explorer-figures {grid-template-columns:minmax(0,1fr)}
   .spectrum-chapters {margin:0 -16px 12px;padding:8px 16px}
   .what-if-readout {grid-template-columns:minmax(0,1fr)}

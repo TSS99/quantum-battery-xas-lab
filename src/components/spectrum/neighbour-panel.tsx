@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { loadPaths } from '@/lib/twin/exafs';
 import { groupShells, pathCurves } from '@/lib/twin/shells';
 import type { FeffPath } from '@/lib/twin/types';
-import { Num, Tex } from '../tex';
+import { Tex } from '../tex';
 import { atomName } from './atoms';
 
 /** Neighbours to compare, each from the first shell of a library material: light, middle and heavy. */
@@ -49,6 +49,6 @@ export function NeighbourPanel({ path, color }: { path: FeffPath; color: string 
       {curves.map(c => <path key={c.element} d={line(c)} fill="none" stroke={c.color} strokeWidth={c === own ? 2.8 : 1.8} strokeDasharray={c === own ? undefined : '6 4'} />)}
     </svg>
     <ul className="neighbour-legend">{curves.map(c => <li key={c.element}><i style={{ borderTopColor: c.color, borderTopStyle: c === own ? 'solid' : 'dashed' }} aria-hidden="true" />{describe(c)}{c === own ? ' (this shell)' : ''}</li>)}</ul>
-    <p className="spectrum-note">Light neighbours reflect the electron mostly at low <Tex plain>k</Tex>; heavy ones keep reflecting it at high <Tex plain>k</Tex>, which is why weighting by <Tex plain>{'k^2'}</Tex> or <Tex plain>{'k^3'}</Tex> brings heavy neighbours out, and why the shape of <Tex plain>{'\\chi(k)'}</Tex> tells light from heavy neighbours at the same distance. Each curve is FEFF&apos;s <Tex plain>{'|F(k)|'}</Tex> for a first shell, scaled to its own largest value; <Num>1</Num> is that maximum.</p>
+    <p className="spectrum-note">Light neighbours echo at low <Tex plain>k</Tex>, heavy ones out to high <Tex plain>k</Tex>: try <Tex plain>{'k^3'}</Tex> weight on the shells to bring heavy ones out.</p>
   </div>;
 }

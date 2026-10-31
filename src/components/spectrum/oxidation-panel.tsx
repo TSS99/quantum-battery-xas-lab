@@ -60,6 +60,6 @@ export function OxidationPanel({ element, edge_eV, currentId }: { element: strin
         <td><Num>{(m.shift_eV > 0 ? '+' : '') + m.shift_eV.toFixed(2)}</Num> eV{m.derived ? ` (${m.derived} by valence)` : ''}</td>
       </tr>)}</tbody>
     </table>
-    <p className="spectrum-note">About <Num>{series.perValence_eV.toFixed(1)}</Num> eV per unit of valence, not exactly linear: the shape changes with the neighbours too. Positions measured ({series.source}); shapes computed with FEFF10 for each crystal{series.members.some(m => !shapes[m.id]) ? ', dashed where there is no crystal' : ''}.</p>
+    <p className="spectrum-note">About <Num>{series.perValence_eV.toFixed(1)}</Num> eV per unit of valence, not exactly linear: the shape changes too.{series.members.some(m => !shapes[m.id]) ? ' Dashed: no crystal to compute the shape from.' : ''}</p>
   </div>;
 }

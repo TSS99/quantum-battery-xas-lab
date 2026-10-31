@@ -7,21 +7,25 @@ import type { XanesFile } from './xanes';
 export interface NearEdgeMark { at_eV: number; height: number }
 
 /**
- * Named points of a computed near edge, relative to E0: the main peak (highest point within 30 eV above E0) and the
- * pre-edge peak, the most prominent local maximum between 15 and 1 eV below E0 that stands at least 0.008 above the
+ * Named points of a computed near edge, relative to E0: the main peak (the first local maximum within 45 eV above E0
+ * that reaches 90 % of the highest there, so a white line is not passed over for a later bump, nor a slow rise cut
+ * short) and the pre-edge peak, the most prominent local maximum between 15 and 1 eV below E0 that stands at least 0.008 above the
  * lowest point within 4 eV on each side, or null where the spectrum has none (a full d shell, for one).
  */
 export function nearEdgeMarks(x: XanesFile): { preEdge: NearEdgeMark | null; peak: NearEdgeMark } {
   const at = (i: number) => x.energy.from_eV + i * x.energy.step_eV;
   const span = Math.round(4 / x.energy.step_eV);
-  let peak = -1, pre = -1, preProminence = 0.008;
+  let pre = -1, preProminence = 0.008;
+  const maxima: number[] = [];
   x.mu.forEach((v, i) => {
     const d = at(i);
-    if (d >= 0 && d <= 30 && (peak < 0 || v > x.mu[peak])) peak = i;
+    if (d >= 0 && d <= 45 && i > 0 && i < x.mu.length - 1 && v >= x.mu[i - 1] && v > x.mu[i + 1]) maxima.push(i);
     if (d < -15 || d > -1 || i < span || i + span >= x.mu.length || !(v > x.mu[i - 1] && v >= x.mu[i + 1])) return;
     const prominence = v - Math.max(Math.min(...x.mu.slice(i - span, i)), Math.min(...x.mu.slice(i + 1, i + span + 1)));
     if (prominence > preProminence) { pre = i; preProminence = prominence; }
   });
+  const highest = Math.max(...maxima.map(i => x.mu[i]));
+  const peak = maxima.find(i => x.mu[i] >= 0.9 * highest) ?? x.mu.indexOf(Math.max(...x.mu));
   return { preEdge: pre < 0 ? null : { at_eV: at(pre), height: x.mu[pre] }, peak: { at_eV: at(peak), height: x.mu[peak] } };
 }
 

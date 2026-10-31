@@ -55,6 +55,17 @@ describe('computed near edges (FEFF10)', () => {
     }
   });
 
+  it('name the main peak where the spectrum has it: a white line just above the edge, or a slow rise where it tops out', async () => {
+    const peak = async (id: string) => nearEdgeMarks(await loadXanes(id)).peak.at_eV;
+    expect(await peak('cuo')).toBeCloseTo(13, 0);
+    expect(await peak('na2so4')).toBeLessThan(5);
+    // Chromate rises slowly; its main peak is a real local top, not the end of a search window (it was +30 eV).
+    const k2cro4 = await loadXanes('k2cro4'), top = nearEdgeMarks(k2cro4).peak, i = Math.round((top.at_eV - k2cro4.energy.from_eV) / k2cro4.energy.step_eV);
+    expect(top.at_eV).toBeGreaterThan(15);
+    expect(k2cro4.mu[i]).toBeGreaterThan(k2cro4.mu[i + 1]);
+    expect(k2cro4.mu[i]).toBeGreaterThanOrEqual(k2cro4.mu[i - 1]);
+  });
+
   it('give tetrahedral K2CrO4 a pre-edge many times that of octahedral Cr2O3', async () => {
     const oct = nearEdgeMarks(await loadXanes('cr2o3')), tet = nearEdgeMarks(await loadXanes('k2cro4'));
     expect(tet.preEdge).not.toBeNull();
