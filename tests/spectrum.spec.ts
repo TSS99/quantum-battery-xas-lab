@@ -208,3 +208,15 @@ test('the atoms panel lays the shells out by distance and shows the chosen one a
   await expect(atoms).toContainText('4 Cu · 2.90 Å: the sphere through these atoms');
   expect(errors).toEqual([]);
 });
+
+test('the wave map draws the shell in a slice through the real cluster, whole or echoes alone', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  const wave = page.locator('#spectrum-wave');
+  await expect(wave.getByRole('img', { name: /around the copper atom and 4 of its 4 oxygen neighbours at 1\.96 angstrom, at k 6\.00: in step/ })).toBeVisible();
+  await wave.getByRole('button', { name: 'Echoes alone' }).click();
+  await expect(wave.getByRole('img', { name: /echoes alone: in step/ })).toBeVisible();
+  await page.getByRole('slider', { name: 'Electron wavenumber k' }).fill('7.5');
+  await expect(wave.locator('.wave-verdict')).toContainText(/k\s*=\s*7\.50/);
+  expect(errors).toEqual([]);
+});

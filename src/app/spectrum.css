@@ -53,6 +53,9 @@
 .spectrum-whatif {grid-area:whatif}
 .spectrum-neighbour {grid-area:neighbour}
 .wave-panel svg,.neighbour-panel svg {display:block;width:100%;height:auto}
+.wave-map {display:block;width:100%;height:auto;border-radius:10px;background:#121a2b}
+.wave-map-view {margin-bottom:8px}
+.wave-map-key {margin:8px 0 0;font-size:12.5px;line-height:1.5;color:var(--tw-muted)}
 .wave-panel .range-control,.what-if .range-control {margin-top:12px}
 .wave-verdict {margin:10px 0 0;padding:8px 12px;border-left:3px solid var(--tw-line-2);font-size:14px;color:var(--tw-body)}
 .wave-verdict.is-up {border-left-color:#8ce3ff}

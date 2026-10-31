@@ -42,7 +42,10 @@ Fluff
    of atoms, every shell labelled). Colours: the validator puts aqua and green 11.9 apart (normal vision, floor 15), and
    with six shells on screen no order of the documented palette passes every pair, so identity rides on labels and
    position (strip, lanes, table), as the dataviz rules require, instead of colour alone.
-4. **Real wave picture.** A 2D interference map on a slice through the cluster: outgoing spherical wave, echoes with
-   FEFF amplitude and phase, 1/r and mean free path decay; the brightness at the absorber follows chi(k).
+4. **Real wave picture** (v1.23.0, done). A field map on a slice through the real cluster (`src/lib/twin/wave-field.ts`,
+   `wave-map.tsx`): outgoing spherical wave, each neighbour's echo with FEFF's |F(k)| and phase, 1/r and mean free path
+   decay, to scale with a 1 A bar; Whole wave or Echoes alone (the echoes are physically far weaker). The ring at the
+   absorber gives sin(2kR + phase), checked against the path sum's chi(k) sign for Cu, CuO and Pt (sigma^2 = 0). The
+   panel now uses the shell's distance (was the first path's: 1.95 against 1.96 for CuO).
 5. **Cut fluff.** At most 600 words, one takeaway line per panel, model notes in one fold, reading cards from real
    library pairs or dropped, layout holes closed, tour updated.

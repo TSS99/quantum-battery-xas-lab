@@ -141,7 +141,8 @@ export function shellSpectra(material: FeffMaterial, shells: Shell[], temperatur
 
 /**
  * A path's FEFF curves at k, linearly interpolated on its (uneven) grid: the total phase (the absorber's 2 delta plus
- * the neighbour's backscattering phase) and the effective backscattering amplitude |F(k)| of the neighbour.
+ * the neighbour's backscattering phase) and the effective backscattering amplitude |F(k)| of the neighbour; also the
+ * two phases apart (central, backscatter) and the photoelectron's mean free path lambda (angstrom).
  */
 export function pathCurves(path: FeffPath, k: number) {
   const grid = path.k, kk = Math.min(grid[grid.length - 1], Math.max(grid[0], k));
@@ -149,7 +150,7 @@ export function pathCurves(path: FeffPath, k: number) {
   while (i < grid.length - 2 && grid[i + 1] < kk) i++;
   const f = (kk - grid[i]) / (grid[i + 1] - grid[i]);
   const at = (values: number[]) => values[i] * (1 - f) + values[i + 1] * f;
-  return { phase: at(path.real_phc) + at(path.pha_feff), amplitude: at(path.mag_feff) };
+  return { phase: at(path.real_phc) + at(path.pha_feff), amplitude: at(path.mag_feff), central: at(path.real_phc), backscatter: at(path.pha_feff), lambda: at(path.lam) };
 }
 
 /** The atoms FEFF used around each absorber site (scripts/twin/make-clusters.py), absorber first. */

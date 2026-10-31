@@ -278,7 +278,7 @@ export function SpectrumPage() {
       </section>
       {focus && <section id="spectrum-wave" className="twin-card spectrum-panel spectrum-wave" aria-labelledby="spectrum-wave-title">
         <h2 id="spectrum-wave-title" className="twin-kicker">The electron wave · {shellLabel(focus)}</h2>
-        <WavePanel shell={focus} absorber={m.absorber} deltar_A={tweaks[focus.id]?.deltar_A ?? 0} k={waveK} setK={setWaveK} color={colors[focus.id]}
+        <WavePanel shell={focus} absorber={m.absorber} atoms={atoms.filter(a => a.shellId === focus.id).map(a => a.xyz)} deltar_A={tweaks[focus.id]?.deltar_A ?? 0} k={waveK} setK={setWaveK} color={colors[focus.id]}
           chi={spectra.chi[focus.id][Math.round(waveK / (spectra.k[1] - spectra.k[0]))]} />
       </section>}
       {focus && <section id="spectrum-whatif" className="twin-card spectrum-panel spectrum-whatif" aria-labelledby="spectrum-whatif-title">
