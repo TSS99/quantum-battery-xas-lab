@@ -71,6 +71,11 @@
 .spectrum-prose p {margin:0 0 10px;font-size:14.5px;line-height:1.6;color:var(--tw-body)}
 .spectrum-prose p:last-child {margin-bottom:0}
 .shell-plot + .shell-plot {margin-top:14px}
+.spectrum-plot-controls {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin-bottom:10px}
+.spectrum-seg {display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.spectrum-seg > span {font:500 10.5px/1.4 var(--tw-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tw-muted)}
+.spectrum-build {display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 10px;font-size:13.5px;color:var(--tw-body)}
+.spectrum-legend i.spectrum-legend-bar {width:4px;height:12px;border:0;border-radius:2px;background:linear-gradient(#3987e5,#d95926)}
 .shell-plot-top {margin-bottom:4px;font-size:13px;color:var(--tw-body)}
 .shell-plot svg {display:block;width:100%;height:auto;border-radius:8px;cursor:crosshair;touch-action:pan-y}
 .spectrum-legend {display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 0;font-size:12.5px;color:var(--tw-body)}

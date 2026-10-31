@@ -64,8 +64,17 @@ describe('shells of the FEFF library', () => {
     }
   });
 
+  it('weights the transform by k^n: for CuO, k^3 lifts the copper shells against the first oxygen shell', async () => {
+    const material = await loadPaths('cuo'), shells = groupShells(material);
+    const oxygen = shells.find(s => s.kind === 'shell' && s.element === 'O')!, copper = shells.find(s => s.kind === 'shell' && s.element === 'Cu')!;
+    const ratio = (kweight: number) => { const s = shellSpectra(material, shells, undefined, undefined, {}, kweight); return maxAbs(s.magnitude[copper.id]) / maxAbs(s.magnitude[oxygen.id]); };
+    // Oxygen reflects the electron mostly at low k, copper out to high k, so a heavier weight favours copper.
+    expect(ratio(3)).toBeGreaterThan(1.5 * ratio(1));
+    expect(shellSpectra(material, shells).window.kweight).toBe(2);
+  });
+
   describe('what if', () => {
-    const rms = (values: number[], k: number[], from: number, to: number) => {
+    const rms =(values: number[], k: number[], from: number, to: number) => {
       const picked = values.filter((_, i) => k[i] >= from && k[i] <= to);
       return Math.sqrt(picked.reduce((s, v) => s + v * v, 0) / picked.length);
     };

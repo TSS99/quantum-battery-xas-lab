@@ -3,7 +3,9 @@
 Run with the reference Python environment and -B. Reads the raw files in scripts/twin/measured-raw (downloaded from
 https://github.com/xraypy/xraylarch/tree/master/examples/xafsdata), normalizes each with Larch's pre_edge (flattened
 post edge, Larch defaults) and stores normalized mu from 30 eV below to 75 eV above E0 (edge_e0.py, the rule the computed spectra use), on the grid of
-make-xanes-library.py, in src/data/twin/measured/xanes-references.json.
+make-xanes-library.py, in src/data/twin/measured/xanes-references.json. Also stores each spectrum's chi(k) from Larch's
+autobk (rbkg 1 angstrom, as in the twin's Results; Larch's own E0) up to k = 15 or the end of the scan, for Read the
+spectrum's measured overlay, in src/data/twin/measured/chi-references.json.
 """
 
 import json
@@ -12,13 +14,15 @@ from pathlib import Path
 import numpy as np
 from larch import Group
 from larch.io import read_ascii
-from larch.xafs import pre_edge
+from larch.xafs import autobk, pre_edge
 
 from edge_e0 import edge_e0
 
 HERE = Path(__file__).resolve().parent
 RAW = HERE / "measured-raw"
 OUT = HERE.parents[1] / "src/data/twin/measured/xanes-references.json"
+CHI_OUT = HERE.parents[1] / "src/data/twin/measured/chi-references.json"
+K_STEP, K_MAX = 0.05, 15.0
 URL = "https://github.com/xraypy/xraylarch/blob/master/examples/xafsdata/"
 FROM_eV, TO_eV, STEP_eV = -30.0, 75.0, 0.25
 
@@ -41,7 +45,7 @@ def mu_of(group, how):
 
 
 def main():
-    out = []
+    out, chis = [], []
     for id_, name, how, what in REFERENCES:
         group = read_ascii(str(RAW / name))
         energy, mu = mu_of(group, how)
@@ -59,10 +63,17 @@ def main():
         out.append({"id": id_, "description": what, "source": URL + name, "e0_eV": round(e0, 2), "larch_e0_eV": round(float(g.e0), 2),
                     "mu": [round(float(v), 4) for v in np.interp(grid, energy - e0, flat)]})
         print(id_, f"E0 {e0:.1f} (Larch {g.e0:.1f})")
+        autobk(g, rbkg=1.0, kweight=2)
+        k = np.arange(0, min(K_MAX, float(g.k[-1])) + 1e-9, K_STEP)
+        chis.append({"id": id_, "description": what, "source": URL + name, "e0_eV": round(float(g.e0), 2), "k_step": K_STEP,
+                     "chi": [round(float(v), 5) for v in np.interp(k, g.k, g.chi)]})
     OUT.write_text(json.dumps({"description": "Measured normalized mu (Larch pre_edge, flattened) around E0 (scripts/twin/edge_e0.py), "
                                "xraylarch examples, MIT License, Copyright (c) 2010-2026 Matthew Newville and the Larch authors.",
                                "license": "MIT", "energy": {"from_eV": FROM_eV, "step_eV": STEP_eV}, "references": out},
                               separators=(",", ":")) + "\n")
+    CHI_OUT.write_text(json.dumps({"description": "Measured chi(k) from Larch autobk (rbkg 1, kweight 2, Larch's E0), xraylarch "
+                                   "examples, MIT License, Copyright (c) 2010-2026 Matthew Newville and the Larch authors.",
+                                   "license": "MIT", "references": chis}, separators=(",", ":")) + "\n")
 
 
 if __name__ == "__main__":

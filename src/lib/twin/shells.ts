@@ -69,22 +69,22 @@ export interface ShellSpectra {
   total: number[];
   chi: Record<string, number[]>;
   r: number[];
-  /** |chi(R)| of the k^2-weighted, Hanning-windowed transform the twin's Results use. */
+  /** |chi(R)| of the Hanning-windowed transform the twin's Results use, k^kweight weighted (k^2 there). */
   totalR: number[];
   magnitude: Record<string, number[]>;
   real: Record<string, number[]>;
   totalReal: number[];
   /** Where each group's |chi(R)| peaks, angstrom. */
   peak_A: Record<string, number>;
-  window: { kmin: number; kmax: number; dk: number };
+  window: { kmin: number; kmax: number; dk: number; kweight: number };
 }
 
 const K_TOP = 16, R_MAX = 6.5;
 
-/** The twin Results' transform: k^2 weight, Hanning window from kmin to kmax with dk = 1, the same FFT grid. */
-export function transform(k: number[], chi: number[], kmax: number = TWIN_REDUCTION.kmax) {
+/** The twin Results' transform: k^2 weight (or the one given), Hanning window from kmin to kmax with dk = 1, the same FFT grid. */
+export function transform(k: number[], chi: number[], kmax: number = TWIN_REDUCTION.kmax, kweight: number = TWIN_REDUCTION.kweight) {
   return xftf(k, chi, {
-    kmin: TWIN_REDUCTION.kmin, kmax, kweight: TWIN_REDUCTION.kweight, dk: TWIN_REDUCTION.dk,
+    kmin: TWIN_REDUCTION.kmin, kmax, kweight, dk: TWIN_REDUCTION.dk,
     window: TWIN_REDUCTION.window, rmax: R_MAX, nfft: TWIN_REDUCTION.nfft, kstep: TWIN_REDUCTION.kstep,
   });
 }
@@ -114,7 +114,7 @@ export function tweakedParameters(material: FeffMaterial, shells: Shell[], tempe
   return params;
 }
 
-export function shellSpectra(material: FeffMaterial, shells: Shell[], temperature_K = ROOM_TEMPERATURE_K, kmax: number = TWIN_REDUCTION.kmax, tweaks: Record<string, ShellTweak> = {}): ShellSpectra {
+export function shellSpectra(material: FeffMaterial, shells: Shell[], temperature_K = ROOM_TEMPERATURE_K, kmax: number = TWIN_REDUCTION.kmax, tweaks: Record<string, ShellTweak> = {}, kweight: number = TWIN_REDUCTION.kweight): ShellSpectra {
   const k = Array.from({ length: Math.round(K_TOP / TWIN_REDUCTION.kstep) + 1 }, (_, i) => i * TWIN_REDUCTION.kstep);
   const sum = chiSum(material, tweakedParameters(material, shells, temperature_K, tweaks), k);
   const owner = new Map<string, string>(shells.flatMap(s => s.paths.map(p => [`${s.siteId}/${p.id}`, s.id] as const)));
@@ -124,10 +124,10 @@ export function shellSpectra(material: FeffMaterial, shells: Shell[], temperatur
     if (!id) throw new Error(`Path ${c.key} of ${material.id} belongs to no shell.`);
     c.chi.forEach((v, i) => { chi[id][i] += v; });
   }
-  const whole = transform(k, sum.chi, kmax);
+  const whole = transform(k, sum.chi, kmax, kweight);
   const magnitude: Record<string, number[]> = {}, real: Record<string, number[]> = {}, peak_A: Record<string, number> = {};
   for (const s of shells) {
-    const t = transform(k, chi[s.id], kmax);
+    const t = transform(k, chi[s.id], kmax, kweight);
     magnitude[s.id] = t.magnitude; real[s.id] = t.real;
     let best = 0;
     t.magnitude.forEach((m, i) => { if (t.r[i] >= 0.5 && m > t.magnitude[best]) best = i; });
@@ -135,7 +135,7 @@ export function shellSpectra(material: FeffMaterial, shells: Shell[], temperatur
   }
   return {
     k, total: sum.chi, chi, r: whole.r, totalR: whole.magnitude, totalReal: whole.real, magnitude, real, peak_A,
-    window: { kmin: TWIN_REDUCTION.kmin, kmax, dk: TWIN_REDUCTION.dk },
+    window: { kmin: TWIN_REDUCTION.kmin, kmax, dk: TWIN_REDUCTION.dk, kweight },
   };
 }
 

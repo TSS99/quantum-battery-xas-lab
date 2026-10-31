@@ -32,8 +32,11 @@ Fluff
    card. Measured check: Cu 0.10, Ni 0.11, Pt 0.13, Fe2O3 0.14, FeO 0.15 (teaching shape 0.22, 0.27, 0.16, 0.15, 0.10);
    twin against the measured Cu foil 0.28 to 0.12. Known: oxide white lines run tall, Pt L3 short, CeO2 L3 single peak.
    Left for step 5: the main peak search window ends at +30 eV (K2CrO4 reports its peak at the window edge).
-2. **Readable shell plots.** Round ticks; Overlay, Stacked and Build up views; true distance sticks under |chi(R)| with
-   an arrow to each peak; k weight 1, 2, 3; measured overlay where Larch data exist.
+2. **Readable shell plots** (v1.21.0, done). Round ticks; Stacked (default, one lane per shell on a shared scale),
+   Overlay and Build up (groups added in distance order until they make the total); bars at the true distances, height
+   by number of atoms, with an arrow to each peak ("true 1.96 A -> peak 1.50 A"); k weight 1, 2, 3 for the plots and the
+   transform; measured chi(k) (Larch autobk of the Larch examples) drawn with the model for Cu, Ni, Pt, Fe2O3, FeO.
+   The plot is a lazy chunk, so the page stays within its 321 KB budget.
 3. **Atoms and distance.** Translucent shell spheres and a radial ruler matching the R axis; farther atoms hidden until
    asked; distinct shell colours.
 4. **Real wave picture.** A 2D interference map on a slice through the cluster: outgoing spherical wave, echoes with

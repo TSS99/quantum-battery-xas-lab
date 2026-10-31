@@ -169,3 +169,28 @@ test('the near edge is computed for each crystal: the chromate card and the edge
   await expect(page.locator('#spectrum-edge')).toContainText('FEFF, a one electron calculation, gives one');
   expect(errors).toEqual([]);
 });
+
+test('the shell plots: stacked lanes first, build up adds groups until they make the spectrum, k weight changes the transform', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  const plots = page.locator('#spectrum-plots');
+  await expect(plots.getByRole('button', { name: 'Stacked' })).toHaveAttribute('aria-pressed', 'true');
+  await plots.getByRole('button', { name: 'Build up' }).click();
+  const build = plots.locator('.spectrum-build');
+  await expect(build).toContainText('1 of 8: 4 O');
+  for (let i = 0; i < 7; i++) await build.getByRole('button', { name: 'Add the next group' }).click();
+  await expect(build).toContainText('8 of 8');
+  await expect(build).toContainText('the whole spectrum');
+  await expect(build.getByRole('button', { name: 'Add the next group' })).toBeDisabled();
+  await plots.getByRole('button', { name: 'k weight 3' }).click();
+  await expect(page.getByRole('img', { name: /k to the 3 times chi of k for CuO/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('a measured spectrum of the same material is drawn with the model, where the Larch examples have one', async ({ page }) => {
+  await page.goto('./spectrum/?sample=cu-foil');
+  await expect(page.locator('#spectrum-plots .spectrum-legend')).toContainText('Measured Cu foil (APS 13-ID, 2001)');
+  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.locator('.spectrum-table').getByRole('button', { name: '4 O at 1.96 Å' }).click();
+  await expect(page.locator('#spectrum-plots .spectrum-legend')).not.toContainText('Measured');
+});
