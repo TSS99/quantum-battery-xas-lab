@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atomCloud, shellCounts, slaterZeff, subshells } from './atom-cloud';
+import { atomCloud, ionSubshells, shellCounts, slaterZeff, subshells } from './atom-cloud';
 
 describe('the 3D atom of the story', () => {
   it('fills the shells as the ground states do, with the usual exceptions', () => {
@@ -12,6 +12,18 @@ describe('the 3D atom of the story', () => {
     expect(shellCounts(78)).toEqual([2, 8, 18, 32, 17, 1]);
     expect(shellCounts(58)).toEqual([2, 8, 18, 19, 9, 2]);
     for (const Z of [3, 16, 22, 33, 42, 74, 82, 92]) expect(shellCounts(Z).reduce((a, b) => a + b, 0)).toBe(Z);
+  });
+
+  it('takes electrons from the outermost layer first when the atom gives them away', () => {
+    const name = (Z: number, q: number) => ionSubshells(Z, q).map(s => `${s.n}${'spdf'[s.l]}${s.electrons}`).join(' ');
+    // Cu+ 3d10, Cu2+ 3d9, Co3+ 3d6, Mn4+ 3d3: the 4s electrons go first.
+    expect(name(29, 1)).toMatch(/3p6 3d10$/);
+    expect(name(29, 2)).toMatch(/3p6 3d9$/);
+    expect(name(27, 3)).toMatch(/3p6 3d6$/);
+    expect(name(25, 4)).toMatch(/3p6 3d3$/);
+    // The ion is smaller: the outer haze of copper metal (4s) is gone in Cu+.
+    const outer = (q: number) => Math.max(...atomCloud(29, 1, 7, q).map(s => s.meanR_A));
+    expect(outer(1)).toBeLessThan(0.6 * outer(0));
   });
 
   it('gives the textbook Slater charges', () => {

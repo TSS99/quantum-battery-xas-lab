@@ -33,6 +33,20 @@
 .story-slider label {display:flex;justify-content:space-between;gap:12px;font-size:15px;color:var(--tw-muted)}
 .story-slider output {font:500 17px var(--tw-mono);color:var(--tw-text)}
 .story-slider input {width:100%;height:28px;accent-color:#ffc46b}
+/* A choice between a few values, as one control. */
+.story-choice {display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:15px;color:var(--tw-muted)}
+.story-choice span {margin-right:6px}
+.story-choice .twin-chip {min-width:44px;justify-content:center;font:500 15px var(--tw-mono)}
+/* The end of the story: what a spectrum tells, and where to go next. */
+.story-end {padding:64px 0 32px}
+.story-end-cards {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}
+.story-end-cards > div {padding:18px 20px;border:1px solid var(--tw-line);border-radius:12px;background:var(--tw-card)}
+.story-end-cards p:last-child {margin:0;font-size:18px;line-height:1.5;color:var(--tw-text)}
+.story-end-actions {display:flex;flex-wrap:wrap;gap:10px}
+.story-sources {margin-top:28px;color:var(--tw-muted);font-size:14px}
+.story-sources summary {cursor:pointer;font:500 12px/1.4 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase}
+.story-sources ul {display:grid;gap:6px;margin:12px 0 0;padding-left:18px;line-height:1.55}
+@media (max-width:620px) {.story-end-cards {grid-template-columns:minmax(0,1fr)}}
 /* The 3D pictures: a dark stage, touch passes through so the page still scrolls on a phone. */
 .story-stage-row {display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:8px;align-items:center}
 .story-stage {position:relative;aspect-ratio:16/11;border-radius:12px;background:radial-gradient(ellipse at 50% 45%,#16233a,#0d1424 75%);overflow:hidden;touch-action:pan-y}

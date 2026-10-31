@@ -8,7 +8,7 @@ import { echoAtAbsorber } from '@/lib/twin/wave-field';
 import { atomName } from '../atoms';
 import { Scene, StorySlider, eV, useNearView, type SceneProps } from './scene';
 
-const Wave3D = dynamic(() => import('./wave-3d'), { ssr: false });
+const Wave3D = dynamic(() => import('./wave-3d'), { ssr: false, loading: () => <div className="story-stage" /> });
 /** eV above the edge: from where the wave is first a clean echo to where the wiggles have faded. */
 const FROM = 30, TO = 500;
 const W = 520, H = 150, L = 12, R = 12, T = 22, B = 30;

@@ -21,7 +21,7 @@ function dotTexture() {
 }
 
 /** The X-ray's wave along x, from far left to `to`, at time phase `phase`. */
-function beam(from: number, to: number, phase: number) {
+function wave(from: number, to: number, phase: number) {
   const out: number[] = [];
   for (let i = 0; i < BEAM_POINTS; i++) {
     const x = from + (to - from) * i / (BEAM_POINTS - 1);
@@ -40,7 +40,9 @@ const RIPPLES = [0, 1 / 3, 2 / 3];
  * so the innermost layer shows), the X-ray coming in from the left, and when it has enough energy, the electron leaving
  * the layer the edge belongs to as an outgoing wave, while that layer dims by one electron's share.
  */
-export default function Atom3D({ Z, kEdge, free, label }: { Z: number; kEdge: boolean; free: boolean; label: string }) {
+export default function Atom3D({ Z, kEdge, free, label, charge = 0, beam = true }: {
+  Z: number; kEdge: boolean; free: boolean; label: string; charge?: number; beam?: boolean;
+}) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -49,17 +51,18 @@ export default function Atom3D({ Z, kEdge, free, label }: { Z: number; kEdge: bo
   }, []);
   return <div className="story-stage" role="img" aria-label={label} data-still={reduced || undefined}>
     {webgl && <Canvas dpr={[1, 2]} camera={{ position: [0, 1.3, 8.2], fov: 36 }} gl={{ antialias: true, alpha: true }}>
-      <AtomScene Z={Z} kEdge={kEdge} free={free} reduced={reduced} />
+      <AtomScene Z={Z} kEdge={kEdge} free={free} reduced={reduced} charge={charge} beam={beam} />
     </Canvas>}
     {webgl === false && <p className="spectrum-empty">This picture needs WebGL.</p>}
   </div>;
 }
 
-function AtomScene({ Z, kEdge, free, reduced }: { Z: number; kEdge: boolean; free: boolean; reduced: boolean }) {
+function AtomScene({ Z, kEdge, free, reduced, charge, beam }: { Z: number; kEdge: boolean; free: boolean; reduced: boolean; charge: number; beam: boolean }) {
   const sprite = useMemo(() => dotTexture(), []);
   const layers = useMemo(() => {
-    const cloud = atomCloud(Z, Z > 60 ? 120 : 220);
-    const outer = Math.max(...cloud.map(s => s.meanR_A));
+    const cloud = atomCloud(Z, Z > 60 ? 120 : 220, 7, charge);
+    // Drawn on the neutral atom's scale, so an ion shows smaller.
+    const outer = Math.max(...atomCloud(Z, 1).map(s => s.meanR_A));
     const edge = cloud.findIndex(s => kEdge ? s.n === 1 : s.n === 2 && s.l === 1);
     return cloud.map((s, i) => {
       const drawn = new Float32Array(s.points.length);
@@ -73,7 +76,7 @@ function AtomScene({ Z, kEdge, free, reduced }: { Z: number; kEdge: boolean; fre
       return { stay: drawn.slice(0, keep), leave: drawn.slice(keep), color: i === edge ? '#f0fcff' : inner ? '#bfeeff' : '#5fb8e6',
         size: i === edge ? 0.12 : inner ? 0.09 : 0.13, opacity: i === edge ? 1 : inner ? 0.75 : Math.max(0.28, 0.62 - 0.08 * s.n) };
     });
-  }, [Z, kEdge]);
+  }, [Z, kEdge, charge]);
   const spin = useRef<Group>(null), leaving = useRef<PointsMaterial>(null);
   const incoming = useRef<Line2>(null), passing = useRef<Line2>(null);
   const ripples = useRef<(Mesh | null)[]>([]), rippleMaterials = useRef<(ShaderMaterial | null)[]>([]);
@@ -86,8 +89,8 @@ function AtomScene({ Z, kEdge, free, reduced }: { Z: number; kEdge: boolean; fre
       leaving.current.opacity = reduced ? target : leaving.current.opacity + (target - leaving.current.opacity) * Math.min(1, dt * 5);
     }
     const phase = 2 * Math.PI * t * 0.9;
-    incoming.current?.geometry.setPositions(beam(BEAM_FROM, free ? -0.04 : 0, phase));
-    passing.current?.geometry.setPositions(beam(0, -BEAM_FROM, phase));
+    incoming.current?.geometry.setPositions(wave(BEAM_FROM, free ? -0.04 : 0, phase));
+    passing.current?.geometry.setPositions(wave(0, -BEAM_FROM, phase));
     if (passing.current) passing.current.visible = !free;
     // The freed electron as an outgoing wave: thin shells that grow from the core and fade, one after another.
     RIPPLES.forEach((offset, i) => {
@@ -112,8 +115,8 @@ function AtomScene({ Z, kEdge, free, reduced }: { Z: number; kEdge: boolean; fre
       <mesh><sphereGeometry args={[0.045, 16, 12]} /><meshBasicMaterial color="#fff6e8" /></mesh>
       <sprite scale={[0.95, 0.95, 1]}><spriteMaterial map={sprite} color="#dff7ff" transparent opacity={0.85} depthWrite={false} blending={AdditiveBlending} /></sprite>
     </group>
-    <Line ref={incoming} points={beam(BEAM_FROM, 0, 0)} color="#ffc46b" lineWidth={2.6} />
-    <Line ref={passing} points={beam(0, -BEAM_FROM, 0)} color="#ffc46b" lineWidth={2.6} transparent opacity={0.4} />
+    {beam && <Line ref={incoming} points={wave(BEAM_FROM, 0, 0)} color="#ffc46b" lineWidth={2.6} />}
+    {beam && <Line ref={passing} points={wave(0, -BEAM_FROM, 0)} color="#ffc46b" lineWidth={2.6} transparent opacity={0.4} />}
     {RIPPLES.map((_, i) => <mesh key={i} ref={el => { ripples.current[i] = el; }}>
       <sphereGeometry args={[1, 48, 32]} />
       <shaderMaterial ref={el => { rippleMaterials.current[i] = el; }} vertexShader={RIM_VERTEX} fragmentShader={RIM_FRAGMENT} uniforms={uniforms[i]} transparent depthWrite={false} blending={AdditiveBlending} />

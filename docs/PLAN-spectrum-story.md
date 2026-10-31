@@ -100,7 +100,7 @@ away) and the wiggles (which neighbours, and how far). Then two buttons: the Det
    the in step or out of step ring. The wave map scales to the column.
 3. **v1.27.0 Distances** (done, in 3D: the neighbours move as you slide; the crystal lights ring by ring). Scenes 5 and 6: the distance slider; the half target over bumps corrected for phase. Unit
    test: copper's first ring bump within 0.05 Å of 2.56 Å.
-4. **v1.28.0 Charge, and finish.** Scene 7, the ending card and the "How this is drawn" fold; a visual check at 375,
+4. **v1.28.0 Charge, and finish** (done: the 3D ion's cloud shrinks as electrons go; a series whose measured edge does not rise steadily, Mn's, gives way to copper's; the step rail fix of v1.27.0). Scene 7, the ending card and the "How this is drawn" fold; a visual check at 375,
    768 and 1440 px; accessibility audit; page weight within its 321 KB budget.
 
 ## How we will know it worked
@@ -108,3 +108,11 @@ away) and the wiggles (which neighbours, and how far). Then two buttons: the Det
 - A first-time reader sees what the page is about in one sentence and the first picture without scrolling.
 - The tests above pass, and every test of the Detailed view still passes.
 - Screenshots at 375, 768 and 1440 px show one idea per screen, nothing overlapping, nothing cut off.
+
+## Result (2026-11-01)
+
+Seven scenes, every atom and crystal in 3D from the calculation's own data, at most one control each. The story tests
+hold each scene to 45 words, the whole story to 340, the reading grade to 8 or lower and the text free of symbols; they
+check the physics the pictures claim (the ring against the path sum, wiggles that speed up with distance, bumps at the
+true distances, the edge shifts of the series). The Detailed view is unchanged and one click away. First load of the
+page: 197 KB (was 321 KB).

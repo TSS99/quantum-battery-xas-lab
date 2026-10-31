@@ -7,7 +7,7 @@ import { pathCurves, tweakedParameters } from '@/lib/twin/shells';
 import { atomName } from '../atoms';
 import { Scene, StorySlider, eV, useNearView, type SceneProps } from './scene';
 
-const Wave3D = dynamic(() => import('./wave-3d'), { ssr: false });
+const Wave3D = dynamic(() => import('./wave-3d'), { ssr: false, loading: () => <div className="story-stage" /> });
 const FROM = 30, TO = 500, K = 5, SPAN = 0.6;
 const W = 520, H = 150, L = 12, R = 12, T = 22, B = 30;
 

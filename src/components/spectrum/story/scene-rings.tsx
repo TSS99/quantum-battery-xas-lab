@@ -7,7 +7,7 @@ import { shellSpectra } from '@/lib/twin/shells';
 import { atomName, SHELL_COLORS } from '../atoms';
 import { Scene, useNearView, type SceneProps } from './scene';
 
-const Crystal3D = dynamic(() => import('./crystal-3d'), { ssr: false });
+const Crystal3D = dynamic(() => import('./crystal-3d'), { ssr: false, loading: () => <div className="story-stage" /> });
 const W = 520, H = 200, L = 12, R = 12, T = 34, B = 30, RMAX = 6.2;
 
 /**

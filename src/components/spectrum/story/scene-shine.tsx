@@ -6,7 +6,7 @@ import { atomName } from '../atoms';
 import { Scene, StorySlider, eV, useNearView, type SceneProps } from './scene';
 
 // three.js loads with this scene, after the page.
-const Setup3D = dynamic(() => import('./setup-3d'), { ssr: false });
+const Setup3D = dynamic(() => import('./setup-3d'), { ssr: false, loading: () => <div className="story-stage is-wide" /> });
 
 /** The scan, eV from the edge: far enough above it for the first wiggles to show. */
 const FROM = -80, TO = 520;

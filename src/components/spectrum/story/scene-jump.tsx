@@ -5,8 +5,8 @@ import { atomCloud } from '@/lib/twin/atom-cloud';
 import { atomName } from '../atoms';
 import { Scene, StorySlider, eV, useNearView, type SceneProps } from './scene';
 
-// three.js loads with this scene, after the page.
-const Atom3D = dynamic(() => import('./atom-3d'), { ssr: false });
+// three.js loads when the scene comes near; a box of the same size holds its place, so nothing above the reader moves.
+const Atom3D = dynamic(() => import('./atom-3d'), { ssr: false, loading: () => <div className="story-stage" /> });
 
 const FROM = -40, TO = 40;
 /** The energy meter: a bar for the X-ray's energy, the line where it is enough. */

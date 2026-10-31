@@ -41,6 +41,19 @@ export function subshells(Z: number): Subshell[] {
   return out.filter(s => s.electrons > 0);
 }
 
+/**
+ * The subshells of the ion that has given `charge` electrons away: they leave from the highest shell first, and within a
+ * shell from the highest l (copper(II) is 3d9: both 4s electrons go before a 3d one).
+ */
+export function ionSubshells(Z: number, charge: number): Subshell[] {
+  const out = subshells(Z).map(s => ({ ...s }));
+  for (let left = Math.round(charge); left > 0; left--) {
+    const outer = out.filter(s => s.electrons > 0).reduce((a, b) => b.n > a.n || (b.n === a.n && b.l > a.l) ? b : a);
+    outer.electrons--;
+  }
+  return out.filter(s => s.electrons > 0);
+}
+
 /** Electrons in each principal shell (K, L, M, ...). */
 export function shellCounts(Z: number): number[] {
   const counts: number[] = [];
@@ -82,8 +95,8 @@ function random(seed: number) {
  * density, a Gamma distribution of shape 2n*+1 (rounded) and rate 2 zeta, drawn as a sum of exponentials; the direction
  * is uniform (the cloud of a filled or averaged shell is round).
  */
-export function atomCloud(Z: number, perElectron = 160, seed = 7): CloudShell[] {
-  const all = subshells(Z), rand = random(seed);
+export function atomCloud(Z: number, perElectron = 160, seed = 7, charge = 0): CloudShell[] {
+  const all = ionSubshells(Z, charge), rand = random(seed);
   return all.map(s => {
     const zeff = slaterZeff(Z, s, all), nStar = N_STAR[s.n], zeta = zeff / nStar, shape = Math.round(2 * nStar) + 1;
     const count = s.electrons * perElectron, points = new Float32Array(count * 3);

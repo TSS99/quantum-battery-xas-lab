@@ -5,7 +5,7 @@ import { pathCurves } from '@/lib/twin/shells';
 import { atomName } from '../atoms';
 import { Scene, useNearView, type SceneProps } from './scene';
 
-const Wave3D = dynamic(() => import('./wave-3d'), { ssr: false });
+const Wave3D = dynamic(() => import('./wave-3d'), { ssr: false, loading: () => <div className="story-stage" /> });
 /** The electron wavenumber drawn, Å⁻¹: about 95 eV above the edge, where a wave is a little over an ångström long. */
 const K = 5;
 

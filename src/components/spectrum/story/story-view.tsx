@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { loadPaths } from '@/lib/twin/exafs';
@@ -11,15 +10,18 @@ import type { XanesFile } from '@/lib/twin/xanes';
 import type { FeffMaterial } from '@/lib/twin/types';
 import { setAddress, ViewSwitch, type SpectrumView } from '../view-switch';
 
-const SceneShine = dynamic(() => import('./scene-shine').then(m => m.SceneShine));
-const SceneJump = dynamic(() => import('./scene-jump').then(m => m.SceneJump));
-const SceneRipple = dynamic(() => import('./scene-ripple').then(m => m.SceneRipple));
-const SceneEcho = dynamic(() => import('./scene-echo').then(m => m.SceneEcho));
-const SceneDistance = dynamic(() => import('./scene-distance').then(m => m.SceneDistance));
-const SceneRings = dynamic(() => import('./scene-rings').then(m => m.SceneRings));
+// The scenes come with this view, so the page does not grow above the reader as they arrive; each 3D picture loads
+// its three.js when it comes near, in a box of its own size.
+import { SceneShine } from './scene-shine';
+import { SceneJump } from './scene-jump';
+import { SceneRipple } from './scene-ripple';
+import { SceneEcho } from './scene-echo';
+import { SceneDistance } from './scene-distance';
+import { SceneRings } from './scene-rings';
+import { SceneCharge } from './scene-charge';
 
 /** The scenes in order, with the word the progress rail shows for each. */
-const SCENES = [['story-shine', 'Shine'], ['story-jump', 'Jump'], ['story-ripple', 'Ripple'], ['story-echo', 'Echo'], ['story-distance', 'Distance'], ['story-rings', 'Chart']] as const;
+const SCENES = [['story-shine', 'Shine'], ['story-jump', 'Jump'], ['story-ripple', 'Ripple'], ['story-echo', 'Echo'], ['story-distance', 'Distance'], ['story-rings', 'Chart'], ['story-charge', 'Charge']] as const;
 
 /** The materials offered, in plain words; another library sample named in the address is offered by its own name. */
 const STORY_SAMPLES = [
@@ -52,8 +54,12 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
     return () => { live = false; };
   }, [materialId]);
   const current = useCurrentScene();
-  // On a narrow screen the rail scrolls sideways; keep the current step in it.
-  useEffect(() => { document.querySelector(`.story-rail a[href="#${current}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [current]);
+  // On a narrow screen the rail scrolls sideways; keep the current step in it. Only the rail moves: scrollIntoView on
+  // a link in a sticky bar would scroll the page back to the bar's place in the flow.
+  useEffect(() => {
+    const link = document.querySelector<HTMLElement>(`.story-rail a[href="#${current}"]`), rail = link?.parentElement;
+    if (link && rail) rail.scrollTo({ left: link.offsetLeft - (rail.clientWidth - link.offsetWidth) / 2 });
+  }, [current]);
   const offered = STORY_SAMPLES.some(s => s.id === presetId) ? STORY_SAMPLES : [...STORY_SAMPLES, { id: preset.id, name: preset.name, what: `the ${preset.name}` }];
   const what = offered.find(s => s.id === presetId)!.what;
   const ready = data && data.material.id === materialId ? data : null;
@@ -96,6 +102,30 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
       <SceneEcho {...props} />
       <SceneDistance {...props} />
       <SceneRings {...props} />
+      <SceneCharge {...props} />
+      <section className="story-end" aria-labelledby="story-end-title">
+        <h2 id="story-end-title" className="story-h">What one spectrum tells you</h2>
+        <div className="story-end-cards">
+          <div><p className="story-step">Where the jump is</p><p>How many electrons the atom has given away. Step 7.</p></div>
+          <div><p className="story-step">The wiggles</p><p>Which atoms sit next to it, and how far away. Steps 4 to 6.</p></div>
+        </div>
+        <div className="story-end-actions">
+          <button type="button" className="twin-chip is-accent" onClick={() => onView('detailed')}>See every detail</button>
+          <Link className="twin-chip" href="/twin/">Try it on the beamline twin</Link>
+        </div>
+        <details className="story-sources">
+          <summary>How this is drawn</summary>
+          <ul>
+            <li>The spectra are calculated, not sketched: the near edge with FEFF10 for each crystal, the wiggles with the FEFF paths the beamline twin uses, at room temperature.</li>
+            <li>The atoms are the real crystal, the same atom positions FEFF used.</li>
+            <li>The single atom&apos;s electron cloud follows Slater&apos;s rules, with its sizes squeezed so the innermost layer shows; the true ratio is given on screen.</li>
+            <li>The wave and its echoes use FEFF&apos;s strength, phase shifts and electron range for each neighbour.</li>
+            <li>The distance chart takes out each ring&apos;s phase shift, so its bumps stand at the true distances; the Detailed view shows the usual chart, with peaks a little short.</li>
+            <li>The edge positions of the series were measured beside the metal; the sources are named in the Detailed view.</li>
+            <li>Developed using Distribution: FEFF10.0 Copyright (c) 2020 FEFF Project, University of Washington and SLAC National Accelerator Laboratory.</li>
+          </ul>
+        </details>
+      </section>
     </>}
   </div>;
 }
