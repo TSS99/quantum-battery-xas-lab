@@ -110,7 +110,8 @@ test('how XAS works: scanning the energy takes the core electron from staying pu
   const explorer = page.locator('#spectrum-explorer'), caption = page.locator('.xas-explorer-caption');
   await expect(caption).toContainText('Too little energy to free a manganese 1s electron');
   await explorer.getByRole('button', { name: 'Pre-edge', exact: true }).click();
-  await expect(caption).toContainText('nearly full 3d level');
+  // MnO2 is d3: its computed spectrum has a pre-edge, the 1s electron reaching the empty 3d states.
+  await expect(caption).toContainText('empty 3d level');
   await explorer.getByRole('button', { name: 'Edge', exact: true }).click();
   await expect(caption).toContainText('empty 4p states');
   // 150 eV above the edge: k = sqrt(0.2625 x 150) = 6.27 per angstrom, a wavelength of 1.00 angstrom.
@@ -126,8 +127,9 @@ test('how XAS works names the levels of the absorber: sulfur 1s to empty 3p, no 
   const explorer = page.locator('#spectrum-explorer'), caption = page.locator('.xas-explorer-caption');
   await explorer.getByRole('button', { name: 'Edge', exact: true }).click();
   await expect(caption).toContainText('empty 3p states');
+  // Sulfate's computed spectrum has no pre-edge peak, and the caption says so.
   await explorer.getByRole('button', { name: 'Pre-edge', exact: true }).click();
-  await expect(caption).toContainText('empty bound state');
+  await expect(caption).toContainText('No pre-edge peak in this crystal');
 });
 
 test('the reading cards and the chapters take you to the panel to try', async ({ page }) => {
@@ -152,4 +154,18 @@ test('Read the spectrum offers the absorber sites of a material with more than o
   await site.selectOption({ index: 1 });
   await expect(page.locator('#spectrum-table-title')).toContainText(`Shells of site ${await site.inputValue()}`);
   await expect(page.locator('.spectrum-legend')).toContainText('Other sites');
+});
+
+test('the near edge is computed for each crystal: the chromate card and the edge panel read their numbers from it', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./spectrum/?sample=k2cro4-pellet');
+  const card = page.locator('.read-card').filter({ hasText: 'Edge shape' });
+  await expect(card).toContainText('K₂CrO₄, tetrahedral');
+  await expect(card).toContainText(/tetrahedral chromate's is \d+× the octahedral oxide's/);
+  const edge = page.locator('#spectrum-edge');
+  await expect(edge).toContainText('FEFF10 calculation for this crystal');
+  await expect(edge).toContainText(/Pre-edge at \D?1\d\.\d eV/);
+  await page.goto('./spectrum/?sample=ceo2-pellet');
+  await expect(page.locator('#spectrum-edge')).toContainText('FEFF, a one electron calculation, gives one');
+  expect(errors).toEqual([]);
 });

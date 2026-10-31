@@ -24,7 +24,6 @@ export function MeasuredFigure() {
       the same normalization and background removal. Above the near edge the oscillations agree: correlation {chi.correlation.toFixed(2)},
       or {chi.bestCorrelation.toFixed(2)} with the twin&apos;s E0 moved by {chi.bestShift_eV} eV (the shift a fit would find); amplitude
       ×{chi.amplitudeRatio.toFixed(2)}; first shell at {firstShell_A.twin.toFixed(2)} Å against {firstShell_A.measured.toFixed(2)} Å.
-      The near edge does not match (normalized RMS {normRms.nearEdge.toFixed(2)}): the twin draws it with a teaching model, not a
-      calculation, so read edge shapes from measured references.</figcaption>
+      The near edge is FEFF10&apos;s calculation for the Cu crystal (normalized RMS {normRms.nearEdge.toFixed(2)} against this foil).</figcaption>
   </figure>;
 }

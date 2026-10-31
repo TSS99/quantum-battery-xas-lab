@@ -374,7 +374,7 @@ export const SAMPLE_PRESETS: readonly SamplePreset[] = [
     thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Cr'), damage: 'oxide', densitySource: `Eskolaite, 5.225 g/cm³: X-ray density of the cell of Newnham and de Haan, Z. Kristallogr. 117, 235 (1962), ${COD(9008084)}.`, look: { color: '#3f6b3a' },
   },
   {
-    id: 'k2cro4-pellet', group: 'Oxides and salts', name: 'K₂CrO₄ (chromate) pellet', story: 'Cr(VI), the toxic chromate: four oxygens in a tetrahedron at 1.64 Å. Real spectra show a sharp pre-edge peak and a higher edge; here the edge is left at Cr metal\'s, for want of a same-study value.',
+    id: 'k2cro4-pellet', group: 'Oxides and salts', name: 'K₂CrO₄ (chromate) pellet', story: 'Cr(VI), the toxic chromate: four oxygens in a tetrahedron at 1.64 Å. Its sharp pre-edge peak shows in the computed near edge; the higher edge of real spectra does not, as the edge is left at Cr metal\'s for want of a same-study value.',
     sample: { ...base, formula: 'K2CrO4', density: 2.7361, absorber: 'Cr', edge: 'K', form: 'pellet', libraryId: 'k2cro4' },
     thickness: { edgeStep: 1 }, environment: AMBIENT, reference: foil('Cr'), damage: 'oxide', densitySource: `K₂CrO₄, 2.736 g/cm³: X-ray density of the cell of McGinnety, Acta Cryst. B28, 2845 (1972), ${COD(9007570)}.`, look: { color: '#f2c200' },
   },

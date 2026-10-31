@@ -6,7 +6,9 @@ import { expect, test } from '@playwright/test';
 // Each limit is the size at the 2026-10-23 hardening pass plus a little headroom, so growth has to be deliberate.
 // 2026-10-30: twin 400 to 405. Read the spectrum shares the twin's sample and EXAFS modules, so webpack splits them
 // into more shared files, each compressed alone; the link to that window itself is under 1 KB.
-const BUDGET_KB: Record<string, number> = { '': 300, 'twin/': 405, 'spectra/': 300, 'beamline/': 300, 'validation/': 300, 'elements/fe/': 200, 'tools/x-ray-dose/': 300, 'instructors/': 200, 'spectrum/': 320 };
+// 2026-10-31: spectrum 320 to 321. The model now carries the FEFF10 near edge of each library material (its
+// loaders and helpers are lazy chunks; what stays is the hand over in libraryFineStructure).
+const BUDGET_KB: Record<string, number> = { '': 300, 'twin/': 405, 'spectra/': 300, 'beamline/': 300, 'validation/': 300, 'elements/fe/': 200, 'tools/x-ray-dose/': 300, 'instructors/': 200, 'spectrum/': 321 };
 
 test('first-load JavaScript stays within each page budget', async ({ request, baseURL }) => {
   for (const [path, limit] of Object.entries(BUDGET_KB)) {

@@ -49,16 +49,23 @@ describe('FEFF library fine structure', () => {
     thicknessBefore = thicknessFor(preset('limn2o4-pellet'), { muX: 2 });
   });
 
-  it('stays the teaching model until the paths load, then sums the FEFF paths above k = 3.5', async () => {
+  it('stays the teaching model until the library loads, then uses the FEFF10 near edge and the FEFF paths', async () => {
     expect(defaultFineStructure(cuSample, E0).provenance).toBe('teaching-model');
     expect(await loadLibraryFineStructure(cuSample)).toBe(true);
     expect(await loadLibraryFineStructure(preset('fe-2mm-water'))).toBe(false);
-    const model = defaultFineStructure(cuSample, E0);
-    expect(model.provenance).toEqual(['computed', 'teaching-model']);
-    expect(model.label).toMatch(/FEFF paths of Cu/);
-    expect(muComponents(cuSample, E0 + 200).provenance).toEqual(['tabulated', 'computed', 'teaching-model']);
+    const loaded = defaultFineStructure(cuSample, E0);
+    expect(loaded.provenance).toBe('computed');
+    expect(loaded.label).toMatch(/FEFF10 near edge and FEFF paths of Cu/);
+    expect(muComponents(cuSample, E0 + 200).provenance).toEqual(['tabulated', 'computed']);
 
     const cu = await loadPaths('cu');
+    // Past the hand over (k = 4.1) the loaded model is the path sum on the edge step: step (1 + chi).
+    const expectedAbove = libraryChi(cu, [5.55, 9.81, 14.2], ROOM_TEMPERATURE_K);
+    [5.55, 9.81, 14.2].forEach((k, i) => expect(Math.abs(loaded.factor(energyAt(k)) / step(energyAt(k)) - 1 - expectedAbove[i])).toBeLessThan(1e-4));
+
+    // Without a computed near edge the paths sit on the teaching near edge, faded in from k = 2 to 3.5.
+    const model = libraryFineStructure(E0, cu);
+    expect(model.provenance).toEqual(['computed', 'teaching-model']);
     const near = teachingFineStructure(E0, { oscillation: 0 });
     const ks = [4, 5.55, 7.3, 9.81, 11.1, 14.2];
     const expected = libraryChi(cu, ks, ROOM_TEMPERATURE_K);

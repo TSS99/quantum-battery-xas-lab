@@ -20,9 +20,8 @@ describe('the twin against a measured Cu foil (APS 13-ID, 2001)', () => {
     expect(Math.abs(check.e0.twin - check.e0.measured)).toBeLessThan(3);
     expect(check.normRms.preEdge).toBeLessThan(0.02);
     expect(check.normRms.exafs).toBeLessThan(0.08);
-    // The near edge is the teaching model (no FEFF XANES), so it is the worst region; this bound only stops it getting worse.
-    expect(check.normRms.nearEdge).toBeGreaterThan(check.normRms.exafs);
-    expect(check.normRms.nearEdge).toBeLessThan(0.45);
+    // The near edge is FEFF10's full multiple scattering calculation; the teaching model it replaced gave 0.28.
+    expect(check.normRms.nearEdge).toBeLessThan(0.15);
   });
 
   it('gives chi(k) the measured phase and amplitude: correlation above 0.7, above 0.85 after an E0 shift, first shell within 0.05 angstrom', () => {

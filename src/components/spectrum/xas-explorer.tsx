@@ -6,6 +6,8 @@ import { ETOK } from '@/lib/twin/exafs';
 import { libraryFineStructure } from '@/lib/twin/sample';
 import { pathCurves, type Shell } from '@/lib/twin/shells';
 import { defaultNearEdgeFeatures } from '@/lib/xas-general';
+import type { XanesFile } from '@/lib/twin/xanes';
+import { nearEdgeMarks } from '@/lib/twin/xanes-features';
 import type { FeffMaterial } from '@/lib/twin/types';
 import { Num } from '../tex';
 import { atomName } from './atoms';
@@ -14,7 +16,8 @@ import { atomName } from './atoms';
  * How XAS works, in one energy scan: the photon energy (a slider, or Scan) drives three linked pictures. The beam
  * through the sample dims as absorption rises (what the detectors measure); the absorbing atom's levels show what the
  * photon does to the core electron at that energy; the spectrum builds up to the cursor. The curve is the twin's model
- * for this sample (teaching near edge, FEFF path sum above); the levels are drawn at their energies relative to E0.
+ * for this sample (FEFF10 near edge where the library has it, FEFF path sum above); the levels are drawn at the
+ * energies of the features of that curve, relative to E0.
  */
 
 const FROM = -30, KNEE = 60, TO = 500, SPLIT = 0.55;
@@ -31,20 +34,20 @@ const REGIONS: { id: Region; name: string }[] = [
 
 const period = (z: number) => z <= 2 ? 1 : z <= 10 ? 2 : z <= 18 ? 3 : z <= 36 ? 4 : z <= 54 ? 5 : z <= 86 ? 6 : 7;
 
-export function XasExplorer({ material, shift_eV, temperature_K, shell }: { material: FeffMaterial; shift_eV: number; temperature_K: number; shell: Shell | null }) {
+export function XasExplorer({ material, xanes, shift_eV, temperature_K, shell }: { material: FeffMaterial; xanes: XanesFile | null; shift_eV: number; temperature_K: number; shell: Shell | null }) {
   const reduced = useReducedMotion();
   const e0 = material.edge_energy_eV + shift_eV;
-  const model = useMemo(() => libraryFineStructure(e0, material, temperature_K), [e0, material, temperature_K]);
-  const f = defaultNearEdgeFeatures(e0);
+  const model = useMemo(() => libraryFineStructure(e0, material, temperature_K, xanes), [e0, material, temperature_K, xanes]);
+  const marks = useMemo(() => xanes ? nearEdgeMarks(xanes) : teachingMarks(e0), [xanes, e0]);
   const z = material.sites[0].paths[0].geometry[0].atomic_number;
   const kEdge = material.edge === 'K', transition = kEdge && z >= 21 && z <= 30;
   const core = kEdge ? '1s' : '2p₃/₂';
   const empty = kEdge ? `empty ${period(z)}p` : z >= 72 && z <= 80 ? 'empty 5d' : 'empty d';
-  const bound = transition ? '3d, nearly full' : 'bound states';
-  // The regions, from the model's own feature positions.
-  const region = (d: number): Region => d < -f.preEdgeOffset_eV - 2.5 * f.preEdgeWidth_eV ? 'below'
-    : d <= -f.preEdgeOffset_eV + 2.5 * f.preEdgeWidth_eV ? 'pre' : d < -3 ? 'below' : d <= 15 ? 'edge' : d <= 50 ? 'xanes' : 'exafs';
-  const centre: Record<Region, number> = { below: -25, pre: -f.preEdgeOffset_eV, edge: f.whiteLineOffset_eV, xanes: 32, exafs: 150 };
+  const bound = transition ? '3d' : 'bound states';
+  // The regions, from the curve's own features: the pre-edge band sits on its peak, or just below the edge without one.
+  const preAt = marks.preEdge?.at_eV ?? -6, preLo = preAt - 2.5, preHi = Math.min(preAt + 2.5, -1.5), edgeLo = Math.max(-3, preHi);
+  const region = (d: number): Region => d < preLo ? 'below' : d <= preHi ? 'pre' : d < edgeLo ? 'below' : d <= 15 ? 'edge' : d <= 50 ? 'xanes' : 'exafs';
+  const centre: Record<Region, number> = { below: -25, pre: preAt, edge: marks.peak.at_eV, xanes: 32, exafs: 150 };
 
   const [pos, setPos] = useState(toPos(-25));
   const [playing, setPlaying] = useState(false);
@@ -78,20 +81,23 @@ export function XasExplorer({ material, shift_eV, temperature_K, shell }: { mate
   const W = 660, H = 320, L = 40, R = 12, T = 30, B = 40;
   const sx = (x: number) => L + toPos(x) * (W - L - R), sy = (v: number) => H - B - v / top * (H - T - B);
   const path = (pts: [number, number][]) => pts.map((p, i) => (i ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)).join('');
-  const done = curve.filter(p => p[0] <= d);
-  const bands: [Region, number, number][] = [['pre', -f.preEdgeOffset_eV - 2.5 * f.preEdgeWidth_eV, -f.preEdgeOffset_eV + 2.5 * f.preEdgeWidth_eV], ['edge', -3, 15], ['xanes', 15, 50], ['exafs', 50, TO]];
+  // Drawn in two pieces with a gap at the knee, where the energy scale changes: an axis break, not a kink in the data.
+  const near = curve.filter(p => p[0] <= KNEE), far = curve.filter(p => p[0] > KNEE);
+  const doneNear = near.filter(p => p[0] <= d), doneFar = far.filter(p => p[0] <= d);
+  const bands: [Region, number, number][] = [['pre', preLo, preHi], ['edge', edgeLo, 15], ['xanes', 15, 50], ['exafs', 50, TO]];
 
   const caption: Record<Region, string> = {
     below: `Too little energy to free a ${name} ${core} electron: the X-rays mostly pass.`,
-    pre: transition ? `Just enough to lift the ${core} electron into the nearly full 3d level: a weak, forbidden jump, the pre-edge.` : `Just enough to lift the ${core} electron into an empty bound state: a small peak before the edge.`,
-    edge: `The ${core} electron jumps into ${empty} states: absorption shoots up. Where this happens tracks the oxidation state.`,
+    pre: !marks.preEdge ? `No pre-edge peak in this crystal: the ${core} electron finds no empty level below the edge to jump into.`
+      : transition ? `Just enough to lift the ${core} electron into an empty 3d level: a weak, nearly forbidden jump, the pre-edge.` : `Just enough to lift the ${core} electron into an empty bound state: a small peak before the edge.`,
+    edge: `The ${core} electron jumps into ${empty} states: absorption shoots up${marks.peak.height >= 1.3 ? `, to a white line ${marks.peak.height.toFixed(1)} times the step` : ''}. Where this happens tracks the oxidation state.`,
     xanes: `The electron is free but slow: it bounces between many neighbours, so this shape fingerprints the site's geometry.`,
     exafs: `A fast electron wave (λ = ${lambda.toFixed(2)} Å) echoes off the neighbours: in step, more absorption; out of step, less.`,
   };
 
   return <div className="xas-explorer">
     <div className="xas-explorer-figures">
-      <AtomPicture here={here} d={d} f={f} mu={mu} top={top} core={core} empty={empty} bound={bound} absorber={material.absorber} k={k} shell={shell} />
+      <AtomPicture here={here} d={d} preAt={preAt} peakAt={marks.peak.at_eV} mu={mu} top={top} core={core} empty={empty} bound={bound} absorber={material.absorber} k={k} shell={shell} />
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Normalized absorption of ${material.formula} against energy above its edge, measured up to ${d.toFixed(0)} eV: ${REGIONS.find(r => r.id === here)!.name}`}>
         <rect width={W} height={H} rx="10" fill="#121a2b" />
         {bands.map(([id, a, b]) => <g key={id}>
@@ -99,10 +105,11 @@ export function XasExplorer({ material, shift_eV, temperature_K, shell }: { mate
           <text x={(sx(a) + sx(b)) / 2} y={T - 10} textAnchor="middle" fill={id === here ? '#f3f6fa' : '#a7b1c1'} fontSize="12.5" fontWeight={id === here ? 600 : 400}>{REGIONS.find(r => r.id === id)!.name}</text>
         </g>)}
         <line x1={sx(KNEE)} x2={sx(KNEE)} y1={T} y2={H - B} stroke="#35404d" strokeDasharray="3 4" />
+        <path d={`M${sx(KNEE) - 7},${H - B + 5} l6,-10 M${sx(KNEE) + 1},${H - B + 5} l6,-10`} stroke="#a7b1c1" strokeWidth="1.4" />
         {[-20, 0, 20, 40, 60, 200, 400].map(x => <text key={x} x={sx(x)} y={H - B + 16} textAnchor="middle" fill="#a7b1c1" fontSize="12">{x > 0 ? '+' + x : x}</text>)}
         <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle" fill="#a7b1c1" fontSize="12">E − E₀ (eV), near edge stretched</text>
-        <path d={path(curve)} fill="none" stroke="#d4dae3" strokeWidth="1.4" opacity="0.25" />
-        {done.length > 1 && <path d={path(done)} fill="none" stroke="#f3f6fa" strokeWidth="2.4" />}
+        {[near, far].map((part, i) => <path key={i} d={path(i ? part : part.slice(0, -8))} fill="none" stroke="#d4dae3" strokeWidth="1.4" opacity="0.25" />)}
+        {[doneNear, doneFar].map((part, i) => part.length > 1 && <path key={i} d={path(i ? part : part.slice(0, Math.min(part.length, near.length - 8)))} fill="none" stroke="#f3f6fa" strokeWidth="2.4" />)}
         <line x1={sx(d)} x2={sx(d)} y1={T} y2={H - B} stroke="#8ce3ff" strokeWidth="1.5" />
         <circle cx={sx(d)} cy={sy(mu)} r="5" fill="#8ce3ff" stroke="#121a2b" strokeWidth="2" />
       </svg>
@@ -127,15 +134,15 @@ export function XasExplorer({ material, shift_eV, temperature_K, shell }: { mate
  * two detectors. Below: the absorbing atom's levels (the core level far below, with a break; the bound and empty
  * levels and the threshold E0 at their energies), the photon, and where the core electron goes.
  */
-function AtomPicture({ here, d, f, mu, top, core, empty, bound, absorber, k, shell }: {
-  here: Region; d: number; f: ReturnType<typeof defaultNearEdgeFeatures>; mu: number; top: number; core: string; empty: string; bound: string; absorber: string; k: number; shell: Shell | null;
+function AtomPicture({ here, d, preAt, peakAt, mu, top, core, empty, bound, absorber, k, shell }: {
+  here: Region; d: number; preAt: number; peakAt: number; mu: number; top: number; core: string; empty: string; bound: string; absorber: string; k: number; shell: Shell | null;
 }) {
   const W = 420, H = 320;
   // Transmission through a sample a little over one absorption length above the edge (mu x = 0.35 + 1.3 x normalized mu).
   const through = Math.exp(-(0.35 + 1.3 * mu / (top / 1.1)));
   const S = 3.2, Y0 = 170, CORE = 292;
   const level = (e: number) => Y0 - e * S;
-  const yPre = level(-f.preEdgeOffset_eV), yEmpty = level(f.whiteLineOffset_eV);
+  const yPre = level(preAt), yEmpty = level(Math.min(peakAt, 18));
   const target = here === 'pre' ? yPre : here === 'edge' ? Math.max(level(Math.min(d, 15)), 110) : here === 'below' ? null : 92;
   // The photon's reach on the level scale: it falls short below the pre-edge.
   const reach = Math.max(level(Math.min(d, 18)), 88);
@@ -191,4 +198,10 @@ function AtomPicture({ here, d, f, mu, top, core, empty, bound, absorber, k, she
       <text x="170" y="140" fill="#d4dae3" fontSize="11.5">λ = {(2 * Math.PI / Math.max(k, 1e-6)).toFixed(2)} Å{here === 'exafs' && shell ? ` · echo ${echo > 0.3 ? 'in step: up' : echo < -0.3 ? 'out of step: down' : 'between'}` : ''}</text>
     </>}
   </svg>;
+}
+
+/** Without a computed near edge: the teaching model's pre-edge and white line positions. */
+function teachingMarks(e0: number) {
+  const f = defaultNearEdgeFeatures(e0);
+  return { preEdge: { at_eV: -f.preEdgeOffset_eV, height: f.preEdgeHeight }, peak: { at_eV: f.whiteLineOffset_eV, height: 1 + f.whiteLineHeight } };
 }

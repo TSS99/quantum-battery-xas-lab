@@ -10,6 +10,7 @@ import { ROOM_TEMPERATURE_K, einsteinTemperature_K, libraryMaterialId } from '@/
 import { SAMPLE_GROUPS, SAMPLE_PRESETS } from '@/lib/twin/presets';
 import { clusterAtoms, groupShells, loadCluster, shellSpectra, transform, type ClusterAtom, type ClusterFile, type Shell, type ShellTweak } from '@/lib/twin/shells';
 import { SPECTRUM_CHANNEL, type SpectrumMessage } from '@/lib/twin/spectrum-link';
+import type { XanesFile } from '@/lib/twin/xanes';
 import type { FeffMaterial } from '@/lib/twin/types';
 import { Num, Tex } from '../tex';
 import { TexProse } from '../twin/tex-prose';
@@ -52,6 +53,7 @@ export function SpectrumPage() {
   const [follow, setFollow] = useState(true);
   const [material, setMaterial] = useState<FeffMaterial | null>(null);
   const [cluster, setCluster] = useState<ClusterFile | null>(null);
+  const [xanes, setXanes] = useState<XanesFile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [siteId, setSiteId] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null), [selected, setSelected] = useState<string | null>(null);
@@ -82,14 +84,15 @@ export function SpectrumPage() {
     if (!materialId) { setMaterial(null); setCluster(null); return; }
     let live = true;
     setError(null);
-    Promise.all([loadPaths(materialId), loadCluster(materialId)]).then(([m, c]) => {
+    // The near edge loaders are their own chunk, out of the page's first load.
+    Promise.all([loadPaths(materialId), loadCluster(materialId), import('@/lib/twin/xanes-files').then(f => f.loadXanes(materialId))]).then(([m, c, x]) => {
       if (!live) return;
-      setMaterial(m); setCluster(c); setSiteId(m.sites[0].id); setSelected(null); setHover(null); setTweaks({}); setOwnTemperature(null);
+      setMaterial(m); setCluster(c); setXanes(x); setSiteId(m.sites[0].id); setSelected(null); setHover(null); setTweaks({}); setOwnTemperature(null);
     }, e => { if (live) setError(e instanceof Error ? e.message : String(e)); });
     return () => { live = false; };
   }, [materialId]);
 
-  const ready = material && cluster && material.id === materialId && cluster.id === materialId ? { material, cluster } : null;
+  const ready = material && cluster && xanes && material.id === materialId && cluster.id === materialId && xanes.id === materialId ? { material, cluster, xanes } : null;
   const shells = useMemo(() => ready ? groupShells(ready.material) : [], [ready?.material]);
   // Sliders recompute the path sum; deferring keeps them smooth.
   const shownTweaks = useDeferredValue(tweaks), shownTemperature = useDeferredValue(temperature_K);
@@ -154,7 +157,7 @@ export function SpectrumPage() {
       <section id="spectrum-explorer" className="twin-card spectrum-panel spectrum-explorer" aria-labelledby="spectrum-explorer-title">
         <h2 id="spectrum-explorer-title" className="twin-kicker">How XAS works · {m.formula}</h2>
         <p className="spectrum-lede">X-ray absorption spectroscopy shines X-rays of rising energy through a sample and records how much it absorbs. Scan the energy and watch what happens inside one {atomName(m.absorber)} atom.</p>
-        <XasExplorer material={m} shift_eV={shift_eV} temperature_K={temperature_K} shell={first} />
+        <XasExplorer material={m} xanes={ready.xanes} shift_eV={shift_eV} temperature_K={temperature_K} shell={first} />
       </section>
       <section id="spectrum-read" className="twin-card spectrum-panel spectrum-read" aria-labelledby="spectrum-read-title">
         <h2 id="spectrum-read-title" className="twin-kicker">Reading a spectrum</h2>
@@ -206,7 +209,7 @@ export function SpectrumPage() {
       </section>
       <section id="spectrum-edge" className="twin-card spectrum-panel spectrum-edge" aria-labelledby="spectrum-edge-title">
         <h2 id="spectrum-edge-title" className="twin-kicker">Around the edge</h2>
-        <NearEdgePanel material={m} shift_eV={shift_eV} temperature_K={temperature_K} />
+        <NearEdgePanel material={m} xanes={ready.xanes} shift_eV={shift_eV} temperature_K={temperature_K} />
       </section>
       <section id="spectrum-oxidation" className="twin-card spectrum-panel spectrum-oxidation" aria-labelledby="spectrum-oxidation-title">
         <h2 id="spectrum-oxidation-title" className="twin-kicker">The edge and valence · {m.absorber}</h2>

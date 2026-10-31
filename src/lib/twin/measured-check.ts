@@ -10,6 +10,7 @@ import { processExafs } from '../exafs';
 import { simulatePoint } from './acquire';
 import { DEFAULT_STATE } from './twin';
 import { KAPPA } from './scan';
+import { edgeE0 } from './xanes-features';
 import type { TwinState } from './types';
 
 export const MEASURED_CU = measured;
@@ -19,7 +20,11 @@ export const MEASURED_EXAFS = { rbkg: 1, kmin: 3, kmax: 15, kweight: 2, dk: 1, w
 const K_STEP = 0.05;
 
 export interface MeasuredCheck {
-  /** Edge positions (maximum of the derivative), eV. The measured one carries that beamline's 2001 calibration. */
+  /**
+   * Edge positions by the library's rule (edgeE0: the first steep rise the absorption does not fall back from), eV. The
+   * measured one carries that beamline's 2001 calibration. The steepest rise alone would put the twin's on its second
+   * rise, after the shoulder.
+   */
   e0: { measured: number; twin: number };
   /** RMS of measured minus twin normalized mu(E), edges aligned, below the edge, near it and over the EXAFS. */
   normRms: { preEdge: number; nearEdge: number; exafs: number };
@@ -46,9 +51,10 @@ export function measuredCuCheck(state: TwinState = DEFAULT_STATE): MeasuredCheck
   // Educational mode has no noise, so the random source is never drawn from.
   const muTwin = energy.map(e => { const p = simulatePoint({ ...state, realistic: false }, e, () => 0.5); return Math.log(p.i0 / p.it); });
 
-  const a = preEdge(energy, muMeasured), b = preEdge(energy, muTwin), shift = b.e0 - a.e0;
+  const a = preEdge(energy, muMeasured), b = preEdge(energy, muTwin);
+  const e0a = edgeE0(energy, a.norm), e0b = edgeE0(energy, b.norm), shift = e0b - e0a;
   const twinAligned = interpolate(energy.map(e => e - shift), b.norm, energy);
-  const residual = (lo: number, hi: number) => rms(energy.flatMap((e, i) => e - a.e0 >= lo && e - a.e0 < hi ? [a.norm[i] - twinAligned[i]] : []));
+  const residual = (lo: number, hi: number) => rms(energy.flatMap((e, i) => e - e0a >= lo && e - e0a < hi ? [a.norm[i] - twinAligned[i]] : []));
 
   const xa = processExafs(energy, muMeasured, { ...MEASURED_EXAFS }), xb = processExafs(energy, muTwin, { ...MEASURED_EXAFS });
   const n = Math.round((MEASURED_EXAFS.kmax - MEASURED_EXAFS.kmin) / K_STEP) + 1;
@@ -62,12 +68,12 @@ export function measuredCuCheck(state: TwinState = DEFAULT_STATE): MeasuredCheck
   const twinChi = chiB(0);
   const firstShell = (x: typeof xa) => { let j = 0; for (let i = 1; i < x.xftf.r.length; i++) if (x.xftf.r[i] < 3 && x.xftf.magnitude[i] > x.xftf.magnitude[j]) j = i; return x.xftf.r[j]; };
 
-  const near = energy.flatMap((e, i) => e - a.e0 >= -30 && e - a.e0 <= 120 ? [i] : []);
+  const near = energy.flatMap((e, i) => e - e0a >= -30 && e - e0a <= 120 ? [i] : []);
   return {
-    e0: { measured: a.e0, twin: b.e0 },
+    e0: { measured: e0a, twin: e0b },
     normRms: { preEdge: residual(-200, -20), nearEdge: residual(-20, 50), exafs: residual(50, Infinity) },
     chi: { correlation: correlation(chiA, twinChi), bestShift_eV: best.dE, bestCorrelation: best.r, amplitudeRatio: rms(twinChi) / rms(chiA) },
     firstShell_A: { measured: firstShell(xa), twin: firstShell(xb) },
-    curves: { e: near.map(i => energy[i] - a.e0), normMeasured: near.map(i => a.norm[i]), normTwin: near.map(i => twinAligned[i]), k, k2chiMeasured: chiA, k2chiTwin: twinChi },
+    curves: { e: near.map(i => energy[i] - e0a), normMeasured: near.map(i => a.norm[i]), normTwin: near.map(i => twinAligned[i]), k, k2chiMeasured: chiA, k2chiTwin: twinChi },
   };
 }

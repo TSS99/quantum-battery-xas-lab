@@ -1,9 +1,14 @@
 'use client';
+import { useEffect, useState } from 'react';
+import { xanesAt, type XanesFile } from '@/lib/twin/xanes';
+import { nearEdgeMarks } from '@/lib/twin/xanes-features';
+import { loadXanes } from '@/lib/twin/xanes-files';
 
 /*
- * Reading a spectrum, one feature at a time: each card sketches the same feature for two materials or two states and
- * says what the difference means, with a link to the panel where it can be tried on this sample. The sketches use the
- * textbook forms (an arctangent edge, Gaussian peaks, the EXAFS term N sin(2kR) exp(-2 sigma^2 k^2)), not data.
+ * Reading a spectrum, one feature at a time: each card draws the same feature for two materials or two states and
+ * says what the difference means, with a link to the panel where it can be tried on this sample. Edge shape is two
+ * computed library spectra (FEFF10, Cr2O3 and K2CrO4 on FEFF's own energy scale); the others use the textbook forms
+ * (an arctangent edge, the EXAFS term N sin(2kR) exp(-2 sigma^2 k^2)).
  */
 const W = 220, H = 84, PAD = 8;
 
@@ -39,10 +44,26 @@ function Sketch({ card }: { card: Card }) {
   </svg>;
 }
 
+/** The geometry card from the computed chromium spectra: octahedral Cr2O3 against tetrahedral K2CrO4. */
+function geometryCard(oct: XanesFile, tet: XanesFile): Card {
+  const shift = tet.feff_e0_eV - oct.feff_e0_eV;
+  const a = nearEdgeMarks(oct).preEdge?.height ?? 0, b = nearEdgeMarks(tet).preEdge?.height ?? 0;
+  return { title: 'Edge shape', target: 'spectrum-edge', range: [-12, 22], legend: ['Cr₂O₃, octahedral', 'K₂CrO₄, tetrahedral'],
+    a: x => xanesAt(oct, x), b: x => xanesAt(tet, x - shift),
+    read: `No centre of symmetry, a strong pre-edge: tetrahedral chromate's is ${a > 0 ? `${Math.round(b / a)}×` : 'far above'} the octahedral oxide's. Computed (FEFF10).` };
+}
+
 export function ReadCards() {
+  const [chromium, setChromium] = useState<Card | null>(null);
+  useEffect(() => {
+    let live = true;
+    Promise.all([loadXanes('cr2o3'), loadXanes('k2cro4')]).then(([oct, tet]) => { if (live) setChromium(geometryCard(oct, tet)); }, () => undefined);
+    return () => { live = false; };
+  }, []);
+  const cards = CARDS.map(c => c.title === 'Edge shape' && chromium ? chromium : c);
   const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   return <ul className="read-cards">
-    {CARDS.map(card => <li key={card.title} className="read-card">
+    {cards.map(card => <li key={card.title} className="read-card">
       <h3>{card.title}</h3>
       <Sketch card={card} />
       <p className="read-card-legend"><span><i className="is-a" aria-hidden="true" />{card.legend[0]}</span><span><i className="is-b" aria-hidden="true" />{card.legend[1]}</span></p>

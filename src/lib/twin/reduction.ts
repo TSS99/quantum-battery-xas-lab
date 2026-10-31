@@ -33,6 +33,9 @@ export function muOf(columns: Record<string, number[]>, mode: TwinMode) {
 export function reduceAcquisition(acquisition: Acquisition, mode: TwinMode = acquisition.kind) {
   const { energy, mu } = muOf(acquisition.columns, mode);
   const pre = preEdge(energy, mu);
+  // preEdge clamps a step that does not rise to 1e-12; a saturated detector or a missing absorber gives no edge to read.
+  const range = Math.max(...mu) - Math.min(...mu);
+  if (!(pre.edgeStep > 1e-12) || pre.edgeStep < 1e-3 * range) throw new Error('the signal does not rise at the edge (a saturated detector, or no absorber in the beam).');
   const kmaxData = Math.sqrt(0.26246842 * (energy[energy.length - 1] - pre.e0));
   const kmax = Math.min(TWIN_REDUCTION.kmax, kmaxData - 0.3);
   const exafs = processExafs(energy, mu, {

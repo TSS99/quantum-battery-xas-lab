@@ -10,6 +10,8 @@ XAS Lab's own code is under the MIT License (see LICENSE). These parts come from
 | Reference values for the Larch ports and tests | `src/data/**/*larch*.json` and the test fixtures | xraylarch 2026.3.1 | MIT |
 | Measured Cu foil spectrum (APS 13-ID, 2001) | `src/data/twin/measured/cu-metal-rt.json` | xraylarch examples, `examples/xafsdata/cu_metal_rt.xdi` | MIT (xraylarch) |
 | FEFF scattering paths of the library materials | `src/data/twin/feff/` | Computed with FEFF6L as distributed with xraylarch | As distributed with xraylarch; full FEFF is licensed separately by the FEFF project |
+| Near edge spectra of the library materials | `src/data/twin/xanes/` | Computed with FEFF10 (`scripts/twin/make-xanes-library.py`); only the averaged, normalized spectra are stored, no FEFF code or output file. Developed using Distribution: FEFF10.0 Copyright (c) 2020 FEFF Project, University of Washington and SLAC National Accelerator Laboratory. All rights reserved. | FEFF10 License |
+| Measured Cu, Ni and Pt foil and Fe2O3 and FeO near edges | `src/data/twin/measured/xanes-references.json`, raw files in `scripts/twin/measured-raw/` | xraylarch examples, `examples/xafsdata/` | MIT (xraylarch) |
 | Bending magnet flux and critical energy formulas | `src/lib/twin/source.ts` | X-ray Data Booklet (LBNL) | Cited reference |
 
 ## Fonts

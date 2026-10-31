@@ -24,6 +24,7 @@ import { defaultEdgeWidth, defaultNearEdgeFeatures, type NearEdgeFeatures } from
 import FEFF_INDEX from '../../data/twin/feff/index.json';
 import { ETOK, chiSum, loadPaths, sigma2Einstein } from './exafs';
 import { emissionLines } from './tables';
+import { xanesAt, type XanesFile } from './xanes';
 import type { EnvironmentConfig, ExafsParameters, ExafsPathParameters, FeffMaterial, Provenance, SampleConfig } from './types';
 
 /** k^2 in inverse square angstrom per eV above the edge, as in src/lib/xas-general.ts. */
@@ -65,7 +66,7 @@ function findEdge(symbol: string, edge: string): XrayEdge {
  * absorption at all, and 1 well above it, so `jump(E) * factor(E)` reproduces the tabulated
  * atomic edge. In the EXAFS region the factor is `1 + chi(E)`, which is why a flat 1 means
  * "no fine structure". `sharpEdge` is the bare tabulated step; the default is the teaching
- * model below; T3a plugs in a FEFF path sum and T1c a XANES library spectrum.
+ * model below; a library material adds its FEFF path sum and its computed FEFF10 near edge.
  */
 export type FineStructure = (energy_eV: number) => number;
 
@@ -135,9 +136,12 @@ export const einsteinTemperature_K = (id: string) => LIBRARY_METALS.has(id) ? 25
 
 /** The path sum fades in between these k (1/angstrom), above the near-edge region, and stops at the top of the grid. */
 const FEFF_FROM_K = 2, FEFF_FULL_K = 3.5, FEFF_K_STEP = 0.0025, FEFF_K_MAX = 18;
+/** With a computed near edge, it hands over to the path sum between these k (41 to 64 eV), inside its stored range. */
+const XANES_FROM_K = 3.3, XANES_FULL_K = 4.1;
 const MODEL_CACHE_SIZE = 32;
 
 const libraryMaterials = new Map<string, FeffMaterial>();
+const libraryXanes = new Map<string, XanesFile>();
 const libraryModels = new Map<string, FineStructureModel>();
 
 /**
@@ -158,11 +162,13 @@ export function useLibraryMaterial(material: FeffMaterial): void {
   libraryMaterials.set(material.id, material);
 }
 
-/** Loads the FEFF paths of a sample's material when the library has it; resolves true once they are in use. */
+/** Loads the FEFF paths and the computed near edge of a sample's material when the library has it; resolves true once they are in use. */
 export async function loadLibraryFineStructure(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge'>): Promise<boolean> {
   const id = libraryMaterialId(sample);
   if (!id) return false;
-  if (!libraryMaterials.has(id)) useLibraryMaterial(await loadPaths(id));
+  const [paths, xanes] = await Promise.all([libraryMaterials.get(id) ?? loadPaths(id), libraryXanes.get(id) ?? import('./xanes-files').then(m => m.loadXanes(id))]);
+  useLibraryMaterial(paths);
+  libraryXanes.set(id, xanes);
   return true;
 }
 
@@ -175,14 +181,16 @@ export function libraryParameters(material: FeffMaterial, temperature_K = ROOM_T
 }
 
 /**
- * The library's FEFF path sum on the teaching near edge: the edge onset, pre-edge peak and white
- * line of `teachingFineStructure` without its oscillation, plus chi(k) from every path of the
- * material, faded in between k = 2 and 3.5 per angstrom, where the path expansion takes over from
- * the near-edge region. Each path's sigma^2 comes from the Einstein model at the sample temperature.
- * chi(k) is summed once per material and temperature on a 0.0025 per angstrom grid and interpolated.
+ * The library's FEFF path sum on a near edge. With `xanes` (the material's FEFF10 full multiple scattering spectrum,
+ * its E0 placed at the edge energy) the near edge is that calculation, handing over to the path sum between k = 3.3
+ * and 4.1 per angstrom. Without it, the near edge is the teaching model: the edge onset, pre-edge peak and white line
+ * of `teachingFineStructure` without its oscillation, the path sum faded in between k = 2 and 3.5 per angstrom.
+ * Each path's sigma^2 comes from the Einstein model at the sample temperature. chi(k) is summed once per material and
+ * temperature on a 0.0025 per angstrom grid and interpolated.
  */
-export function libraryFineStructure(edgeEnergy_eV: number, material: FeffMaterial, temperature_K = ROOM_TEMPERATURE_K): FineStructureModel {
-  const key = `${material.id} ${edgeEnergy_eV} ${temperature_K}`;
+export function libraryFineStructure(edgeEnergy_eV: number, material: FeffMaterial, temperature_K = ROOM_TEMPERATURE_K, xanes: XanesFile | null = null): FineStructureModel {
+  if (xanes && xanes.id !== material.id) throw new Error(`Near edge of ${xanes.id} given for ${material.id}.`);
+  const key = `${material.id} ${edgeEnergy_eV} ${temperature_K}${xanes ? ' xanes' : ''}`;
   const cached = libraryModels.get(key);
   if (cached) return cached;
   const thetaE_K = einsteinTemperature_K(material.id);
@@ -190,16 +198,28 @@ export function libraryFineStructure(edgeEnergy_eV: number, material: FeffMateri
   const chi = chiSum(material, libraryParameters(material, temperature_K), k).chi;
   const near = teachingFineStructure(edgeEnergy_eV, { oscillation: 0 });
   const width = defaultEdgeWidth(edgeEnergy_eV);
-  const model: FineStructureModel = {
+  const chiAt = (kk: number) => { const x = kk / FEFF_K_STEP, i = Math.floor(x), f = x - i; return chi[i] * (1 - f) + chi[i + 1] * f; };
+  const model: FineStructureModel = xanes ? {
+    factor: energy_eV => {
+      const d = energy_eV - edgeEnergy_eV, computed = xanesAt(xanes, d);
+      const kk = d > 0 ? Math.sqrt(ETOK * d) : 0;
+      if (kk <= XANES_FROM_K) return computed;
+      const step = 0.5 + Math.atan(d / width) / Math.PI, paths = kk >= FEFF_K_MAX ? step : step * (1 + chiAt(kk));
+      if (kk >= XANES_FULL_K) return paths;
+      const w = 0.5 - 0.5 * Math.cos(Math.PI * (kk - XANES_FROM_K) / (XANES_FULL_K - XANES_FROM_K));
+      return (1 - w) * computed + w * paths;
+    },
+    provenance: 'computed',
+    label: `FEFF10 near edge and FEFF paths of ${material.formula}; sigma^2 from an Einstein model at ${temperature_K} K with theta_E ${thetaE_K} K (a teaching value)`,
+  } : {
     factor: energy_eV => {
       const base = near.factor(energy_eV);
       if (energy_eV <= edgeEnergy_eV) return base;
       const kk = Math.sqrt(ETOK * (energy_eV - edgeEnergy_eV));
       if (kk <= FEFF_FROM_K || kk >= FEFF_K_MAX) return base;
       const fade = kk >= FEFF_FULL_K ? 1 : 0.5 - 0.5 * Math.cos(Math.PI * (kk - FEFF_FROM_K) / (FEFF_FULL_K - FEFF_FROM_K));
-      const x = kk / FEFF_K_STEP, i = Math.floor(x), f = x - i;
       const step = 0.5 + Math.atan((energy_eV - edgeEnergy_eV) / width) / Math.PI;
-      return base + step * fade * (chi[i] * (1 - f) + chi[i + 1] * f);
+      return base + step * fade * chiAt(kk);
     },
     provenance: ['computed', 'teaching-model'],
     label: `FEFF paths of ${material.formula}; sigma^2 from an Einstein model at ${temperature_K} K with theta_E ${thetaE_K} K (a teaching value); teaching near edge`,
@@ -209,10 +229,10 @@ export function libraryFineStructure(edgeEnergy_eV: number, material: FeffMateri
   return model;
 }
 
-/** The fine structure `muComponents` uses unless told otherwise: the library's FEFF paths once loaded, else the teaching model. */
+/** The fine structure `muComponents` uses unless told otherwise: the library's FEFF paths and computed near edge once loaded, else the teaching model. */
 export function defaultFineStructure(sample: Pick<SampleConfig, 'formula' | 'absorber' | 'edge'>, edgeEnergy_eV: number, temperature_K = ROOM_TEMPERATURE_K): FineStructureModel {
   const id = libraryMaterialId(sample), material = id ? libraryMaterials.get(id) : undefined;
-  return material ? libraryFineStructure(edgeEnergy_eV, material, temperature_K) : teachingFineStructure(edgeEnergy_eV);
+  return material ? libraryFineStructure(edgeEnergy_eV, material, temperature_K, libraryXanes.get(material.id) ?? null) : teachingFineStructure(edgeEnergy_eV);
 }
 
 // ---------------------------------------------------------------- mu components
