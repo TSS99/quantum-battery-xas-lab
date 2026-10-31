@@ -9,7 +9,7 @@ function collectErrors(page: Page) {
 
 test('Read the spectrum splits CuO into shells, and choosing one explains its peak and its offset', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   const table = page.locator('.spectrum-table-wrap .spectrum-table');
   // Six shells, the farther atoms and the multiple scattering paths.
   await expect(table.locator('tbody tr')).toHaveCount(8);
@@ -32,7 +32,7 @@ test('Read the spectrum splits CuO into shells, and choosing one explains its pe
 
 test('what if: moving a shell moves its peak, and going back to the crystal restores it', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   await page.locator('.spectrum-table').getByRole('button', { name: '4 O at 1.96 Å' }).click();
   const back = page.getByRole('button', { name: 'Back to the crystal' });
   await expect(back).toBeDisabled();
@@ -50,7 +50,7 @@ test('what if: moving a shell moves its peak, and going back to the crystal rest
 });
 
 test('the electron wave meets itself in step exactly where the shell chi(k) is positive', async ({ page }) => {
-  await page.goto('./spectrum/?sample=cu-foil');
+  await page.goto('./spectrum/?sample=cu-foil&view=detailed');
   const k = page.getByRole('slider', { name: 'Electron wavenumber k' }), verdict = page.locator('.wave-verdict');
   for (const value of ['3', '4.5', '6', '7.5', '9', '10.5', '12']) {
     await k.fill(value);
@@ -63,7 +63,7 @@ test('the electron wave meets itself in step exactly where the shell chi(k) is p
 });
 
 test('the neighbour panel compares light and heavy scatterers from their FEFF amplitudes', async ({ page }) => {
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   const legend = page.locator('.neighbour-legend');
   await expect(legend).toContainText('oxygen: largest near k = 3.2 (this shell)');
   await expect(legend).toContainText('platinum: largest near k = 16.0');
@@ -71,7 +71,7 @@ test('the neighbour panel compares light and heavy scatterers from their FEFF am
 });
 
 test('around the edge: the measured edge position and the valence series of the element', async ({ page }) => {
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   const edge = page.locator('#spectrum-edge');
   // Cu K at 8979.0 eV (xraydb) plus CuO's measured +5.4 eV.
   await expect(edge).toContainText('8984.4 eV');
@@ -83,7 +83,7 @@ test('around the edge: the measured edge position and the valence series of the 
 });
 
 test('the guided tour walks from the edge to a bond distance with this sample\'s numbers', async ({ page }) => {
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   await page.getByRole('button', { name: 'Guided tour' }).click();
   const tour = page.getByRole('complementary', { name: 'Guided tour' });
   await expect(tour).toContainText('Step 1 of 6');
@@ -106,7 +106,7 @@ test('the guided tour walks from the edge to a bond distance with this sample\'s
 
 test('how XAS works: scanning the energy takes the core electron from staying put to a jump to a free wave', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./spectrum/?sample=mno2-pellet');
+  await page.goto('./spectrum/?sample=mno2-pellet&view=detailed');
   const explorer = page.locator('#spectrum-explorer'), caption = page.locator('.xas-explorer-caption');
   await expect(caption).toContainText('Too little energy to free a manganese 1s electron');
   await explorer.getByRole('button', { name: 'Pre-edge', exact: true }).click();
@@ -123,7 +123,7 @@ test('how XAS works: scanning the energy takes the core electron from staying pu
 });
 
 test('how XAS works names the levels of the absorber: sulfur 1s to empty 3p, no 3d', async ({ page }) => {
-  await page.goto('./spectrum/?sample=na2so4-pellet');
+  await page.goto('./spectrum/?sample=na2so4-pellet&view=detailed');
   const explorer = page.locator('#spectrum-explorer'), caption = page.locator('.xas-explorer-caption');
   await explorer.getByRole('button', { name: 'Edge', exact: true }).click();
   await expect(caption).toContainText('empty 3p states');
@@ -133,7 +133,7 @@ test('how XAS works names the levels of the absorber: sulfur 1s to empty 3p, no 
 });
 
 test('the reading cards and the chapters take you to the panel to try', async ({ page }) => {
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   await expect(page.locator('.read-card')).toHaveCount(3);
   await page.locator('.read-card').filter({ hasText: 'Edge position' }).getByRole('button', { name: 'Try it on this sample' }).click();
   await expect(page.locator('#spectrum-oxidation')).toBeInViewport();
@@ -142,13 +142,13 @@ test('the reading cards and the chapters take you to the panel to try', async ({
 });
 
 test('Read the spectrum says when a heavy neighbour peaks near its true distance', async ({ page }) => {
-  await page.goto('./spectrum/?sample=pt-foil');
+  await page.goto('./spectrum/?sample=pt-foil&view=detailed');
   await page.locator('.spectrum-table').getByRole('button', { name: /^12 Pt at 2\.7\d Å$/ }).click();
   await expect(page.locator('.spectrum-explain')).toContainText('close to the true distance');
 });
 
 test('Read the spectrum offers the absorber sites of a material with more than one', async ({ page }) => {
-  await page.goto('./spectrum/?sample=mn-foil');
+  await page.goto('./spectrum/?sample=mn-foil&view=detailed');
   const site = page.getByRole('combobox', { name: 'Absorber site' });
   await expect(site.locator('option')).toHaveCount(4);
   await site.selectOption({ index: 1 });
@@ -158,21 +158,21 @@ test('Read the spectrum offers the absorber sites of a material with more than o
 
 test('the near edge is computed for each crystal: the chromate card and the edge panel read their numbers from it', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./spectrum/?sample=k2cro4-pellet');
+  await page.goto('./spectrum/?sample=k2cro4-pellet&view=detailed');
   const card = page.locator('.read-card').filter({ hasText: 'Edge shape' });
   await expect(card).toContainText('K₂CrO₄, tetrahedral');
   await expect(card).toContainText(/K₂CrO₄'s is \d+× Cr₂O₃'s/);
   const edge = page.locator('#spectrum-edge');
   await expect(page.locator('.spectrum-model')).toContainText('FEFF10 full multiple scattering for this crystal');
   await expect(edge).toContainText(/Pre-edge at \D?1\d\.\d eV/);
-  await page.goto('./spectrum/?sample=ceo2-pellet');
+  await page.goto('./spectrum/?sample=ceo2-pellet&view=detailed');
   await expect(page.locator('#spectrum-edge')).toContainText('FEFF, a one electron calculation, gives one');
   expect(errors).toEqual([]);
 });
 
 test('the shell plots: stacked lanes first, build up adds groups until they make the spectrum, k weight changes the transform', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   const plots = page.locator('#spectrum-plots');
   await expect(plots.getByRole('button', { name: 'Stacked' })).toHaveAttribute('aria-pressed', 'true');
   await plots.getByRole('button', { name: 'Build up' }).click();
@@ -188,16 +188,16 @@ test('the shell plots: stacked lanes first, build up adds groups until they make
 });
 
 test('a measured spectrum of the same material is drawn with the model, where the Larch examples have one', async ({ page }) => {
-  await page.goto('./spectrum/?sample=cu-foil');
+  await page.goto('./spectrum/?sample=cu-foil&view=detailed');
   await expect(page.locator('#spectrum-plots .spectrum-legend')).toContainText('Measured Cu foil (APS 13-ID, 2001)');
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   await page.locator('.spectrum-table').getByRole('button', { name: '4 O at 1.96 Å' }).click();
   await expect(page.locator('#spectrum-plots .spectrum-legend')).not.toContainText('Measured');
 });
 
 test('the atoms panel lays the shells out by distance and shows the chosen one as a sphere', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   const atoms = page.locator('#spectrum-atoms');
   await expect(atoms.getByRole('img', { name: /Distances from the copper atom: 4 O at 1\.96 angstrom, 2 O at 2\.78 angstrom/ })).toBeVisible();
   const far = atoms.getByRole('button', { name: 'Show farther atoms' });
@@ -211,7 +211,7 @@ test('the atoms panel lays the shells out by distance and shows the chosen one a
 
 test('the wave map draws the shell in a slice through the real cluster, whole or echoes alone', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   const wave = page.locator('#spectrum-wave');
   await expect(wave.getByRole('img', { name: /around the copper atom and 4 of its 4 oxygen neighbours at 1\.96 angstrom, at k 6\.00: in step/ })).toBeVisible();
   await wave.getByRole('button', { name: 'Echoes alone' }).click();
@@ -222,7 +222,7 @@ test('the wave map draws the shell in a slice through the real cluster, whole or
 });
 
 test('the page reads in few words: the prose stays within 450 words, the model notes in one fold', async ({ page }) => {
-  await page.goto('./spectrum/?sample=cuo-pellet');
+  await page.goto('./spectrum/?sample=cuo-pellet&view=detailed');
   await expect(page.locator('.read-card')).toHaveCount(3);
   await expect(page.locator('.wave-map')).toBeVisible();
   const words = await page.evaluate(() => [...document.querySelectorAll('.spectrum-grid p, .spectrum-grid li')]

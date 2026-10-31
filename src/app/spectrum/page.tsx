@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { SpectrumPage } from '@/components/spectrum/spectrum-page';
+import { SpectrumPage } from '@/components/spectrum/read-spectrum';
 import { JsonLd } from '@/components/json-ld';
 import { spectrumJsonLd, spectrumMetadata } from '@/lib/site';
 import { twinFonts } from '../fonts';
 import '../twin.css';
 import '../spectrum.css';
+import '../spectrum-story.css';
 
 export const metadata: Metadata = spectrumMetadata();
 

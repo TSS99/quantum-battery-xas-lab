@@ -17,6 +17,7 @@ import { TexProse } from '../twin/tex-prose';
 import type { ShellCurve, Stick } from './shell-plot';
 import type { WiggleCurve } from './read-cards';
 import { atomName } from './atoms';
+import { setAddress, ViewSwitch, type SpectrumView } from './view-switch';
 
 
 // three.js loads after the page, like the twin's hutch.
@@ -53,7 +54,8 @@ const shellLabel = (s: Shell) => s.kind === 'shell' ? `${s.count} ${s.element} a
 const shortLabel = (s: Shell) => s.kind === 'shell' ? `${s.count} ${s.element}` : shellLabel(s);
 const peakOf = (y: number[]) => y.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
 
-export function SpectrumPage() {
+/** Every panel, for students and scientists; the story (story/story-view.tsx) is the default view. */
+export function DetailedView({ onView }: { onView: (view: SpectrumView) => void }) {
   const [presetId, setPresetId] = useState('cu-foil');
   const [twin, setTwin] = useState<TwinState | null>(null);
   const [follow, setFollow] = useState(true);
@@ -137,7 +139,7 @@ export function SpectrumPage() {
   const active = hover ?? selected;
   const activeShell = shown.find(s => s.id === active) ?? null, chosen = shown.find(s => s.id === selected) ?? null;
 
-  const frame = { following: fromTwin, linked: twin !== null, onFollow: () => setFollow(true), presetId, pick: (id: string) => { setPresetId(id); setFollow(false); }, onTour: () => setTour(0) };
+  const frame = { following: fromTwin, linked: twin !== null, onFollow: () => setFollow(true), presetId, pick: (id: string) => { setPresetId(id); setFollow(false); setAddress({ sample: id }); }, onTour: () => setTour(0), onView };
   if (!materialId) return <Frame {...frame}>
     <p className="spectrum-empty">{sample.formula} at the {sample.absorber} {sample.edge} edge has no FEFF paths in the twin&apos;s library, so its spectrum cannot be split into shells. Choose a library sample above.</p>
   </Frame>;
@@ -391,17 +393,18 @@ function Explain({ shell, absorber, peak, sigma2, temperature_K, share }: { shel
 }
 
 /** Header with the sample and site pickers and the link to the twin. `following`: showing the twin's sample; `linked`: the twin has answered. */
-function Frame({ children, following, linked, onFollow, presetId, pick, site, onTour }: {
-  children: React.ReactNode; following: boolean; linked: boolean; onFollow: () => void; presetId: string; pick: (id: string) => void; onTour: () => void;
+function Frame({ children, following, linked, onFollow, presetId, pick, site, onTour, onView }: {
+  children: React.ReactNode; following: boolean; linked: boolean; onFollow: () => void; presetId: string; pick: (id: string) => void; onTour: () => void; onView: (view: SpectrumView) => void;
   site?: { ids: string[]; value: string; set: (id: string) => void };
 }) {
-  return <div className="twin-app spectrum-app">
+  return <>
     <header className="spectrum-head">
       <div>
         <p className="twin-kicker">XAS Lab · Beamline twin</p>
         <h1 className="twin-title">Read the <em>spectrum</em></h1>
       </div>
       <div className="spectrum-controls">
+        <ViewSwitch view="detailed" onChange={onView} />
         <label>Sample <select name="sample" value={following ? '' : presetId} onChange={e => pick(e.target.value)}>
           {following && <option value="">From the twin</option>}
           {SAMPLE_GROUPS.map(g => {
@@ -417,5 +420,5 @@ function Frame({ children, following, linked, onFollow, presetId, pick, site, on
       </div>
     </header>
     {children}
-  </div>;
+  </>;
 }

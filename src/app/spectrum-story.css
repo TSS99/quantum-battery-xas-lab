@@ -1,0 +1,55 @@
+/* Read the spectrum, the story view: one idea per scene, large type, one picture, at most one control. */
+.view-switch {display:inline-flex;padding:3px;border:1px solid var(--tw-line);border-radius:999px;background:rgb(29 40 62/.6)}
+.view-switch button {min-height:32px;padding:5px 14px;border:0;border-radius:999px;background:none;color:var(--tw-muted);font:500 13.5px/1 var(--font-sans);cursor:pointer}
+.view-switch button[aria-pressed="true"] {background:var(--tw-accent-soft);color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line)}
+.story {max-width:1120px;margin:0 auto}
+.story-head {display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px 28px;padding:10px 0 18px}
+.story-title {font-size:46px;margin:4px 0 10px}
+.story-lede {max-width:46ch;margin:0;font-size:19px;line-height:1.5;color:var(--tw-body)}
+.story-tools {display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.story-pick {display:flex;align-items:center;gap:8px;font-size:14px;color:var(--tw-muted)}
+.story-pick select {min-height:36px;font:15px var(--font-sans)}
+.story-rail {position:sticky;top:0;z-index:15;display:flex;gap:4px;margin:0 -22px;padding:8px 22px;overflow-x:auto;background:rgb(20 29 49/.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--tw-line)}
+.story-rail a {display:inline-flex;flex:none;align-items:center;gap:7px;padding:5px 11px 5px 6px;border-radius:999px;color:var(--tw-muted);font:500 13.5px/1 var(--font-sans);text-decoration:none}
+.story-rail a span {display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--tw-line);font:500 12px var(--tw-mono)}
+.story-rail a[aria-current="step"] {color:var(--tw-text);background:var(--tw-accent-soft)}
+.story-rail a[aria-current="step"] span {border-color:var(--tw-accent);color:var(--tw-accent)}
+.story-scene {display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr);align-items:center;gap:28px 48px;padding:64px 0;border-bottom:1px solid var(--tw-line);scroll-margin-top:52px}
+.story-step {margin:0 0 8px;font:500 12px/1.4 var(--tw-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--tw-accent)}
+.story-h {margin:0 0 14px;font:400 34px/1.15 var(--tw-serif);color:var(--tw-text)}
+.story-body p {margin:0;font-size:18.5px;line-height:1.6;color:var(--tw-body)}
+.story-term {display:inline-block;margin:18px 0 0;padding:6px 12px;border:1px dashed var(--tw-line);border-radius:8px;font-size:13.5px;color:var(--tw-muted)}
+.story-term strong {font-weight:500;color:var(--tw-text)}
+.story-picture {display:grid;gap:14px;min-width:0}
+.story-figure {display:grid;gap:10px;margin:0}
+.story-figure svg {display:block;width:100%;height:auto}
+.story-readout {display:flex;justify-content:center;gap:28px;margin:0;font-size:16px;color:var(--tw-muted)}
+.story-readout b {margin-right:6px;font:500 26px/1 var(--tw-mono);color:var(--tw-text)}
+.story-caption {margin:0;min-height:3.2em;font-size:16.5px;line-height:1.55;color:var(--tw-body)}
+.story-caption b {font-weight:500;color:var(--tw-text)}
+.story-slider {display:grid;gap:8px}
+.story-slider label {display:flex;justify-content:space-between;gap:12px;font-size:15px;color:var(--tw-muted)}
+.story-slider output {font:500 17px var(--tw-mono);color:var(--tw-text)}
+.story-slider input {width:100%;height:28px;accent-color:#ffc46b}
+/* The 3D pictures: a dark stage, touch passes through so the page still scrolls on a phone. */
+.story-stage-row {display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:8px;align-items:center}
+.story-stage {position:relative;aspect-ratio:16/11;border-radius:12px;background:radial-gradient(ellipse at 50% 45%,#16233a,#0d1424 75%);overflow:hidden;touch-action:pan-y}
+.story-stage.is-wide {aspect-ratio:16/7}
+.story-stage canvas {touch-action:pan-y}
+.story-meter {width:100%;height:auto}
+.story-key {display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;font-size:13.5px;color:var(--tw-muted)}
+.story-key i {display:inline-block;width:10px;height:10px;margin-right:7px;border-radius:50%;background:#5fb8e6;opacity:.6;vertical-align:-1px}
+.story-key i.is-core {background:#f0fcff;opacity:1;box-shadow:0 0 8px #8ce3ff}
+@media (max-width:860px) {
+  .story-scene {grid-template-columns:minmax(0,1fr);gap:22px;padding:44px 0}
+  .story-title {font-size:36px}
+  .story-lede {font-size:17px}
+  .story-h {font-size:28px}
+  .story-body p {font-size:17px}
+}
+@media (max-width:520px) {
+  .story-rail {margin:0 -16px;padding:8px 16px}
+  .story-readout {gap:16px;font-size:14.5px}
+  .story-readout b {font-size:22px}
+  .story-stage.is-wide {aspect-ratio:16/10}
+}
