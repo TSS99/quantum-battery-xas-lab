@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
-import { TwinPage } from '@/components/twin/twin-page';
-import { JsonLd } from '@/components/json-ld';
-import { twinJsonLd, twinMetadata } from '@/lib/site';
-import { twinFonts } from '../fonts';
-import '../twin.css';
+import { pageUrl } from '@/lib/site';
+import { TwinMoved } from './twin-moved';
 
-export const metadata: Metadata = twinMetadata();
+// The twin used to live at /twin/; it is the whole site now. Old links, with their #settings, land on the new address.
+export const metadata: Metadata = { title: 'Beamline Twin has moved', robots: { index: false, follow: true }, alternates: { canonical: pageUrl('') } };
 
 export default function Page() {
-  return <><JsonLd data={twinJsonLd()} /><div className={twinFonts}><TwinPage /></div></>;
+  return <TwinMoved />;
 }

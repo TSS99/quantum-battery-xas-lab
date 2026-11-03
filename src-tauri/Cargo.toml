@@ -1,7 +1,7 @@
 [package]
 name = "xas-lab"
 version = "1.14.0"
-description = "XAS Lab: X-ray absorption spectroscopy and a beamline twin, as a desktop app"
+description = "Beamline Twin: an X-ray absorption beamline, as a desktop app"
 authors = ["Tilock Sadhukhan"]
 license = "MIT"
 repository = "https://github.com/TSS99/quantum-battery-xas-lab"

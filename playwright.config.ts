@@ -27,7 +27,7 @@ export default defineConfig({
     {
       name: 'mobile',
       use: { ...devices['Desktop Chrome'], channel, viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
-      testMatch: /ui\.spec\.ts/,
+      testMatch: /site\.spec\.ts/,
       grep: /mobile/,
     },
   ],

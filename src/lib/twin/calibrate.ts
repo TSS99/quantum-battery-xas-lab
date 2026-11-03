@@ -551,10 +551,10 @@ export function generateMysteryInstrument(state: TwinState, seed: number): Myste
     'Sample.density': state.sample.density.toString(),
     'Sample.thickness_um': state.sample.thickness_um.toString(),
     'Detector.elements': String(elements),
-    'Facility.name': 'XAS Lab mystery instrument (simulated)',
+    'Facility.name': 'Beamline Twin mystery instrument (simulated)',
   };
   const textValue = writeXdi({ columns: { energy, i0, itrans, murefer, mutrans, icr, ocr }, metadata }, [
-    'Synthetic calibration challenge generated locally by XAS Lab.',
+    'Synthetic calibration challenge generated locally by the Beamline Twin.',
     'The hidden settings are determined by the seed and are not stored in this file.',
   ]);
   return { seed: seed >>> 0, filename: `xaslab-mystery-${seed >>> 0}.xdi`, text: textValue, truth };

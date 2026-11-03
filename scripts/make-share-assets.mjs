@@ -1,16 +1,13 @@
-// Renders the share images (public/og/*.png, 1200x630), apple-icon.png and favicon.ico
+// Renders the share image (public/og/twin.png, 1200x630, which every page uses), apple-icon.png and favicon.ico
 // from src/data/site-pages.json and src/app/icon.svg. Run after changing page titles:
 //   PLAYWRIGHT_CHANNEL=chrome node scripts/make-share-assets.mjs
-// Add --elements-only (or --only=<slug>) to render just that card, leaving the other assets intact.
+// Add --card-only to render just the card, leaving the icons intact.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from '@playwright/test';
 
 const site = JSON.parse(await readFile('src/data/site-pages.json', 'utf8'));
-const only = process.argv.includes('--elements-only') ? 'elements' : process.argv.find(a => a.startsWith('--only='))?.slice(7);
-const cards = [...site.pages, site.elements, site.twin, site.tools, site.instructors];
-const pages = only ? cards.filter(p => p.slug === only) : cards;
-if (!pages.length) throw new Error(`No card with the slug "${only}".`);
-const oneCard = !!only;
+const pages = [site.home];
+const oneCard = process.argv.includes('--card-only');
 const icon = await readFile('src/app/icon.svg', 'utf8');
 const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -61,7 +58,7 @@ for (const page of pages) {
   await tab.evaluate(() => document.fonts.ready);
   const fits = await tab.evaluate(() => document.body.scrollHeight <= 630 && document.body.scrollWidth <= 1200);
   if (!fits) throw new Error(`Share card text overflows for "${page.name}". Shorten the title or description.`);
-  await tab.screenshot({ path: `public/og/${page.slug || 'home'}.png` });
+  await tab.screenshot({ path: 'public/og/twin.png' });
 }
 
 async function renderMaskable(size) {

@@ -82,6 +82,6 @@ export class HeadlessTwin {
 
   status() { return status(this.state); }
 
-  xdi(acquisition: Acquisition) { return writeXdi(acquisition, ['Simulated by the XAS Lab beamline twin, headless.']); }
+  xdi(acquisition: Acquisition) { return writeXdi(acquisition, ['Simulated by the Beamline Twin, headless.']); }
   larch(acquisition: Acquisition, xdiName: string) { return larchScript(acquisition, xdiName); }
 }

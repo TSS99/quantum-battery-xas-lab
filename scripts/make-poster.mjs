@@ -10,7 +10,7 @@ const [, , base = 'http://127.0.0.1:3000/quantum-battery-xas-lab/'] = process.ar
 const browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}), args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, acceptDownloads: true });
 await page.addInitScript(() => localStorage.setItem('xaslab-twin-ultra', 'on'));
-await page.goto(base + 'twin/?v=' + Date.now(), { waitUntil: 'load' });
+await page.goto(base + '?v=' + Date.now(), { waitUntil: 'load' });
 await page.locator('.twin-scene:not([aria-busy="true"])').waitFor({ timeout: 120_000 });
 // Let the 4K textures arrive and the photons fill the line.
 await page.waitForTimeout(12_000);

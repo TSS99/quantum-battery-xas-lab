@@ -10,7 +10,6 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:ui": "playwright test",
-    "science": "python -m uvicorn science.app:app --host 127.0.0.1 --port 8000",
     "twin": "esbuild src/cli/twin-cli.ts --bundle --platform=node --format=esm --outfile=.cache/twin-cli.mjs --log-level=warning && node .cache/twin-cli.mjs",
     "mcp": "esbuild src/cli/xaslab-mcp.ts --bundle --platform=node --format=esm --outfile=.cache/xaslab-mcp.mjs --log-level=warning && node .cache/xaslab-mcp.mjs",
     "build:desktop": "node scripts/build-desktop.mjs",

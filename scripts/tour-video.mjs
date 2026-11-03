@@ -10,7 +10,7 @@ const [, , out = 'tour.mp4', ffmpeg = 'ffmpeg', w = '1152', h = '720', ratio = '
 const browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}), args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: +w, height: +h }, deviceScaleFactor: +ratio });
 const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-await page.goto(base + 'twin/?v=' + Date.now());
+await page.goto(base + '?v=' + Date.now());
 await page.locator('.twin-scene:not([aria-busy="true"])').waitFor({ timeout: 90000 });
 if (+w > 700) await page.getByRole('button', { name: 'Scene only', exact: true }).click();
 await page.waitForTimeout(4000);

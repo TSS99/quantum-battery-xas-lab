@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "XAS Lab",
+  "productName": "Beamline Twin",
   "version": "../package.json",
   "identifier": "io.github.tss99.xaslab",
   "build": {
@@ -17,8 +17,8 @@
     "active": true,
     "targets": "all",
     "category": "Education",
-    "shortDescription": "X-ray absorption spectroscopy lab and beamline twin",
-    "longDescription": "XAS Lab runs X-ray absorption spectroscopy in one window: plan samples for any material, operate a working beamline twin in 3D, and process and fit spectra. Everything runs on your computer.",
+    "shortDescription": "An X-ray absorption beamline to operate on your computer",
+    "longDescription": "Beamline Twin is a working X-ray absorption beamline in 3D: monochromator, mirrors, ion chambers and a fluorescence detector. Scan, fit the EXAFS, train on faults and calibrate from your own data. Everything runs on your computer.",
     "copyright": "Copyright (c) 2026 Tilock Sadhukhan. MIT License.",
     "license": "MIT",
     "icon": [

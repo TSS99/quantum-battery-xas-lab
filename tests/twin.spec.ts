@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { axeViolations } from './axe';
 
-// Browser tests for the /twin/ beamline twin. Names avoid the word "mobile" so the desktop project runs them;
+// Browser tests for the Beamline Twin, the whole site at /. Names avoid the word "mobile" so the desktop project runs them;
 // the phone checks set a 390 px viewport themselves.
 const MODES = ['Transmission', 'Fluorescence', 'Electron yield', 'XRF spectrum', 'Monochromator', 'Energy calibration', 'Time resolved', 'Beam damage'];
 
@@ -17,29 +17,26 @@ function collectErrors(page: Page) {
 }
 
 async function openTwin(page: Page, hash = '') {
-  await page.goto('./twin/' + hash);
+  await page.goto('./' + hash);
   // The drawing appears once the X-ray tables have loaded and the page has hydrated; the 3D view then takes over.
   await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
   await expect(page.locator('.twin-scene')).not.toHaveAttribute('aria-busy', 'true', { timeout: 30_000 });
 }
 
-test('twin page loads with one h1, a breadcrumb, indexable metadata and no console errors', async ({ page }) => {
+test('twin page loads with one h1, indexable metadata and no console errors', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page);
-  await expect(page).toHaveTitle('Beamline twin: operate an XAS beamline in your browser | XAS Lab');
+  await expect(page).toHaveTitle('Beamline Twin: operate an X-ray absorption beamline in your browser');
   await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Beamline twin');
-  const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
-  await expect(crumbs.getByRole('link', { name: 'Beamline twin' })).toHaveAttribute('aria-current', 'page');
-  await expect(crumbs).not.toContainText('Preview');
-  await expect(crumbs).not.toContainText('Page not found');
-  // The twin runs full screen: no site header or module bar, and the breadcrumb leads back to the lab.
-  await expect(page.getByRole('navigation', { name: 'Laboratory modules' })).toHaveCount(0);
-  await expect(crumbs.getByRole('link', { name: 'XAS Lab' })).toHaveAttribute('href', /\/quantum-battery-xas-lab\/?$|^\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Beamline Twin');
+  // The twin is the whole site: no site header, module bar or way back to an older lab.
+  await expect(page.getByRole('navigation')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /XAS Lab/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Methods' })).toHaveAttribute('href', /\/methods\/$/);
   // Chromium has speech synthesis, so the explanation offers to read itself aloud.
   await expect(page.getByRole('complementary', { name: 'Explanation' }).getByRole('button', { name: 'Read aloud' })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://tss99.github.io/quantum-battery-xas-lab/twin/');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://tss99.github.io/quantum-battery-xas-lab/');
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/og\/twin\.png$/);
   await expect(page.locator('.katex-error')).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -59,7 +56,7 @@ test('modes switch by click and by keys 1 to 8, and the mode and seed round-trip
     await expect(page.getByRole('group', { name: 'Modes' }).locator('[aria-pressed="true"]')).toHaveCount(1);
   }
   await expect(page).toHaveURL(/#v=1&mode=damage&seed=1&s=/);
-  await page.goto('./twin/#mode=xrf&seed=7');
+  await page.goto('./#mode=xrf&seed=7');
   await expect(mode(page, 'XRF spectrum')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('2');
   await expect(page).toHaveURL(/#v=1&mode=fluorescence&seed=7&s=/);
@@ -217,7 +214,7 @@ test('3D hutch is the default: a diagram chosen before v1.9.1 no longer wins, an
   await page.addInitScript(() => localStorage.setItem('xaslab-twin-hutch-view', 'diagram'));
   // Hold the textures back for a moment, so the still is seen before the model.
   await page.route('**/images/twin/hutch-pano.webp', async route => { await new Promise(r => setTimeout(r, 2_500)); await route.continue(); });
-  await page.goto('./twin/');
+  await page.goto('./');
   const poster = page.getByRole('img', { name: 'The 3D hutch is loading' });
   await expect(poster).toBeVisible();
   await expect(poster).toContainText(/Loading the (X-ray tables|3D hutch)/);
@@ -411,23 +408,6 @@ test('Pop out shows the results in a second window with its own view list', asyn
   expect(errors).toEqual([]);
 });
 
-test('Read the spectrum opens beside the twin and follows its sample', async ({ page }) => {
-  const errors = collectErrors(page);
-  await openTwin(page, '#mode=transmission&seed=7');
-  const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Read the spectrum' }).click()]);
-  await expect(popup).toHaveURL(/\/spectrum\/\?from=twin$/);
-  await expect(popup.getByText('Following the twin')).toBeVisible();
-  // The twin starts on the Cu foil: twelve copper neighbours first.
-  await expect(popup.locator('.spectrum-table').getByRole('button', { name: /^12 Cu at 2\.5\d Å$/ })).toBeVisible();
-  await popup.getByRole('combobox', { name: 'Sample' }).selectOption('cuo-pellet');
-  await expect(popup.getByRole('button', { name: 'Follow the twin' })).toBeVisible();
-  await expect(popup.locator('.spectrum-table').getByRole('button', { name: '4 O at 1.96 Å' })).toBeVisible();
-  await popup.getByRole('button', { name: 'Follow the twin' }).click();
-  await expect(popup.locator('.spectrum-table').getByRole('button', { name: /^12 Cu at 2\.5\d Å$/ })).toBeVisible();
-  await popup.close();
-  expect(errors).toEqual([]);
-});
-
 test('the XRF counting window moves by dragging its edge and by the keyboard controls', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page, '#mode=xrf&seed=7');
@@ -612,7 +592,7 @@ test('training: S8 glitch spikes go away once the foil is uniform', async ({ pag
 
 test('classroom: a class link opens the assigned task, the result downloads, and the instructor view tabulates it', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('./twin/#train=s6-gases&seed=42');
+  await page.goto('./#train=s6-gases&seed=42');
   await expect(page.getByRole('img', { name: /^Beamline drawing/ })).toBeVisible();
   const dialog = page.getByRole('dialog', { name: 'Training scenarios' });
   const assigned = dialog.getByRole('region', { name: "Your instructor's task" });
@@ -644,7 +624,7 @@ test('keyboard shortcuts dialog lists the keys, blocks them while open and retur
   await opener.click();
   const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('row')).toHaveCount(20);
+  await expect(dialog.getByRole('row')).toHaveCount(19);
   await page.keyboard.press('4');
   await expect(mode(page, 'Transmission')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');

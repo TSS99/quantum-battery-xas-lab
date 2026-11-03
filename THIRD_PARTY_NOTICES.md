@@ -1,6 +1,6 @@
 # Third-party notices
 
-XAS Lab's own code is under the MIT License (see LICENSE). These parts come from other projects and keep their licences.
+Beamline Twin's own code is under the MIT License (see LICENSE). These parts come from other projects and keep their licences.
 
 ## Data
 
@@ -20,9 +20,9 @@ The OFL fonts are bundled in `src/fonts/` (the latin files of Fontsource 5.3.0, 
 
 | Font | Use | Licence |
 | --- | --- | --- |
-| Outfit | Site interface text | SIL Open Font License 1.1 |
-| IBM Plex Sans, IBM Plex Mono | Beamline twin and Read the spectrum text and readouts | SIL Open Font License 1.1 |
-| Instrument Serif | Beamline twin and Read the spectrum titles | SIL Open Font License 1.1 |
+| Outfit | Base text outside the console | SIL Open Font License 1.1 |
+| IBM Plex Sans, IBM Plex Mono | Beamline Twin text and readouts | SIL Open Font License 1.1 |
+| Instrument Serif | Beamline Twin titles | SIL Open Font License 1.1 |
 | KaTeX fonts | Equations | MIT (KaTeX) |
 
 ## Libraries

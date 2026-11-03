@@ -16,7 +16,7 @@ export const outfit = localFont({
   variable: '--font-outfit', display: 'swap',
 });
 
-/** The instrument consoles (/twin/, /spectrum/): a serif for titles, a sans for reading and a mono for labels and readouts. */
+/** The instrument console and the pages beside it: a serif for titles, a sans for reading and a mono for labels and readouts. */
 export const twinSerif = localFont({
   src: [
     { path: '../fonts/instrument-serif-latin-400-normal.woff2', weight: '400', style: 'normal' },

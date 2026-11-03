@@ -1,4 +1,4 @@
-//! XAS Lab as a desktop app: one window showing the bundled site. Links to other sites (papers, GitHub, the data
+//! Beamline Twin as a desktop app: one window showing the bundled site. Links to other sites (papers, GitHub, the data
 //! sources) open in the system browser rather than inside the app.
 use tauri::{webview::PageLoadEvent, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
@@ -22,7 +22,7 @@ pub fn run() {
             }
             let handle = app.handle().clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("XAS Lab")
+                .title("Beamline Twin")
                 .inner_size(1440.0, 900.0)
                 .min_inner_size(900.0, 600.0)
                 .on_navigation(move |url| {
@@ -34,12 +34,12 @@ pub fn run() {
                 })
                 .on_page_load(|window, payload| {
                     if payload.event() == PageLoadEvent::Finished {
-                        let _ = window.set_title("XAS Lab");
+                        let _ = window.set_title("Beamline Twin");
                     }
                 })
                 .build()?;
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running XAS Lab");
+        .expect("error while running Beamline Twin");
 }

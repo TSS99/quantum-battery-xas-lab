@@ -1,16 +1,16 @@
 import type { MetadataRoute } from 'next';
-import { SITE_NAME, sitePage } from '@/lib/site';
+import { HOME_PAGE, SITE_NAME } from '@/lib/site';
 
 export const dynamic = 'force-static';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-// Lets browsers install the lab as a desktop or phone app; public/sw.js (built by scripts/make-sw.mjs) makes it work offline.
+// Lets browsers install the twin as a desktop or phone app; public/sw.js (built by scripts/make-sw.mjs) makes it work offline.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: `${BASE}/`,
-    name: `${SITE_NAME}: X-ray absorption spectroscopy`,
+    name: `${SITE_NAME}: an X-ray absorption beamline`,
     short_name: SITE_NAME,
-    description: sitePage('').description,
+    description: HOME_PAGE.description,
     start_url: `${BASE}/`,
     scope: `${BASE}/`,
     display: 'standalone',
@@ -22,6 +22,6 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: `${BASE}/icons/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: `${BASE}/icons/icon-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
-    screenshots: [{ src: `${BASE}/og/home.png`, sizes: '1200x630', type: 'image/png', form_factor: 'wide', label: 'XAS Lab overview' }],
+    screenshots: [{ src: `${BASE}/og/twin.png`, sizes: '1200x630', type: 'image/png', form_factor: 'wide', label: 'The Beamline Twin' }],
   };
 }

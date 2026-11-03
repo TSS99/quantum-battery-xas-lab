@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { axeViolations } from './axe';
 
-// Every top-level page at desktop and phone width: no console errors, no sideways scrolling, no broken maths and no
+// Every page (the twin, Methods and the 404 page) at desktop and phone width: no console errors, no sideways scrolling, no broken maths and no
 // axe violations.
-const PAGES = ['', 'spectra/', 'quantum/', 'crystal/', 'electronic/', 'beamline/', 'experiments/', 'validation/', 'elements/', 'elements/fe/', 'tools/', 'tools/ion-chamber-gas/', 'tools/harmonic-rejection-mirror/', 'tools/self-absorption/', 'tools/x-ray-dose/', 'instructors/', 'twin/', 'spectrum/', 'spectrum/?view=detailed'];
+const PAGES = ['', 'methods/', 'spectrum/'];
+// A page of the old lab: the 404 page, whose own document answers 404, which the browser logs once.
+const MISSING = 'spectrum/';
 
 for (const width of [1440, 390]) {
   test(`every page is clean at ${width} px: console, overflow, maths and axe`, async ({ page }) => {
@@ -18,6 +20,8 @@ for (const width of [1440, 390]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `/${path} sideways overflow`).toBeLessThanOrEqual(0);
       await expect(page.locator('.katex-error'), `/${path} maths`).toHaveCount(0);
       expect(await axeViolations(page), `/${path} axe`).toEqual([]);
+      const notFound = path === MISSING ? errors.findIndex(e => e.includes('status of 404')) : -1;
+      if (notFound >= 0) errors.splice(notFound, 1);
       expect(errors, `/${path} console`).toEqual([]);
     }
   });

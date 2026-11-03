@@ -1,6 +1,6 @@
-import { pageJsonLd } from '@/lib/site';
+import { pageJsonLd, type SitePage } from '@/lib/site';
 
-/** Structured data for one route, rendered into the static HTML: a module slug, or prepared data. */
-export function JsonLd({ slug = '', data }: { slug?: string; data?: object }) {
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data ?? pageJsonLd(slug)).replace(/</g, '\\u003c') }} />;
+/** Structured data for one page, rendered into the static HTML. */
+export function JsonLd({ page }: { page: SitePage }) {
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd(page)).replace(/</g, '\\u003c') }} />;
 }

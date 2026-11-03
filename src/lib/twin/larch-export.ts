@@ -16,7 +16,7 @@ export function larchScript(acquisition: Acquisition, baseName: string, mode: Tw
   const muColumn = mode === 'fluorescence' || mode === 'xrf' ? 'mufluor' : 'mutrans';
   const base = pythonName(baseName.replace(/\.(?:xdi|py)$/i, ''));
   const p = TWIN_REDUCTION;
-  const code = `"""Reduce ${base}.xdi with the same settings as the XAS Lab beamline twin.
+  const code = `"""Reduce ${base}.xdi with the same settings as the Beamline Twin.
 
 Keep this file beside ${base}.xdi. Requires xraylarch 2026.3.1 or a compatible release.
 The printed R coordinate is the uncorrected Fourier-transform peak, not a bond length.

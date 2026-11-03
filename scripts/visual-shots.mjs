@@ -8,7 +8,7 @@ import { chromium } from '@playwright/test';
 const [, , base = 'http://127.0.0.1:3000/quantum-battery-xas-lab/', out = 'visual-shots'] = process.argv;
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}), args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const url = base + 'twin/?v=' + Date.now();
+const url = base + '?v=' + Date.now();
 const shot = (page, locator, name) => (locator ? page.locator(locator) : page).screenshot({ path: `${out}/${name}.jpg`, type: 'jpeg', quality: 82 });
 const ready = async page => { await page.goto(url, { waitUntil: 'load' }); await page.locator('.twin-scene:not([aria-busy="true"])').waitFor({ timeout: 60_000 }); await page.waitForTimeout(4000); };
 

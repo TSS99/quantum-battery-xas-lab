@@ -15,7 +15,6 @@ const KEYS: [string, string][] = [
   ['Escape', 'Shrink the enlarged results'],
   ['[', 'Show or hide the explanation (wide windows)'],
   [']', 'Show or hide the controls (wide windows)'],
-  ['`', 'Open the console'],
 ];
 
 /** Modal list of the twin shortcuts. The opener gets the focus back on close. */

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, FlaskConical, FolderArchive, GraduationCap, Keyboard, PanelLeft, PanelRight, Slash, SquareTerminal } from 'lucide-react';
+import { Download, FlaskConical, FolderArchive, GraduationCap, Keyboard, PanelLeft, PanelRight, Slash } from 'lucide-react';
 import { energyChange, shortcutAction, type TwinAction } from './twin-state';
 import { TwinProvider, useTwin } from './twin-store';
 import { ModeBar } from './mode-bar';
@@ -83,16 +83,13 @@ function TwinLayout() {
   return <div className={'twin-app' + (view.enlarged ? ' is-enlarged' : '') + (view.cinema ? ' is-cinema' : '') + (view.leftHidden ? ' left-hidden' : '') + (view.rightHidden ? ' right-hidden' : '')}>
     <div className="twin-col twin-col-left">
       <header className="twin-hero">
-        <nav aria-label="Breadcrumb" className="twin-crumbs"><ol>
-          <li><Link href="/">XAS Lab</Link></li>
-          <li><Link href="/twin/" aria-current="page">Beamline twin</Link></li>
-        </ol></nav>
-        <h1>Beamline <em>twin</em></h1>
+        <p className="twin-kicker">X-ray absorption spectroscopy</p>
+        <h1>Beamline <em>Twin</em></h1>
         <p className="twin-intro">A working X-ray absorption beamline. Every reading comes from tabulated cross sections and optics: the beam crosses the mirrors, the monochromator, the sample and the detectors as it would at a synchrotron.</p>
         <p className="twin-hint">Pick any label on the beamline for the physics of that part.</p>
         <div className="twin-chips">
-          <Link className="twin-chip" href="/"><ArrowLeft size={14} aria-hidden="true" />XAS Lab</Link>
-          <Link className="twin-chip" href="/validation/">Methods</Link>
+          <Link className="twin-chip" href="/methods/">Methods</Link>
+          {!process.env.NEXT_PUBLIC_DESKTOP && <a className="twin-chip" href="https://github.com/TSS99/quantum-battery-xas-lab/releases/latest" target="_blank" rel="noreferrer"><Download size={14} aria-hidden="true" />Desktop app</a>}
         </div>
       </header>
       <Training />
@@ -113,7 +110,6 @@ function TwinLayout() {
           <button type="button" className="twin-icon" ref={commandButton} aria-haspopup="dialog" aria-keyshortcuts="/" title="Command (/)" onClick={openCommand}><Slash size={16} aria-hidden="true" /><span className="sr-only">Command</span></button>
           <button type="button" className="twin-icon" ref={sessionButton} aria-haspopup="dialog" title="Session" onClick={() => setSessionOpen(true)}><FolderArchive size={16} aria-hidden="true" /><span className="sr-only">Session</span></button>
           <button type="button" className="twin-icon" ref={calibrateButton} aria-haspopup="dialog" title="Calibrate from data" onClick={() => setCalibrateOpen(true)}><FlaskConical size={16} aria-hidden="true" /><span className="sr-only">Calibrate from data</span></button>
-          <button type="button" className="twin-icon" aria-haspopup="dialog" aria-keyshortcuts="`" title="Console (`)" onClick={() => window.dispatchEvent(new Event('xaslab:console'))}><SquareTerminal size={16} aria-hidden="true" /><span className="sr-only">Console</span></button>
           <button type="button" className="twin-icon" ref={keysButton} aria-haspopup="dialog" title="Keyboard shortcuts" onClick={() => setKeysOpen(true)}><Keyboard size={16} aria-hidden="true" /><span className="sr-only">Keyboard shortcuts</span></button>
           <button type="button" className="twin-icon twin-rail-toggle" aria-pressed={!view.leftHidden} aria-keyshortcuts="[" title="Explanation ([)" onClick={() => dispatch({ type: 'rail', side: 'left' })}><PanelLeft size={16} aria-hidden="true" /><span className="sr-only">Explanation</span></button>
           <button type="button" className="twin-icon twin-rail-toggle" aria-pressed={!view.rightHidden} aria-keyshortcuts="]" title="Controls (])" onClick={() => dispatch({ type: 'rail', side: 'right' })}><PanelRight size={16} aria-hidden="true" /><span className="sr-only">Controls</span></button>
