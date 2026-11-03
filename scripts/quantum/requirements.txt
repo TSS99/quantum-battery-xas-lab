@@ -1,0 +1,12 @@
+# Pinned environment for scripts/quantum (Python 3.12, Linux; on Windows use WSL, PySCF has no Windows wheels).
+#   python3 -m venv ~/qxas/venv && . ~/qxas/venv/bin/activate && pip install -r scripts/quantum/requirements.txt
+pennylane==0.45.1
+pennylane_lightning==0.45.0
+pyscf==2.14.0
+numpy==2.5.4
+scipy==1.18.1
+jax==0.12.0.1
+jaxlib==0.12.0.1
+optax==0.2.8
+pymatgen==2026.10.24
+matplotlib==3.11.2

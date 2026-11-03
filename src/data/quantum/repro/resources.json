@@ -1,0 +1,127 @@
+{
+ "source": "2506.15784 Table I; circuit model of PennyLane demo tutorial_resource_estimation_spectroscopy",
+ "settings": {
+  "eta_Ha": 0.05,
+  "jmax": 100,
+  "h_norm_Ha": 2.0,
+  "tau_per_Ha": 0.7853981633974483,
+  "trotter_step_per_Ha": 0.22360679774997896,
+  "longest_steps": 705,
+  "total_steps": 1028708.4226775157,
+  "alpha": 1.3384,
+  "shots": 2500,
+  "rotation_precision": 0.001,
+  "slater_determinants": 10000.0,
+  "fragments": "L = N"
+ },
+ "rows": [
+  {
+   "orbitals": 6,
+   "qubits": 91,
+   "qubits_eq40": 76,
+   "qubits_paper": 76,
+   "toffoli_longest": 9431928.0,
+   "toffoli_longest_paper": 13900000.0,
+   "toffoli_per_step": 14100.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 15746608759.752972,
+   "toffoli_total_paper": 24200000000.0
+  },
+  {
+   "orbitals": 9,
+   "qubits": 91,
+   "qubits_eq40": 82,
+   "qubits_paper": 82,
+   "toffoli_longest": 34664838.0,
+   "toffoli_longest_paper": 39900000.0,
+   "toffoli_per_step": 50850.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 53551643293.15167,
+   "toffoli_total_paper": 62100000000.0
+  },
+  {
+   "orbitals": 10,
+   "qubits": 91,
+   "qubits_eq40": 84,
+   "qubits_paper": 84,
+   "toffoli_longest": 48377488.0,
+   "toffoli_longest_paper": 53900000.0,
+   "toffoli_per_step": 70700.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 73971505483.30035,
+   "toffoli_total_paper": 82600000000.0
+  },
+  {
+   "orbitals": 11,
+   "qubits": 91,
+   "qubits_eq40": 86,
+   "qubits_paper": 86,
+   "toffoli_longest": 65304978.0,
+   "toffoli_longest_paper": 71200000.0,
+   "toffoli_per_step": 95150.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 99123426417.76561,
+   "toffoli_total_paper": 108000000000.0
+  },
+  {
+   "orbitals": 14,
+   "qubits": 92,
+   "qubits_eq40": 92,
+   "qubits_paper": 92,
+   "toffoli_longest": 138760488.0,
+   "toffoli_longest_paper": 146000000.0,
+   "toffoli_per_step": 200900.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 207909342115.9129,
+   "toffoli_total_paper": 217000000000.0
+  },
+  {
+   "orbitals": 16,
+   "qubits": 96,
+   "qubits_eq40": 96,
+   "qubits_paper": 96,
+   "toffoli_longest": 210009028.0,
+   "toffoli_longest_paper": 218000000.0,
+   "toffoli_per_step": 303200.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 313146213755.82275,
+   "toffoli_total_paper": 322000000000.0
+  },
+  {
+   "orbitals": 18,
+   "qubits": 100,
+   "qubits_eq40": 100,
+   "qubits_paper": 100,
+   "toffoli_longest": 302238528.0,
+   "toffoli_longest_paper": 311000000.0,
+   "toffoli_per_step": 435420.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 449162041402.2439,
+   "toffoli_total_paper": 458000000000.0
+  },
+  {
+   "orbitals": 24,
+   "qubits": 112,
+   "qubits_eq40": 112,
+   "qubits_paper": 112,
+   "toffoli_longest": 731884788.0,
+   "toffoli_longest_paper": 745000000.0,
+   "toffoli_per_step": 1050000.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 1081385663811.3915,
+   "toffoli_total_paper": 1090000000000.0
+  },
+  {
+   "orbitals": 28,
+   "qubits": 120,
+   "qubits_eq40": 120,
+   "qubits_paper": 120,
+   "toffoli_longest": 1172852428.0,
+   "toffoli_longest_paper": 1190000000.0,
+   "toffoli_per_step": 1679720.0,
+   "toffoli_state_prep": 82788.0,
+   "toffoli_total": 1729183931739.8767,
+   "toffoli_total_paper": 1740000000000.0
+  }
+ ]
+}
