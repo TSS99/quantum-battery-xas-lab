@@ -5,7 +5,7 @@ import { MODES } from './twin-state';
 
 const KEYS: [string, string][] = [
   ...MODES.map((m): [string, string] => [m.key, `${m.name} mode`]),
-  ['C', 'Switch between Educational and Realistic detectors'],
+  ['C', 'Turn detector noise on or off'],
   ['L', 'Show or hide the scene labels'],
   ['I', 'Acquire'],
   ['Space', 'Pause or resume a running scan'],

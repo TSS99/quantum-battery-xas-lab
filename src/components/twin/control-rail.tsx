@@ -102,10 +102,10 @@ export function ControlRail() {
 
   return <aside className="twin-card twin-rail twin-right" aria-label="Controls">
     <h2 className="sr-only">Controls</h2>
-    <div className="twin-clarity" role="group" aria-label="Detectors">
-      <button type="button" aria-label="Educational" aria-pressed={!twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: false })}><strong>Educational</strong><span>Expected values, clean curves</span></button>
-      <button type="button" aria-label="Realistic" aria-pressed={twin.realistic} aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: true })}><strong>Realistic</strong><span>Counting noise, drift, glitches</span></button>
-    </div>
+    <button type="button" className="twin-noise" role="switch" aria-checked={twin.realistic} aria-label="Detector noise" aria-keyshortcuts="C" onClick={() => dispatch({ type: 'realistic', value: !twin.realistic })}>
+      <span><strong>Detector noise</strong><span>Counting noise, drift and glitches, as on a real beamline</span></span>
+      <i aria-hidden="true" />
+    </button>
     <label className="twin-field">Beamline profile
       <select name="profile" value={p.preset} onChange={e => run({ type: 'profile', id: e.target.value })} disabled={locked('profile')}>
         {PROFILE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}

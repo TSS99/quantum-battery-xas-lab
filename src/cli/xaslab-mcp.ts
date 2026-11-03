@@ -30,7 +30,7 @@ export function createServer() {
     const s = twin.state, st = twin.status();
     return [
       `Mode ${s.mode}; mono ${s.energy_eV.toFixed(1)} eV on ${s.profile.mono.crystal} (Bragg ${sig(st.theta_deg, 'deg')}, resolution ${sig(st.deltaE_eV, 'eV')}); profile ${s.profile.name}.`,
-      `Sample ${s.sample.formula}, ${s.sample.absorber} ${s.sample.edge} edge, ${s.sample.thickness_um} um, ${s.environment.kind} at ${s.environment.temperature_K} K; ${s.realistic ? 'realistic' : 'educational'} detectors.`,
+      `Sample ${s.sample.formula}, ${s.sample.absorber} ${s.sample.edge} edge, ${s.sample.thickness_um} um, ${s.environment.kind} at ${s.environment.temperature_K} K; detector noise ${s.realistic ? 'on' : 'off'}.`,
       `Flux at I0 ${sig(st.flux, 'ph/s')}, harmonic fraction ${sig(st.harmonicFraction)}, sample transmission ${sig(st.sampleTransmission)}, edge step ${sig(st.edgeStep)}.`,
       `I0 ${sig(st.i0?.voltage_V, 'V')}${st.i0?.saturated ? ' (saturated)' : ''}, It ${sig(st.it?.voltage_V, 'V')}${st.it?.saturated ? ' (saturated)' : ''}, Iref ${sig(st.iref?.voltage_V, 'V')}; fluorescence ${sig(st.fluorescence_per_s, '/s')}, dead time ${sig(st.deadFraction)}; dose rate ${sig(st.doseRate_Gy_per_s, 'Gy/s')}.`,
       ...st.notes.map(plain),

@@ -55,10 +55,10 @@ describe('reducer', () => {
     expect(s.twin.mode).toBe('xrf');
     expect(s.view.change).toBe(modeInfo('xrf').switched);
   });
-  it('toggles the realistic detectors, and an explicit value that matches is a no-op', () => {
+  it('toggles detector noise, and an explicit value that matches is a no-op', () => {
     const on = run({ type: 'realistic' });
     expect(on.twin.realistic).toBe(true);
-    expect(on.view.change).toMatch(/^Realistic/);
+    expect(on.view.change).toMatch(/^Detector noise on/);
     expect(twinReducer(on, { type: 'realistic', value: true })).toBe(on);
     expect(twinReducer(on, { type: 'realistic' }).twin.realistic).toBe(false);
   });

@@ -310,7 +310,7 @@ export function applyCommand(state: TwinState, command: TwinCommand): CommandRes
       return done({ ...state, energy_eV }, String.raw`Energy set to $E = ${fmt(energy_eV)}\ \mathrm{eV}$.`);
     }
     case 'mode': return done({ ...state, mode: command.mode }, `Mode: ${command.mode.replace('-', ' ')}.`);
-    case 'realistic': return done({ ...state, realistic: command.value }, command.value ? 'Realistic detectors: counting noise, drift, glitches and dead time.' : 'Educational view: expected values, without detector noise.');
+    case 'realistic': return done({ ...state, realistic: command.value }, command.value ? 'Detector noise on: photon counting noise, amplifier noise, beam flicker, glitches and a slow drift.' : 'Detector noise off: expected values, so every curve is clean.');
     case 'monoOffset': {
       const offset_eV = clamp(command.offset_eV, [-100, 100]);
       return done({ ...state, profile: { ...state.profile, mono: { ...state.profile.mono, offset_eV } } }, String.raw`Monochromator energy correction $${offset_eV >= 0 ? '+' : ''}${fmt(offset_eV, 3)}\ \mathrm{eV}$.`);

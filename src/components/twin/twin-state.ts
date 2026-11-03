@@ -166,7 +166,7 @@ export function twinReducer(store: TwinStore, action: TwinAction): TwinStore {
       if (realistic === twin.realistic) return store;
       return {
         twin: { ...twin, realistic },
-        view: { ...view, change: realistic ? 'Realistic detectors: counting noise, drift, glitches and dead time will show here once the detector models are connected.' : 'Educational view: expected values, without detector noise.' },
+        view: { ...view, change: realistic ? 'Detector noise on: photon counting noise, amplifier noise, beam flicker, glitches and a slow drift.' : 'Detector noise off: expected values, so every curve is clean.' },
       };
     }
     case 'energy': {

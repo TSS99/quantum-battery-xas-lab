@@ -19,7 +19,7 @@ const HELP = `Beamline twin, headless: one scan to an XDI, CSV or JSON file.
   --mode <mode>        transmission (default), fluorescence, electron-yield, ...
   --scan <plan>        default (XANES and EXAFS) or xanes
   --repeats <n>        scans to average (default 1)
-  --realistic          counting noise, drift, glitches and dead time
+  --realistic          detector noise on: counting noise, drift and glitches
   --seed <n>           random seed (default 7)
   --do "<command>"     any twin command, repeatable: --do "detune 30 %" --do "insert harmonic mirror"
   --out <file>         .xdi (default run.xdi), .csv or .json

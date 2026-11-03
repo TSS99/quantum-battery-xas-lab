@@ -72,7 +72,7 @@ test('shortcut keys are ignored while typing in a field', async ({ page }) => {
   await page.keyboard.press('Control+a');
   await page.keyboard.type('7112');
   await expect(mode(page, 'Transmission')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Realistic', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('switch', { name: 'Detector noise' })).toHaveAttribute('aria-checked', 'false');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('slider', { name: 'Photon energy', exact: true })).toHaveValue('7112');
   await expect(changed(page)).toContainText('Energy set to');
@@ -83,17 +83,16 @@ test('shortcut keys are ignored while typing in a field', async ({ page }) => {
   await expect(mode(page, 'Time resolved')).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('the Realistic switch toggles by click and by C', async ({ page }) => {
+test('the detector noise switch toggles by click and by C', async ({ page }) => {
   await openTwin(page);
-  const educational = page.getByRole('button', { name: 'Educational', exact: true }), realistic = page.getByRole('button', { name: 'Realistic', exact: true });
-  await expect(educational).toHaveAttribute('aria-pressed', 'true');
-  await realistic.click();
-  await expect(realistic).toHaveAttribute('aria-pressed', 'true');
-  await expect(educational).toHaveAttribute('aria-pressed', 'false');
-  await expect(changed(page)).toContainText('Realistic detectors');
+  const noise = page.getByRole('switch', { name: 'Detector noise' });
+  await expect(noise).toHaveAttribute('aria-checked', 'false');
+  await noise.click();
+  await expect(noise).toHaveAttribute('aria-checked', 'true');
+  await expect(changed(page)).toContainText('Detector noise on');
   await page.keyboard.press('c');
-  await expect(educational).toHaveAttribute('aria-pressed', 'true');
-  await expect(realistic).toHaveAttribute('aria-keyshortcuts', 'C');
+  await expect(noise).toHaveAttribute('aria-checked', 'false');
+  await expect(noise).toHaveAttribute('aria-keyshortcuts', 'C');
 });
 
 test('results dock tabs, Acquire, Enlarge, labels and rails respond to clicks and keys', async ({ page }) => {
@@ -596,8 +595,8 @@ test('training: S8 glitch spikes go away once the foil is uniform', async ({ pag
   await page.getByRole('dialog', { name: 'Training scenarios' }).getByRole('button', { name: 'Start glitch hunt' }).click();
   const task = page.getByRole('region', { name: 'Task: Glitch hunt' });
   await expect(task).toBeVisible();
-  // Glitches only appear with realistic detectors, and the crystal is locked so they cannot be moved away.
-  await expect(page.getByRole('button', { name: /^Realistic/ })).toHaveAttribute('aria-pressed', 'true');
+  // Glitches only appear with detector noise on, and the crystal is locked so they cannot be moved away.
+  await expect(page.getByRole('switch', { name: 'Detector noise' })).toHaveAttribute('aria-checked', 'true');
   const controls = page.getByRole('complementary', { name: 'Controls' });
   const fold = controls.getByRole('button', { name: 'Sample', exact: true });
   if (await fold.getAttribute('aria-expanded') === 'false') await fold.click();

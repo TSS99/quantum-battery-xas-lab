@@ -37,6 +37,8 @@ describe('command bar grammar', () => {
     expect(intents('crystal Si(311)')).toEqual([{ type: 'crystal', crystal: 'Si311' }]);
     expect(intents('realistic off')).toEqual([{ type: 'realistic', value: false }]);
     expect(intents('educational')).toEqual([{ type: 'realistic', value: false }]);
+    expect(intents('noise on')).toEqual([{ type: 'realistic', value: true }]);
+    expect(intents('detector noise off')).toEqual([{ type: 'realistic', value: false }]);
     expect(intents('auto gain')).toEqual([{ type: 'autoGain' }]);
     expect(intents('fill It with argon')).toEqual([{ type: 'gas', chamber: 'It', gas: { Ar: 1 } }]);
     expect(intents('thickness 0.5 mm')).toEqual([{ type: 'thickness', thickness_um: 500 }]);

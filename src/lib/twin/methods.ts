@@ -71,7 +71,7 @@ export const TWIN_METHODS: readonly TwinMethod[] = [
   },
   {
     quantity: 'Transmission signal',
-    model: String.raw`$\mu x = \ln(I_0/I_t)$ less the chamber terms; Poisson counting in the Realistic view`,
+    model: String.raw`$\mu x = \ln(I_0/I_t)$ less the chamber terms; Poisson counting when detector noise is on`,
     data: String.raw`Tabulated $\mu(E)$`,
     checked: 'Analytic means and variances',
     tolerance: 'exact; statistical for the noise',

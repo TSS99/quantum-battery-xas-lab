@@ -33,7 +33,7 @@ const MIRROR_ROLES: Record<string, MirrorConfig['role']> = { harmonic: 'harmonic
 const VOCABULARY = new Set([
   ...MODE_WORDS.flatMap(([, words]) => words.flatMap(w => w.split(' '))), ...Object.keys(GASES), ...Object.keys(ENVIRONMENTS).flatMap(w => w.split(' ')),
   'switch', 'change', 'mode', 'set', 'the', 'energy', 'kev', 'detune', 'percent', 'insert', 'retract', 'remove', 'harmonic', 'rejection', 'focusing',
-  'collimating', 'mirror', 'crystal', 'realistic', 'educational', 'auto', 'gain', 'gas', 'fill', 'with', 'thickness', 'microns', 'temperature',
+  'collimating', 'mirror', 'crystal', 'noise', 'detector', 'realistic', 'educational', 'auto', 'gain', 'gas', 'fill', 'with', 'thickness', 'microns', 'temperature',
   'sample', 'profile', 'acquire', 'scan', 'scans', 'repeats', 'times', 'measure', 'focus', 'beam', 'edge', 'cell', 'to', 'by', 'on', 'off', 'go',
   'move', 'use', 'bending', 'magnet', 'undulator', 'tender', 'foil', 'pellet', 'water', 'solution', 'alumina', 'cathode',
 ]);
@@ -117,9 +117,9 @@ export function parseCommand(input: string, state: TwinState): ParsedCommand {
   if ((m = t.match(/^(?:crystal|use)\s+si\s*(111|311|220)$/))) {
     return ok([{ type: 'crystal', crystal: `Si${m[1]}` as Crystal }], `crystal Si(${m[1]})`);
   }
-  if ((m = t.match(/^(realistic|educational)(?:\s+(on|off))?$/))) {
-    const value = (m[1] === 'realistic') === (m[2] !== 'off');
-    return ok([{ type: 'realistic', value }], value ? 'realistic detectors' : 'educational view');
+  if ((m = t.match(/^(?:detector\s+)?(noise|realistic|educational)(?:\s+(on|off))?$/))) {
+    const value = (m[1] !== 'educational') === (m[2] !== 'off');
+    return ok([{ type: 'realistic', value }], value ? 'detector noise on' : 'detector noise off');
   }
   if (/^auto\s*gain$/.test(t)) return ok([{ type: 'autoGain' }], 'auto gain');
   if ((m = t.match(/^(?:fill\s+)?(i0|it|iref)\s+(?:with\s+|gas\s+)?(helium|nitrogen|argon|krypton|he|n2|ar|kr)$/))) {
@@ -166,6 +166,6 @@ export function blockedBy(intents: readonly CommandIntent[], locked: readonly Lo
 /** The commands the bar and the MCP server understand, for help texts. */
 export const COMMAND_EXAMPLES = [
   'set energy 8979', 'energy 9 keV', 'go to edge', 'fluorescence', 'mode 5', 'detune 30 %', 'insert harmonic mirror', 'crystal Si(311)',
-  'realistic on', 'auto gain', 'fill I0 with nitrogen', 'thickness 20 um', 'temperature 80 K', 'beam 5 x 5 um', 'cryostat', 'sample NiO',
+  'noise on', 'auto gain', 'fill I0 with nitrogen', 'thickness 20 um', 'temperature 80 K', 'beam 5 x 5 um', 'cryostat', 'sample NiO',
   'profile undulator', 'acquire 3 scans',
 ];
