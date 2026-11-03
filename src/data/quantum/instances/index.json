@@ -1,0 +1,128 @@
+{
+ "schema": 1,
+ "instances": [
+  {
+   "id": "co-o-k-sto3g",
+   "title": "Carbon monoxide, oxygen K edge, minimal basis",
+   "tags": [
+    "molecule"
+   ],
+   "qubits": 21,
+   "active": [
+    14,
+    10
+   ],
+   "determinants": 14400,
+   "reference": true,
+   "edge_eV": 539.999650041,
+   "hash": "e714e752d5a98825",
+   "bytes": 158700
+  },
+  {
+   "id": "h2o-o-k-sto3g",
+   "title": "Water, oxygen K edge, minimal basis",
+   "tags": [
+    "molecule",
+    "browser"
+   ],
+   "qubits": 15,
+   "active": [
+    10,
+    7
+   ],
+   "determinants": 441,
+   "reference": true,
+   "edge_eV": 542.23978074,
+   "hash": "eff504fc9da605c0",
+   "bytes": 36123
+  },
+  {
+   "id": "li2mn2o-o2-k",
+   "title": "Li2Mn2O, O2 site with two lithium removed",
+   "tags": [
+    "li2mno3",
+    "delithiated"
+   ],
+   "qubits": 23,
+   "active": [
+    14,
+    11
+   ],
+   "determinants": 108900,
+   "reference": true,
+   "edge_eV": 559.416432306,
+   "hash": "1f56f4f2760ed2b8",
+   "bytes": 232388
+  },
+  {
+   "id": "li2mno3-o1-k",
+   "title": "Li4Mn2O from Li2MnO3, O1 site, oxygen K edge",
+   "tags": [
+    "li2mno3"
+   ],
+   "qubits": 23,
+   "active": [
+    14,
+    11
+   ],
+   "determinants": 108900,
+   "reference": true,
+   "edge_eV": 560.52171995,
+   "hash": "5e3814504ea071cd",
+   "bytes": 232595
+  },
+  {
+   "id": "li2mno3-o2-k-18",
+   "title": "Li4Mn2O, O2 site, the paper's full active space",
+   "tags": [
+    "li2mno3",
+    "quantum-target"
+   ],
+   "qubits": 37,
+   "active": [
+    24,
+    18
+   ],
+   "determinants": 344622096,
+   "reference": false,
+   "edge_eV": null,
+   "hash": "02f47a94d05cf03a",
+   "bytes": 1645711
+  },
+  {
+   "id": "li2mno3-o2-k",
+   "title": "Li4Mn2O from Li2MnO3, O2 site, oxygen K edge",
+   "tags": [
+    "li2mno3"
+   ],
+   "qubits": 23,
+   "active": [
+    14,
+    11
+   ],
+   "determinants": 108900,
+   "reference": true,
+   "edge_eV": 560.480852698,
+   "hash": "d7f1f5fc4d3ca3fc",
+   "bytes": 233343
+  },
+  {
+   "id": "li3mn2o-o2-k",
+   "title": "Li3Mn2O, O2 site with one lithium removed",
+   "tags": [
+    "li2mno3",
+    "delithiated"
+   ],
+   "qubits": 23,
+   "active": [
+    13,
+    11
+   ],
+   "determinants": 152460,
+   "reference": true,
+   "edge_eV": 557.408939696,
+   "hash": "8f01513dc8c86174",
+   "bytes": 229138
+  }
+ ]
+}

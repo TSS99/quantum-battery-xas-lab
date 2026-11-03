@@ -14,6 +14,16 @@ Beamline Twin's own code is under the MIT License (see LICENSE). These parts com
 | Measured Cu, Ni and Pt foil and Fe2O3 and FeO near edges | `src/data/twin/measured/xanes-references.json`, raw files in `scripts/twin/measured-raw/` | xraylarch examples, `examples/xafsdata/` | MIT (xraylarch) |
 | Bending magnet flux and critical energy formulas | `src/lib/twin/source.ts` | X-ray Data Booklet (LBNL) | Cited reference |
 
+## Quantum XAS engine (`scripts/quantum`, not shipped in the app)
+
+| What | Where | Source | Licence |
+| --- | --- | --- | --- |
+| The time domain XAS circuit, adapted from the demo `tutorial_xas` (Colin Dale and Stepan Fomichev) | `scripts/quantum/qxas/circuit.py` | PennyLane demos, github.com/PennyLaneAI/qml | Apache 2.0 |
+| The resource estimate circuit model, adapted from the demo `tutorial_resource_estimation_spectroscopy` | `scripts/quantum/repro_resources.py` | PennyLane demos | Apache 2.0 |
+| PennyLane, PennyLane Lightning | installed from PyPI (`scripts/quantum/requirements.txt`) | Xanadu | Apache 2.0 |
+| PySCF | installed from PyPI | PySCF developers | Apache 2.0 |
+| Li2MnO3 crystal structure (Strobel and Lambert-Andron, 1988) | `scripts/quantum/structures/cod-1008373-Li2MnO3.cif` | Crystallography Open Database, entry 1008373 | Public domain |
+
 ## Fonts
 
 The OFL fonts are bundled in `src/fonts/` (the latin files of Fontsource 5.3.0, Google Fonts' own files) with their licence texts, `src/fonts/OFL-*.txt`.

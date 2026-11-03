@@ -30,5 +30,7 @@ def first_shells(cif: Path, centre: str = "O", cutoff: float = 2.4) -> list[dict
                        "multiplicity": sum(1 for s in structure if s.label == label),
                        "counts": dict(Counter(n.specie.symbol for n in neighbours)),
                        "distances_A": [round(float(n.nn_distance), 4) for n in neighbours],
-                       "atoms": [(symbol, [round(float(x), 6) for x in xyz]) for symbol, xyz in atoms]})
+                       "atoms": [(symbol, [round(float(x), 6) for x in xyz]) for symbol, xyz in atoms],
+                       # The crystal site of each atom (the centre first), so a recipe can name which ones to remove.
+                       "sites": [label] + [n.label for n in neighbours]})
     return shells

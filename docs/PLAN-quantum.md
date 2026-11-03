@@ -4,7 +4,7 @@ Draft of 3 November 2026. Written after reading the Xanadu and PennyLane papers 
 
 **Decisions, 3 November 2026.** The owner chose to build it inside this site, next to the twin; to keep the plan and the engine public (MIT); and to start with the oxygen K edge of lithium rich Mn oxides. Until a compute budget is set, emulation runs on the development PC (24 cores, CPU only, Linux under WSL), which covers the papers' 21 and 23 qubit checks, and there are no paid runs on quantum hardware.
 
-**Status.** Phase 1, reproducing the papers, is done (v2.1.0, 3 November 2026); the results are in [QUANTUM_REPRO.md](QUANTUM_REPRO.md).
+**Status.** Phase 1, reproducing the papers, is done (v2.1.0, 3 November 2026); the results are in [QUANTUM_REPRO.md](QUANTUM_REPRO.md). Phase 2, the problem library, is done (v2.2.0); see [QUANTUM_LIBRARY.md](QUANTUM_LIBRARY.md).
 
 ## 1. In short
 
