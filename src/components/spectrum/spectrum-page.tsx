@@ -200,7 +200,7 @@ export function DetailedView({ onView }: { onView: (view: SpectrumView) => void 
     <div className="spectrum-grid">
       <section id="spectrum-explorer" className="twin-card spectrum-panel spectrum-explorer" aria-labelledby="spectrum-explorer-title">
         <h2 id="spectrum-explorer-title" className="twin-kicker">How XAS works · {m.formula}</h2>
-        <p className="spectrum-lede">X-ray absorption spectroscopy shines X-rays of rising energy through a sample and records how much it absorbs. Scan the energy and watch what happens inside one {atomName(m.absorber)} atom.</p>
+        <p className="spectrum-lede">X-ray absorption spectroscopy sends X-rays through a sample one energy at a time and records how much is absorbed. Scan the energy and watch what happens inside a single {atomName(m.absorber)} atom.</p>
         <XasExplorer material={m} xanes={ready.xanes} shift_eV={shift_eV} temperature_K={temperature_K} shell={first} />
       </section>
       <section id="spectrum-read" className="twin-card spectrum-panel spectrum-read" aria-labelledby="spectrum-read-title">
@@ -215,7 +215,7 @@ export function DetailedView({ onView }: { onView: (view: SpectrumView) => void 
           hideFar={!showFar} sphere={activeShell?.kind === 'shell' ? { radius: activeShell.r_A + (tweaks[activeShell.id]?.deltar_A ?? 0), color: colors[activeShell.id], label: `${activeShell.count} ${activeShell.element} · ${activeShell.r_A.toFixed(2)} Å` } : null}
           label={`${m.formula}: the ${atoms.length - 1} atoms within ${ready.cluster.rmax_A} angstrom of the ${atomName(m.absorber)} absorber, coloured by shell`} />
         <div className="spectrum-cluster-bar">
-          <p className="spectrum-note">White: the {atomName(m.absorber)} atom that absorbs. Point at a shell to see it as a sphere at its distance. Drag to turn.</p>
+          <p className="spectrum-note">The white atom is the {atomName(m.absorber)} that absorbs. Point at a shell to see it as a sphere at its distance, and drag to turn the cluster.</p>
           <button type="button" className="twin-chip" aria-pressed={showFar} onClick={() => setShowFar(v => !v)}>Show farther atoms</button>
         </div>
         <DistanceStrip atoms={atoms} shells={shown} colors={colors} active={active} onHover={setHover} onSelect={pick} absorber={atomName(m.absorber)} rmax={ready.cluster.rmax_A} />
@@ -256,7 +256,7 @@ export function DetailedView({ onView }: { onView: (view: SpectrumView) => void 
           {(building ? [newest] : shown).map(s => <span key={s.id}><i style={{ borderTopColor: colors[s.id], borderTopStyle: s.kind === 'shell' ? 'solid' : s.kind === 'far' ? 'dotted' : 'dashed' }} />{shellLabel(s)}</span>)}
           {others && !building && <span><i style={{ borderTopColor: UNUSED_SITE, borderTopStyle: 'dotted' }} />Other sites</span>}
           {changed && !building && <span><i style={{ borderTopColor: '#a7b1c1', borderTopStyle: 'dashed' }} />Before your changes</span>}
-          <span><i className="spectrum-legend-bar" aria-hidden="true" />Bars: true distances, height by number of atoms</span>
+          <span><i className="spectrum-legend-bar" aria-hidden="true" />Bars mark the true distances; taller bars, more atoms</span>
         </p>
       </section>
       <div className="spectrum-sticky-cell spectrum-explain-cell">
@@ -324,15 +324,15 @@ interface TourStep { title: string; text: string; target: string; shell?: boolea
 /** Five steps from the edge to a bond distance, each with this sample's numbers; the valence step only where a series exists. */
 function tourSteps(m: FeffMaterial, shift_eV: number, perValence: number | null, first: Shell | null, peak: number): TourStep[] {
   const name = atomName(m.absorber), e0 = m.edge_energy_eV + shift_eV;
-  const steps: TourStep[] = [{ title: 'How XAS works', target: 'spectrum-explorer', text: `X-rays of rising energy pass through the sample. Press Scan the energy: below the edge little is absorbed; at the edge the X-ray frees a ${name} core electron and absorption jumps; above it, the freed electron's echo makes the wiggles.` },
-    { title: 'The edge', target: 'spectrum-edge', text: `Absorption jumps at E₀ = ${e0.toFixed(1)} eV, where the X-ray can free a ${name} ${m.edge === 'K' ? '1s' : '2p'} electron. Below it ${name} hardly absorbs; above it, it does.` }];
-  if (perValence !== null) steps.push({ title: 'Valence moves the edge', target: 'spectrum-oxidation', text: `Across ${name} compounds the edge moves about ${perValence.toFixed(1)} eV per unit of valence: the more electrons the atom has given away, the harder its core electron is held.` });
+  const steps: TourStep[] = [{ title: 'How XAS works', target: 'spectrum-explorer', text: `X-rays of rising energy pass through the sample. Press Scan the energy. Below the edge little is absorbed. At the edge the X-ray frees a ${name} core electron and absorption jumps, and above it the freed electron's echoes make the wiggles.` },
+    { title: 'The edge', target: 'spectrum-edge', text: `Absorption jumps at E₀ = ${e0.toFixed(1)} eV, the energy that frees a ${name} ${m.edge === 'K' ? '1s' : '2p'} electron. Below it, ${name} hardly absorbs at all.` }];
+  if (perValence !== null) steps.push({ title: 'Valence moves the edge', target: 'spectrum-oxidation', text: `Across ${name} compounds the edge moves about ${perValence.toFixed(1)} eV per unit of valence. The more electrons the atom has given away, the tighter it holds on to its core electron.` });
   if (first) {
     const el = atomName(first.element!);
     steps.push(
-      { title: 'The wiggles', target: 'spectrum-wave', shell: true, k: 6, text: `Above the edge the freed electron is a wave. Its echo from the ${first.count} ${el} neighbours comes back in or out of step as k changes, so absorption wiggles. Move k and watch.` },
-      { title: 'Shells become peaks', target: 'spectrum-plots', shell: true, text: `A Fourier transform turns the wiggles into peaks, one per shell. The first, ${first.count} ${el} at ${first.r_A.toFixed(2)} Å, peaks at ${peak.toFixed(2)} Å.` },
-      { title: 'From peak to distance', target: 'spectrum-whatif', shell: true, text: `That peak sits ${(first.r_A - peak).toFixed(2)} Å from the true distance, because the wave's phase shifts as it leaves and reflects; a fit with the calculated phase gives the true distance back. Move the distance: the peak follows it, and the height falls as 1/R².` },
+      { title: 'The wiggles', target: 'spectrum-wave', shell: true, k: 6, text: `Above the edge the freed electron travels as a wave. Its echo from the ${first.count} ${el} neighbours comes back in or out of step as k changes, and absorption wiggles with it. Move k and watch.` },
+      { title: 'Shells become peaks', target: 'spectrum-plots', shell: true, text: `A Fourier transform turns the wiggles into peaks, one per shell. The first shell, ${first.count} ${el} at ${first.r_A.toFixed(2)} Å, peaks at ${peak.toFixed(2)} Å.` },
+      { title: 'From peak to distance', target: 'spectrum-whatif', shell: true, text: `That peak sits ${(first.r_A - peak).toFixed(2)} Å from the true distance, because the wave's phase shifts as it leaves and again as it reflects. A fit with the calculated phase gets the true distance back. Move the distance and the peak follows; its height falls as 1/R².` },
     );
   }
   return steps;
@@ -371,18 +371,18 @@ function legsOf(shell: Shell, atoms: ClusterAtom[]): [number, number, number][][
 function Explain({ shell, absorber, peak, sigma2, temperature_K, share }: { shell: Shell | null; absorber: string; peak: number; sigma2: number | null; temperature_K: number; share: number }) {
   const name = atomName(absorber);
   if (!shell) return <div className="spectrum-prose">
-    <p>The {name} atom sends out an electron wave and each neighbour echoes part of it back. In step or out of step, the echo nudges absorption up or down: the wiggles, <Tex plain>{'\\chi(k)'}</Tex>. Each distance becomes one peak in <Tex plain>{'|\\chi(R)|'}</Tex>. Choose a shell, peak or atom to read about it.</p>
+    <p>The {name} atom sends out an electron wave, and each neighbour echoes part of it back. When an echo arrives in step, absorption goes up a little; out of step, it goes down. Those are the wiggles, <Tex plain>{'\\chi(k)'}</Tex>, and each distance shows up as one peak in <Tex plain>{'|\\chi(R)|'}</Tex>. Pick a shell, peak or atom to read about it.</p>
   </div>;
   if (shell.kind === 'ms') return <div className="spectrum-prose">
-    <p>Paths where the electron bounces off two or more atoms before it returns. They are strongest along straight lines of atoms, where the nearer atom focuses the wave onto the farther one. The lines drawn are the {Math.min(MS_DRAWN, shell.paths.length)} shortest.</p>
-    <p>They make <Num>{(100 * share).toFixed(0)}</Num> % of the tallest peak&apos;s height on their own and mostly fall beyond the first shells, which is why distances past the first shell are hard to read from <Tex plain>{'|\\chi(R)|'}</Tex> alone.</p>
+    <p>Here the electron bounces off two or more atoms before it comes back. These paths are strongest along straight lines of atoms, where the nearer atom focuses the wave onto the farther one. The lines drawn are the {Math.min(MS_DRAWN, shell.paths.length)} shortest.</p>
+    <p>On their own they reach <Num>{(100 * share).toFixed(0)}</Num> % of the tallest peak, and most of them land beyond the first shells. That is why distances past the first shell are hard to read from <Tex plain>{'|\\chi(R)|'}</Tex> alone.</p>
   </div>;
   if (shell.kind === 'far') return <div className="spectrum-prose">
-    <p><Num>{String(shell.count)}</Num> atoms farther out, from <Num>{Math.min(...shell.paths.map(p => p.reff)).toFixed(1)}</Num> to <Num>{Math.max(...shell.paths.map(p => p.reff)).toFixed(1)}</Num> Å. Their waves are weaker (the wave spreads out and loses strength with distance) and overlap one another, so they blur into the tail of <Tex plain>{'|\\chi(R)|'}</Tex>.</p>
+    <p><Num>{String(shell.count)}</Num> atoms farther out, from <Num>{Math.min(...shell.paths.map(p => p.reff)).toFixed(1)}</Num> to <Num>{Math.max(...shell.paths.map(p => p.reff)).toFixed(1)}</Num> Å. Their echoes are weaker, since the wave spreads out and fades with distance, and they overlap, so they blur into the tail of <Tex plain>{'|\\chi(R)|'}</Tex>.</p>
   </div>;
   const element = atomName(shell.element!), offset = shell.r_A - peak;
   return <div className="spectrum-prose">
-    <p><Num>{String(shell.count)}</Num> {element} atoms at <Num>{shell.r_A.toFixed(2)}</Num> Å from the {name} atom. The wave reflected by them makes the wiggle drawn in colour, one period every <Tex plain>{`\\pi/R \\approx ${(Math.PI / shell.r_A).toFixed(2)}\\ \\mathring{\\mathrm{A}}^{-1}`}</Tex>: farther neighbours wiggle faster.</p>
+    <p><Num>{String(shell.count)}</Num> {element} atoms at <Num>{shell.r_A.toFixed(2)}</Num> Å from the {name} atom. The wave they reflect makes the coloured wiggle, with one period every <Tex plain>{`\\pi/R \\approx ${(Math.PI / shell.r_A).toFixed(2)}\\ \\mathring{\\mathrm{A}}^{-1}`}</Tex>. Farther neighbours wiggle faster.</p>
     {offset > 0.1
       ? <p>In <Tex plain>{'|\\chi(R)|'}</Tex> it peaks at <Num>{peak.toFixed(2)}</Num> Å, <Num>{offset.toFixed(2)}</Num> Å short of the true distance. The wave&apos;s phase shifts as it leaves the {name} atom and as it reflects, and that shift grows with <Tex plain>k</Tex>, which pulls the peak in. A fit with the calculated phase recovers the true distance.</p>
       : <p>In <Tex plain>{'|\\chi(R)|'}</Tex> it peaks at <Num>{peak.toFixed(2)}</Num> Å, close to the true distance. {element[0].toUpperCase() + element.slice(1)} is a heavy scatterer whose phase does not grow steadily with <Tex plain>k</Tex>, so the usual pull to shorter distance nearly vanishes here.</p>}

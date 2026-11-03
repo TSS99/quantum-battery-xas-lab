@@ -1,35 +1,6 @@
-/* Read the spectrum, the story view: one idea per scene, large type, one picture, at most one control.
-   The look is a calm holographic console: near black, frosted glass with a lit top edge, corner marks round the
-   pictures, a faint measuring grid, and cyan light only on what is live (the trace, the current step, the slider). */
-body:has(.spectrum-app.is-simple) {background:#04070d}
-.spectrum-app.is-simple {
-  --tw-bg:#04070d; --tw-line:rgb(150 215 255/.12); --tw-line-2:rgb(150 215 255/.24);
-  --tw-text:#eef6ff; --tw-body:#c3cfde; --tw-muted:#8a9ab0; --tw-accent:#8ce3ff; --tw-accent-soft:rgb(140 227 255/.12); --tw-accent-line:rgb(140 227 255/.45);
-  --font-sans:var(--font-tex-digits),var(--font-outfit),Arial,sans-serif; --tw-serif:var(--font-sans);
-  --glass:linear-gradient(180deg,rgb(255 255 255/.055),rgb(255 255 255/.015));
-  --violet:#c9b8ff;
-  background:
-    radial-gradient(ellipse 70% 38% at 50% 0%,rgb(64 132 255/.18),transparent 70%),
-    radial-gradient(ellipse 45% 30% at 100% 35%,rgb(159 163 252/.07),transparent 70%),
-    radial-gradient(ellipse 45% 30% at 0% 70%,rgb(140 227 255/.06),transparent 70%),
-    var(--tw-bg);
-}
-/* The measuring grid, fixed behind everything and fading out towards the edges. */
-.spectrum-app.is-simple::before {content:"";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgb(140 227 255/.045) 1px,transparent 1px),linear-gradient(90deg,rgb(140 227 255/.045) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse 75% 65% at 50% 35%,#000 20%,transparent 75%);mask-image:radial-gradient(ellipse 75% 65% at 50% 35%,#000 20%,transparent 75%)}
-.story {position:relative;z-index:1;max-width:1160px;margin:0 auto}
-
-/* Controls in glass. */
-.view-switch {display:inline-flex;padding:3px;border:1px solid var(--tw-line);border-radius:999px;background:rgb(8 13 24/.6);box-shadow:inset 0 1px 0 rgb(255 255 255/.05)}
-.view-switch button {min-height:32px;padding:5px 15px;border:0;border-radius:999px;background:none;color:var(--tw-muted);font:500 13.5px/1 var(--font-sans);cursor:pointer;transition:color .25s,background-color .25s,box-shadow .25s}
-.view-switch button:hover {color:var(--tw-text)}
-.view-switch button[aria-pressed="true"] {background:linear-gradient(135deg,rgb(140 227 255/.2),rgb(159 163 252/.14));color:var(--tw-text);box-shadow:inset 0 0 0 1px var(--tw-accent-line),0 0 18px -6px rgb(140 227 255/.6)}
-.is-simple .twin-chip {border-color:var(--tw-line-2);background:var(--glass);box-shadow:inset 0 1px 0 rgb(255 255 255/.05);transition:border-color .25s,background-color .25s,box-shadow .25s,color .25s}
-.is-simple .twin-chip:hover {border-color:var(--tw-accent-line);box-shadow:inset 0 1px 0 rgb(255 255 255/.05),0 0 20px -8px rgb(140 227 255/.7)}
-.is-simple .twin-chip[aria-pressed="true"] {border-color:var(--tw-accent-line);background:linear-gradient(135deg,rgb(140 227 255/.2),rgb(159 163 252/.14));box-shadow:inset 0 0 0 1px var(--tw-accent-line),0 0 18px -6px rgb(140 227 255/.6)}
-.is-simple .twin-chip.is-accent {min-height:40px;padding:8px 18px;border-color:rgb(140 227 255/.55);background:linear-gradient(135deg,rgb(140 227 255/.24),rgb(159 163 252/.2));color:#f4fcff;box-shadow:inset 0 1px 0 rgb(255 255 255/.12),0 0 26px -8px rgb(140 227 255/.8)}
-.is-simple .twin-chip.is-accent:hover {background:linear-gradient(135deg,rgb(140 227 255/.32),rgb(159 163 252/.26))}
-.is-simple select {border-color:var(--tw-line-2);background-color:rgb(8 13 24/.6)}
-.is-simple select option {background:#0b1220}
+/* Read the spectrum, the story view: one idea per scene, large type, one picture, at most one control. The console
+   look itself (tokens, grid, glass controls) is in spectrum.css, shared with the detailed view. */
+.story {max-width:1160px;margin:0 auto}
 
 /* The top: a console bar, then the title. */
 .story-head {position:relative;isolation:isolate;padding:6px 0 34px}
@@ -43,7 +14,6 @@ body:has(.spectrum-app.is-simple) {background:#04070d}
 .story-pick {display:flex;align-items:center;gap:8px;font-size:14px;color:var(--tw-muted)}
 .story-pick select {min-height:36px;font:15px var(--font-sans)}
 .story-title {margin:56px 0 18px;font:300 clamp(46px,7.4vw,92px)/.98 var(--font-sans);letter-spacing:-.04em;color:var(--tw-text)}
-.story-title em {font-style:normal;background:linear-gradient(100deg,#8ce3ff 0%,#eef6ff 45%,var(--violet) 70%,#8ce3ff 100%) 0 0/200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
 .story-lede {max-width:50ch;margin:0;font:300 21px/1.55 var(--font-sans);color:var(--tw-body)}
 
 /* The step bar: a floating glass pill that follows the reader; it scrolls sideways on a narrow screen. */
@@ -117,15 +87,15 @@ body:has(.spectrum-app.is-simple) {background:#04070d}
 .story-slider {display:grid;gap:10px}
 .story-slider label {display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:15px;color:var(--tw-muted)}
 .story-slider output {font:500 17px var(--tw-mono);color:var(--tw-text);text-shadow:0 0 14px rgb(140 227 255/.5)}
-.is-simple .story-slider input[type="range"] {-webkit-appearance:none;appearance:none;width:100%;height:30px;margin:0;background:none;cursor:pointer}
-.is-simple .story-slider input[type="range"]::-webkit-slider-runnable-track {height:4px;border-radius:4px;background:linear-gradient(90deg,#ffc46b,#8ce3ff var(--p),rgb(255 255 255/.1) var(--p))}
-.is-simple .story-slider input[type="range"]::-moz-range-track {height:4px;border-radius:4px;background:linear-gradient(90deg,#ffc46b,#8ce3ff var(--p),rgb(255 255 255/.1) var(--p))}
-.is-simple .story-slider input[type="range"]::-webkit-slider-thumb {-webkit-appearance:none;width:22px;height:22px;margin-top:-9px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgb(140 227 255/.22),0 0 20px rgb(140 227 255/.85);transition:box-shadow .2s}
-.is-simple .story-slider input[type="range"]::-moz-range-thumb {width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgb(140 227 255/.22),0 0 20px rgb(140 227 255/.85)}
-.is-simple .story-slider input[type="range"]:hover::-webkit-slider-thumb,.is-simple .story-slider input[type="range"]:active::-webkit-slider-thumb {box-shadow:0 0 0 8px rgb(140 227 255/.25),0 0 26px rgb(140 227 255/.95)}
-.is-simple .story-slider input[type="range"]:focus-visible {outline:none}
-.is-simple .story-slider input[type="range"]:focus-visible::-webkit-slider-thumb {box-shadow:0 0 0 3px #04070d,0 0 0 5px var(--tw-accent),0 0 22px rgb(140 227 255/.9)}
-.is-simple .story-slider input[type="range"]:focus-visible::-moz-range-thumb {box-shadow:0 0 0 3px #04070d,0 0 0 5px var(--tw-accent),0 0 22px rgb(140 227 255/.9)}
+.spectrum-app .story-slider input[type="range"] {-webkit-appearance:none;appearance:none;width:100%;height:30px;margin:0;background:none;cursor:pointer}
+.spectrum-app .story-slider input[type="range"]::-webkit-slider-runnable-track {height:4px;border-radius:4px;background:linear-gradient(90deg,#ffc46b,#8ce3ff var(--p),rgb(255 255 255/.1) var(--p))}
+.spectrum-app .story-slider input[type="range"]::-moz-range-track {height:4px;border-radius:4px;background:linear-gradient(90deg,#ffc46b,#8ce3ff var(--p),rgb(255 255 255/.1) var(--p))}
+.spectrum-app .story-slider input[type="range"]::-webkit-slider-thumb {-webkit-appearance:none;width:22px;height:22px;margin-top:-9px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgb(140 227 255/.22),0 0 20px rgb(140 227 255/.85);transition:box-shadow .2s}
+.spectrum-app .story-slider input[type="range"]::-moz-range-thumb {width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgb(140 227 255/.22),0 0 20px rgb(140 227 255/.85)}
+.spectrum-app .story-slider input[type="range"]:hover::-webkit-slider-thumb,.spectrum-app .story-slider input[type="range"]:active::-webkit-slider-thumb {box-shadow:0 0 0 8px rgb(140 227 255/.25),0 0 26px rgb(140 227 255/.95)}
+.spectrum-app .story-slider input[type="range"]:focus-visible {outline:none}
+.spectrum-app .story-slider input[type="range"]:focus-visible::-webkit-slider-thumb {box-shadow:0 0 0 3px #04070d,0 0 0 5px var(--tw-accent),0 0 22px rgb(140 227 255/.9)}
+.spectrum-app .story-slider input[type="range"]:focus-visible::-moz-range-thumb {box-shadow:0 0 0 3px #04070d,0 0 0 5px var(--tw-accent),0 0 22px rgb(140 227 255/.9)}
 
 /* A choice between a few values, as one control. */
 .story-choice {display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:15px;color:var(--tw-muted)}
@@ -138,8 +108,8 @@ body:has(.spectrum-app.is-simple) {background:#04070d}
 .story-end-cards > div {position:relative;padding:22px 24px;border:1px solid var(--tw-line);border-radius:18px;background:var(--glass);box-shadow:inset 0 1px 0 rgb(255 255 255/.06),0 0 60px -36px rgb(140 227 255/.5)}
 .story-end-cards p:last-child {margin:0;font-size:19px;line-height:1.5;color:var(--tw-text)}
 .story-end-actions {display:flex;flex-wrap:wrap;gap:10px}
-.is-simple .story-end-actions .twin-chip.is-accent {border-color:transparent;background:linear-gradient(135deg,#d9f7ff,#8ce3ff);color:#03121c;box-shadow:0 0 30px -6px rgb(140 227 255/.85)}
-.is-simple .story-end-actions .twin-chip.is-accent:hover {background:linear-gradient(135deg,#f2fcff,#a8ebff)}
+.spectrum-app .story-end-actions .twin-chip.is-accent {border-color:transparent;background:linear-gradient(135deg,#d9f7ff,#8ce3ff);color:#03121c;box-shadow:0 0 30px -6px rgb(140 227 255/.85)}
+.spectrum-app .story-end-actions .twin-chip.is-accent:hover {background:linear-gradient(135deg,#f2fcff,#a8ebff)}
 .story-sources {margin-top:32px;padding:14px 18px;border:1px solid var(--tw-line);border-radius:14px;background:rgb(255 255 255/.02);color:var(--tw-muted);font-size:14px}
 .story-sources summary {cursor:pointer;font:500 12px/1.4 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase}
 .story-sources summary:hover {color:var(--tw-text)}
@@ -147,7 +117,6 @@ body:has(.spectrum-app.is-simple) {background:#04070d}
 
 /* Motion: the title's light drifts, the dot breathes, scenes rise into place as they scroll in. Off for reduced motion. */
 @media (prefers-reduced-motion:no-preference) {
-  .story-title em {animation:story-sheen 9s linear infinite}
   .story-dot {animation:story-breathe 2.4s ease-in-out infinite}
   .story-hero-line {stroke-dasharray:1;animation:story-draw 2.6s cubic-bezier(.2,.7,.2,1) .2s both}
   .story-hero-area {animation:story-fade 1.6s ease 1.4s both}
@@ -155,7 +124,6 @@ body:has(.spectrum-app.is-simple) {background:#04070d}
     .story-words,.story-picture {animation:story-rise linear both;animation-timeline:view();animation-range:entry 0% entry 55%}
   }
 }
-@keyframes story-sheen {to {background-position:-200% 0}}
 @keyframes story-breathe {50% {filter:drop-shadow(0 0 13px rgb(255 196 107/1))}}
 @keyframes story-draw {from {stroke-dashoffset:1}}
 @keyframes story-fade {from {opacity:0}}

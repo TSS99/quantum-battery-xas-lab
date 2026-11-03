@@ -87,31 +87,31 @@ export function XasExplorer({ material, xanes, shift_eV, temperature_K, shell }:
   const bands: [Region, number, number][] = [['pre', preLo, preHi], ['edge', edgeLo, 15], ['xanes', 15, 50], ['exafs', 50, TO]];
 
   const caption: Record<Region, string> = {
-    below: `Too little energy to free a ${name} ${core} electron: the X-rays mostly pass.`,
-    pre: !marks.preEdge ? `No pre-edge peak in this crystal: the ${core} electron finds no empty level below the edge to jump into.`
-      : transition ? `Just enough to lift the ${core} electron into an empty 3d level: a weak, nearly forbidden jump, the pre-edge.` : `Just enough to lift the ${core} electron into an empty bound state: a small peak before the edge.`,
-    edge: `The ${core} electron jumps into ${empty} states: absorption shoots up${marks.peak.height >= 1.3 ? `, to a white line ${marks.peak.height.toFixed(1)} times the step` : ''}. Where this happens tracks the oxidation state.`,
-    xanes: `The electron is free but slow: it bounces between many neighbours, so this shape fingerprints the site's geometry.`,
-    exafs: `A fast electron wave (λ = ${lambda.toFixed(2)} Å) echoes off the neighbours: in step, more absorption; out of step, less.`,
+    below: `Too little energy to free a ${name} ${core} electron, so most of the X-rays pass straight through.`,
+    pre: !marks.preEdge ? `No pre-edge peak in this crystal. The ${core} electron has no empty level below the edge to jump into.`
+      : transition ? `Just enough to lift the ${core} electron into an empty 3d level. That jump is nearly forbidden, so the peak it makes, the pre-edge, stays small.` : `Just enough to lift the ${core} electron into an empty bound state, which shows as a small peak before the edge.`,
+    edge: `The ${core} electron jumps into ${empty} states and absorption shoots up${marks.peak.height >= 1.3 ? `, peaking in a white line ${marks.peak.height.toFixed(1)} times the step` : ''}. Where this happens tells you the oxidation state.`,
+    xanes: `The electron is free now, but slow, and it bounces around many neighbours before it gets away. That is why the shape here depends on how the atoms are arranged.`,
+    exafs: `Now the electron is a fast wave (λ = ${lambda.toFixed(2)} Å) that echoes off the neighbours. In step, absorption goes up a little. Out of step, it goes down.`,
   };
 
   return <div className="xas-explorer">
     <div className="xas-explorer-figures">
       <AtomPicture here={here} d={d} preAt={preAt} peakAt={marks.peak.at_eV} mu={mu} top={top} core={core} empty={empty} bound={bound} absorber={material.absorber} k={k} shell={shell} />
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Normalized absorption of ${material.formula} against energy above its edge, measured up to ${d.toFixed(0)} eV: ${REGIONS.find(r => r.id === here)!.name}`}>
-        <rect width={W} height={H} rx="10" fill="#121a2b" />
+        <rect width={W} height={H} rx="10" fill="#070c18" />
         {bands.map(([id, a, b]) => <g key={id}>
           <rect x={sx(a)} y={T} width={sx(b) - sx(a)} height={H - T - B} fill={id === here ? '#8ce3ff' : '#9cc5e8'} opacity={id === here ? 0.12 : 0.04} />
           <text x={(sx(a) + sx(b)) / 2} y={T - 10} textAnchor="middle" fill={id === here ? '#f3f6fa' : '#a7b1c1'} fontSize="12.5" fontWeight={id === here ? 600 : 400}>{REGIONS.find(r => r.id === id)!.name}</text>
         </g>)}
-        <line x1={sx(KNEE)} x2={sx(KNEE)} y1={T} y2={H - B} stroke="#35404d" strokeDasharray="3 4" />
+        <line x1={sx(KNEE)} x2={sx(KNEE)} y1={T} y2={H - B} stroke="#1e2b40" strokeDasharray="3 4" />
         <path d={`M${sx(KNEE) - 7},${H - B + 5} l6,-10 M${sx(KNEE) + 1},${H - B + 5} l6,-10`} stroke="#a7b1c1" strokeWidth="1.4" />
         {[-20, 0, 20, 40, 60, 200, 400].map(x => <text key={x} x={sx(x)} y={H - B + 16} textAnchor="middle" fill="#a7b1c1" fontSize="12">{x > 0 ? '+' + x : x}</text>)}
         <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle" fill="#a7b1c1" fontSize="12">E − E₀ (eV), near edge stretched</text>
         {[near, far].map((part, i) => <path key={i} d={path(i ? part : part.slice(0, -8))} fill="none" stroke="#d4dae3" strokeWidth="1.4" opacity="0.25" />)}
-        {[doneNear, doneFar].map((part, i) => part.length > 1 && <path key={i} d={path(i ? part : part.slice(0, Math.min(part.length, near.length - 8)))} fill="none" stroke="#f3f6fa" strokeWidth="2.4" />)}
+        {[doneNear, doneFar].map((part, i) => part.length > 1 && <path key={i} className="spectrum-trace" d={path(i ? part : part.slice(0, Math.min(part.length, near.length - 8)))} fill="none" stroke="#f3f6fa" strokeWidth="2.4" />)}
         <line x1={sx(d)} x2={sx(d)} y1={T} y2={H - B} stroke="#8ce3ff" strokeWidth="1.5" />
-        <circle cx={sx(d)} cy={sy(mu)} r="5" fill="#8ce3ff" stroke="#121a2b" strokeWidth="2" />
+        <circle cx={sx(d)} cy={sy(mu)} r="5" fill="#8ce3ff" stroke="#070c18" strokeWidth="2" />
       </svg>
     </div>
     <div className="xas-explorer-controls">
@@ -151,16 +151,16 @@ function AtomPicture({ here, d, preAt, peakAt, mu, top, core, empty, bound, abso
   // In the fine structure: the outgoing wave and its echo off the first shell, in step where that shell's chi > 0.
   const echo = free && shell ? Math.sin(2 * k * shell.paths[0].reff + pathCurves(shell.paths[0], k).phase) : 0;
   return <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`The beam through the sample keeps ${(through * 100).toFixed(0)} percent; in the ${absorber} atom the ${core} electron ${here === 'below' ? 'stays put' : free ? 'is freed as a wave' : 'jumps to an empty level'}`}>
-    <rect width={W} height={H} rx="10" fill="#121a2b" />
+    <rect width={W} height={H} rx="10" fill="#070c18" />
     {/* The measurement: I0, the sample, It */}
     <g>
-      <rect x="18" y="18" width="46" height="34" rx="5" fill="#1d283e" stroke="#35404d" />
+      <rect x="18" y="18" width="46" height="34" rx="5" fill="#1d283e" stroke="#1e2b40" />
       <text x="41" y="40" textAnchor="middle" fill="#d4dae3" fontSize="13">I₀</text>
       <rect x="64" y="30" width="110" height="10" fill="#ffc46b" opacity="0.85" />
       <rect x="174" y="14" width="18" height="42" rx="3" fill="#7a8494" />
       <text x="183" y="70" textAnchor="middle" fill="#a7b1c1" fontSize="11.5">sample</text>
       <rect x="192" y={35 - 5 * through} width="110" height={10 * through} fill="#ffc46b" opacity={0.25 + 0.6 * through} />
-      <rect x="302" y="18" width="46" height="34" rx="5" fill="#1d283e" stroke="#35404d" />
+      <rect x="302" y="18" width="46" height="34" rx="5" fill="#1d283e" stroke="#1e2b40" />
       <text x="325" y="40" textAnchor="middle" fill="#d4dae3" fontSize="13">Iₜ</text>
       <rect x="356" y={52 - 34 * through} width="12" height={34 * through} fill="#ffc46b" />
       <text x="388" y="40" fill="#a7b1c1" fontSize="11.5"><tspan x="374" dy="-8">{(through * 100).toFixed(0)} %</tspan><tspan x="374" dy="16">through</tspan></text>
@@ -174,7 +174,7 @@ function AtomPicture({ here, d, preAt, peakAt, mu, top, core, empty, bound, abso
     <text x="336" y={yEmpty + 4} fill="#a7b1c1" fontSize="11.5" opacity={free ? 0.45 : 1}>{empty}</text>
     <line x1="150" x2="330" y1={yPre} y2={yPre} stroke="#d4dae3" />
     <text x="336" y={yPre + 4} fill="#a7b1c1" fontSize="11.5">{bound}</text>
-    <path d={`M150,${CORE - 40} l10,-6 l-20,-8 l10,-6`} fill="none" stroke="#35404d" />
+    <path d={`M150,${CORE - 40} l10,-6 l-20,-8 l10,-6`} fill="none" stroke="#1e2b40" />
     <text x="164" y={CORE - 46} fill="#a7b1c1" fontSize="11">thousands of eV below</text>
     <line x1="150" x2="330" y1={CORE} y2={CORE} stroke="#f3f6fa" strokeWidth="2" />
     <text x="336" y={CORE + 4} fill="#f3f6fa" fontSize="12">{core} (core)</text>

@@ -26,7 +26,7 @@ function Sketch({ card }: { card: Card }) {
   const px = (i: number) => PAD + i / 120 * (W - 2 * PAD), py = (v: number) => H - PAD - (v - lo) / (hi - lo || 1) * (H - 2 * PAD);
   const line = (ys: number[]) => ys.map((v, i) => (i ? 'L' : 'M') + px(i).toFixed(1) + ',' + py(v).toFixed(1)).join('');
   return <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${card.legend[0]} against ${card.legend[1]}`}>
-    <rect width={W} height={H} rx="6" fill="#121a2b" />
+    <rect width={W} height={H} rx="6" fill="#070c18" />
     <path d={line(ya)} fill="none" stroke="#a7b1c1" strokeWidth="1.8" strokeDasharray="5 4" />
     <path d={line(yb)} fill="none" stroke="#8ce3ff" strokeWidth="2.2" />
   </svg>;
@@ -44,15 +44,15 @@ export function ReadCards({ near, far }: { near: WiggleCurve | null; far: Wiggle
     const cuo = shift('cuo-pellet') - shift('cu-foil');
     cards.push({ title: 'Edge position', target: 'spectrum-oxidation', range: [-10, 25], legend: ['Cu metal', 'CuO, Cu(II)'],
       a: x => xanesAt(edges.cu, x), b: x => xanesAt(edges.cuo, x - cuo),
-      read: `Valence up, edge up: CuO's edge sits ${cuo.toFixed(1)} eV above copper's.` });
+      read: `Take electrons away and the edge moves up. CuO's sits ${cuo.toFixed(1)} eV above copper metal's.` });
     const oct = nearEdgeMarks(edges.cr2o3).preEdge?.height ?? 0, tet = nearEdgeMarks(edges.k2cro4).preEdge?.height ?? 0;
     const offset = edges.k2cro4.feff_e0_eV - edges.cr2o3.feff_e0_eV;
     cards.push({ title: 'Edge shape', target: 'spectrum-edge', range: [-18, 22], legend: ['Cr₂O₃, octahedral', 'K₂CrO₄, tetrahedral'],
       a: x => xanesAt(edges.cr2o3, x), b: x => xanesAt(edges.k2cro4, x - offset),
-      read: `No centre of symmetry, a strong pre-edge: K₂CrO₄'s is ${oct > 0 ? `${Math.round(tet / oct)}×` : 'far above'} Cr₂O₃'s.` });
+      read: `Without a centre of symmetry the pre-edge grows strong. K₂CrO₄'s is ${oct > 0 ? `${Math.round(tet / oct)}×` : 'far above'} Cr₂O₃'s.` });
   }
   if (near && far) cards.push({ title: 'Wiggle speed', target: 'spectrum-plots', range: [3, 11], legend: [near.label, far.label],
-    a: at(near.k, near.y), b: at(far.k, far.y), read: 'Farther neighbours wiggle faster: the speed of a wiggle is a distance.' });
+    a: at(near.k, near.y), b: at(far.k, far.y), read: 'Farther neighbours make faster wiggles, so the speed of a wiggle gives the distance.' });
   const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   return <ul className="read-cards">
     {cards.map(card => <li key={card.title} className="read-card">

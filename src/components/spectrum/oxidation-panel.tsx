@@ -40,15 +40,15 @@ export function OxidationPanel({ element, edge_eV, currentId }: { element: strin
   const shade = (i: number) => SHADES[Math.round(i * (SHADES.length - 1) / Math.max(1, series.members.length - 1))];
   return <div className="oxidation-panel">
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${element} edges by valence: ${series.members.map(m => `${m.name} ${m.shift_eV.toFixed(1)} eV`).join(', ')}`}>
-      <rect width={W} height={H} rx="8" fill="#172235" />
-      {[0, 0.5, 1].map(v => <g key={v}><line x1={L} x2={W - R} y1={py(v)} y2={py(v)} stroke="#35404d" /><text x={L - 6} y={py(v) + 4} textAnchor="end" fill="#a7b1c1" fontSize="12">{v}</text></g>)}
+      <rect width={W} height={H} rx="8" fill="#070c18" />
+      {[0, 0.5, 1].map(v => <g key={v}><line x1={L} x2={W - R} y1={py(v)} y2={py(v)} stroke="#1e2b40" /><text x={L - 6} y={py(v) + 4} textAnchor="end" fill="#a7b1c1" fontSize="12">{v}</text></g>)}
       {[-10, 0, 10, 20, 30].map(d => <text key={d} x={px(d)} y={H - B + 16} textAnchor="middle" fill="#a7b1c1" fontSize="12">{d > 0 ? '+' + d : d}</text>)}
       <text x={(L + W - R) / 2} y={H - 4} textAnchor="middle" fill="#a7b1c1" fontSize="12">E − E₀ of the metal (eV)</text>
       {series.members.map((m, i) => {
         const d = x.map((e, j) => (j ? 'L' : 'M') + px(e).toFixed(1) + ',' + py(value(m.id, m.shift_eV, e)).toFixed(1)).join('');
         return <g key={m.id}>
           <path d={d} fill="none" stroke={shade(i)} strokeWidth={m.id === currentId ? 3.2 : 2} strokeDasharray={shapes[m.id] ? undefined : '6 4'} />
-          <circle cx={px(m.shift_eV)} cy={py(value(m.id, m.shift_eV, m.shift_eV))} r="4" fill={shade(i)} stroke="#172235" strokeWidth="1.5" />
+          <circle cx={px(m.shift_eV)} cy={py(value(m.id, m.shift_eV, m.shift_eV))} r="4" fill={shade(i)} stroke="#070c18" strokeWidth="1.5" />
         </g>;
       })}
     </svg>
@@ -60,6 +60,6 @@ export function OxidationPanel({ element, edge_eV, currentId }: { element: strin
         <td><Num>{(m.shift_eV > 0 ? '+' : '') + m.shift_eV.toFixed(2)}</Num> eV{m.derived ? ` (${m.derived} by valence)` : ''}</td>
       </tr>)}</tbody>
     </table>
-    <p className="spectrum-note">About <Num>{series.perValence_eV.toFixed(1)}</Num> eV per unit of valence, not exactly linear: the shape changes too.{series.members.some(m => !shapes[m.id]) ? ' Dashed: no crystal to compute the shape from.' : ''}</p>
+    <p className="spectrum-note">About <Num>{series.perValence_eV.toFixed(1)}</Num> eV per unit of valence. It is not exactly linear, because the shape changes too.{series.members.some(m => !shapes[m.id]) ? ' Dashed lines have no crystal to compute the shape from.' : ''}</p>
   </div>;
 }

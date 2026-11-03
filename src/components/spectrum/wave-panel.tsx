@@ -25,7 +25,7 @@ export function WavePanel({ shell, absorber, atoms, deltar_A, k, setK, chi, colo
   const moved = atoms.map(a => { const r = Math.hypot(...a); return a.map(v => v * (r + deltar_A) / r) as [number, number, number]; });
   const { points, total } = shellSlice(moved);
   const neighbour = atomName(shell.element!), lambda = 2 * Math.PI / k;
-  const verdict = echo > 0.3 ? 'in step: the returning wave adds, so absorption goes up' : echo < -0.3 ? 'out of step: the returning wave cancels, so absorption goes down' : 'about a quarter period apart: little change';
+  const verdict = echo > 0.3 ? 'in step, so the returning wave adds and absorption goes up' : echo < -0.3 ? 'out of step, so the returning wave cancels and absorption goes down' : 'about a quarter period apart, so little changes';
   return <div className="wave-panel">
     <div className="spectrum-seg wave-map-view" role="group" aria-label="What the wave map shows">
       <button type="button" className="twin-chip" aria-pressed={!echoesOnly} onClick={() => setEchoesOnly(false)}>Whole wave</button>
@@ -34,13 +34,13 @@ export function WavePanel({ shell, absorber, atoms, deltar_A, k, setK, chi, colo
     <WaveMap k={k} atoms={moved} curves={curves} color={color} absorber={absorber} element={shell.element!} echo={echo} echoesOnly={echoesOnly}
       label={`The electron wave around the ${atomName(absorber)} atom and ${points.length} of its ${total} ${neighbour} neighbours at ${R.toFixed(2)} angstrom, at k ${k.toFixed(2)}${echoesOnly ? ', echoes alone' : ''}: ${verdict}`} />
     <p className="wave-map-key">{echoesOnly
-      ? <>The {neighbour} echoes alone, brightened, meeting at the {atomName(absorber)} atom; the ring: in step or not.</>
-      : <>To scale: wavelength <Num>{lambda.toFixed(2)}</Num> Å, gone within about <Num>{curves.lambda.toFixed(0)}</Num> Å. The echoes really are this weak.</>}
+      ? <>Only the {neighbour} echoes, brightened, as they meet at the {atomName(absorber)} atom. The ring shows whether they arrive in step.</>
+      : <>Drawn to scale. The wavelength is <Num>{lambda.toFixed(2)}</Num> Å and the wave dies out within about <Num>{curves.lambda.toFixed(0)}</Num> Å. Yes, the echoes really are this weak.</>}
       {' '}<Num>{String(points.length)}</Num> of <Num>{String(total)}</Num> {neighbour} atoms lie in this slice.</p>
     <Range label="Electron wavenumber k" display={<>Electron wavenumber <Tex plain>k</Tex></>} value={k} min={2} max={14} step={0.05} digits={2} unit="Å^-1" onChange={setK}
       hint={<>photon energy <Num>{(k * k / ETOK).toFixed(0)}</Num> eV above the edge</>} />
     <p className={'wave-verdict ' + (echo > 0.3 ? 'is-up' : echo < -0.3 ? 'is-down' : '')} aria-live="polite">
-      At <Tex plain>{`k = ${k.toFixed(2)}`}</Tex> the waves are {verdict}. This shell&apos;s <Tex plain>{'\\chi(k)'}</Tex> here: <Num>{(chi >= 0 ? '+' : '') + chi.toFixed(4)}</Num>.
+      At <Tex plain>{`k = ${k.toFixed(2)}`}</Tex> the waves are {verdict}. Here this shell&apos;s <Tex plain>{'\\chi(k)'}</Tex> is <Num>{(chi >= 0 ? '+' : '') + chi.toFixed(4)}</Num>.
     </p>
   </div>;
 }

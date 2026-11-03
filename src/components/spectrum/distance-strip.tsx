@@ -32,12 +32,12 @@ export function DistanceStrip({ atoms, shells, colors, active, onHover, onSelect
   return <svg className="distance-strip" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Distances from the ${absorber} atom: ${named.map(s => `${s.count} ${s.element} at ${s.r_A.toFixed(2)} angstrom`).join(', ')}`}
     onPointerLeave={() => onHover(null)}>
-    <rect width={W} height={H} rx="8" fill="#121a2b" />
+    <rect width={W} height={H} rx="8" fill="#070c18" />
     {Array.from({ length: Math.floor(rmax) + 1 }, (_, r) => <g key={r}>
       <line x1={px(r)} x2={px(r)} y1={BASE} y2={BASE + 4} stroke={MUTED} />
       <text x={px(r)} y={BASE + 16} textAnchor="middle" fill={MUTED} fontSize="11.5">{r}</text>
     </g>)}
-    <line x1={L} x2={W - R} y1={BASE} y2={BASE} stroke="#35404d" />
+    <line x1={L} x2={W - R} y1={BASE} y2={BASE} stroke="#1e2b40" />
     <circle cx={px(0)} cy={BASE - 6} r="6" fill="#f3f6fa" />
     {bars.map((b, i) => {
       const lit = !active || b.shellId === active;
@@ -47,8 +47,8 @@ export function DistanceStrip({ atoms, shells, colors, active, onHover, onSelect
     {labels.map(({ s, text, x, y }) => <g key={s.id} opacity={!active || active === s.id ? 1 : 0.4} style={{ cursor: 'pointer' }}
       onPointerEnter={() => onHover(s.id)} onClick={() => onSelect(s.id)}>
       <rect x={x - 18} y={y - 11} width="36" height={BASE - y + 12} fill="transparent" />
-      <text x={x} y={y} textAnchor="middle" fill={INK} fontSize="11.5" paintOrder="stroke" stroke="#121a2b" strokeWidth="3">{text}</text>
+      <text x={x} y={y} textAnchor="middle" fill={INK} fontSize="11.5" paintOrder="stroke" stroke="#070c18" strokeWidth="3">{text}</text>
     </g>)}
-    <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle" fill={MUTED} fontSize="12">Distance from the {absorber} atom (Å), true; the |χ(R)| peaks sit short of these</text>
+    <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle" fill={MUTED} fontSize="12">True distance from the {absorber} atom (Å); the |χ(R)| peaks sit a little short of these</text>
   </svg>;
 }

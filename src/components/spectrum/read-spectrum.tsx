@@ -23,8 +23,7 @@ export function SpectrumPage() {
     setView(next);
     window.scrollTo(0, 0);
   };
-  // The view's class scopes its look: the story's console styling starts with the simple view.
-  return <div className={`twin-app spectrum-app is-${view ?? 'loading'}`}>
+  return <div className="twin-app spectrum-app">
     {view === 'simple' && <StoryView onView={choose} />}
     {view === 'detailed' && <DetailedView onView={choose} />}
     {view === null && loading()}

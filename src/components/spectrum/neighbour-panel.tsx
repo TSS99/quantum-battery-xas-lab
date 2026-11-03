@@ -42,13 +42,13 @@ export function NeighbourPanel({ path, color }: { path: FeffPath; color: string 
   const describe = (c: Curve) => `${atomName(c.element)}: largest near k = ${c.peakK.toFixed(1)}${c.dips.length ? `, dips near ${c.dips.join(' and ')}` : ''}`;
   return <div className="neighbour-panel">
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`How strongly each neighbour reflects the electron wave against k. ${curves.map(describe).join('. ')}.`}>
-      <rect width={W} height={H} rx="8" fill="#172235" />
-      {[0, 0.5, 1].map(v => <line key={v} x1={L} x2={W - R} y1={py(v)} y2={py(v)} stroke="#35404d" />)}
+      <rect width={W} height={H} rx="8" fill="#070c18" />
+      {[0, 0.5, 1].map(v => <line key={v} x1={L} x2={W - R} y1={py(v)} y2={py(v)} stroke="#1e2b40" />)}
       {[2, 4, 6, 8, 10, 12, 14, 16].map(k => <text key={k} x={px(k)} y={H - B + 16} textAnchor="middle" fill="#a7b1c1" fontSize="12">{k}</text>)}
       <text x={(L + W - R) / 2} y={H - 4} textAnchor="middle" fill="#a7b1c1" fontSize="12">k (Å⁻¹)</text>
       {curves.map(c => <path key={c.element} d={line(c)} fill="none" stroke={c.color} strokeWidth={c === own ? 2.8 : 1.8} strokeDasharray={c === own ? undefined : '6 4'} />)}
     </svg>
     <ul className="neighbour-legend">{curves.map(c => <li key={c.element}><i style={{ borderTopColor: c.color, borderTopStyle: c === own ? 'solid' : 'dashed' }} aria-hidden="true" />{describe(c)}{c === own ? ' (this shell)' : ''}</li>)}</ul>
-    <p className="spectrum-note">Light neighbours echo at low <Tex plain>k</Tex>, heavy ones out to high <Tex plain>k</Tex>: try <Tex plain>{'k^3'}</Tex> weight on the shells to bring heavy ones out.</p>
+    <p className="spectrum-note">Light neighbours echo mostly at low <Tex plain>k</Tex>, heavy ones out to high <Tex plain>k</Tex>. Weight the shells by <Tex plain>{'k^3'}</Tex> to bring the heavy ones out.</p>
   </div>;
 }

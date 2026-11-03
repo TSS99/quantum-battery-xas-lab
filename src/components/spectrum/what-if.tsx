@@ -30,7 +30,7 @@ export function WhatIf({ shell, tweak, setTweak, sigma2_A2, temperature_K, setTe
   return <div className="what-if">
     {/* On a grid of whole hundredths of an angstrom, so every value the slider offers is one it can hold. */}
     <Range label={`Distance of the ${name} neighbours`} value={hundredths(shell.r_A + (tweak.deltar_A ?? 0))} min={hundredths(Math.max(0.8, shell.r_A - 0.3))} max={hundredths(shell.r_A + 0.3)} step={0.01} digits={2} unit="Å"
-      onChange={r => setTweak({ ...tweak, deltar_A: r - shell.r_A })} hint={`${shell.r_A.toFixed(2)} Å in the crystal; farther wiggles faster and echoes weaker (1/R² and the electron's limited range)`} />
+      onChange={r => setTweak({ ...tweak, deltar_A: r - shell.r_A })} hint={`${shell.r_A.toFixed(2)} Å in the crystal. Farther out, the wiggle runs faster and the echo gets weaker (1/R², and the electron only gets so far)`} />
     <Range label={`Number of ${name} neighbours`} value={count} min={1} max={Math.max(2, shell.count * 2)} step={1}
       onChange={n => setTweak({ ...tweak, scale: n / shell.count })} hint={`${shell.count} in the crystal`} />
     <Range label="Disorder of this shell" display={<>Disorder of this shell, <Tex plain>{'\\sigma^2'}</Tex></>} value={sigma2_A2} min={0} max={0.03} step={0.0005} digits={4} unit="Å^2"

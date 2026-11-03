@@ -5,7 +5,7 @@ import { niceTicks, tickLabel } from './ticks';
 
 // Plot text uses the LaTeX font, like the site's other plots.
 const TEX_FONT = "KaTeX_Main, 'Latin Modern Roman', 'Times New Roman', serif";
-const INK = '#d4dae3', MUTED = '#a7b1c1', GRID = '#35404d', SCAN = '#8ce3ff', BG = '#172235';
+const INK = '#d4dae3', MUTED = '#a7b1c1', GRID = '#1e2b40', SCAN = '#8ce3ff', BG = '#070c18';
 /** Height of one lane in the stacked view, px. */
 const LANE = 46;
 
@@ -168,7 +168,7 @@ export function ShellPlot({ x, xMax, curves, total, scan, selected, onHover, onS
       })}
       {curves.map(c => <path key={c.id} d={path(xs, cut(c.y), pyFor(c.id))} fill="none" stroke={c.color} strokeDasharray={c.dash}
         strokeWidth={selected === c.id ? 2.6 : stacked ? 1.8 : 1.6} opacity={selected && selected !== c.id ? (stacked ? 0.35 : 0.18) : 0.95} />)}
-      <path d={path(xs, cut(total), pyFor('total'))} fill="none" stroke={INK} strokeWidth="2" opacity={selected && !stacked ? 0.55 : 0.9} />
+      <path className="spectrum-trace" d={path(xs, cut(total), pyFor('total'))} fill="none" stroke={INK} strokeWidth="2" opacity={selected && !stacked ? 0.55 : 0.9} />
       {scanShown.length > 1 && <path d={path(scanShown.map(p => p[0]), scanShown.map(p => p[1]), pyFor('total'))} fill="none" stroke={SCAN} strokeWidth="2" strokeDasharray="2 4" strokeLinecap="round" />}
       {markers.map(m => <g key={m.text}>
         <line x1={px(m.x)} x2={px(m.x)} y1={T} y2={H - B} stroke={m.color} strokeDasharray={m.dashed ? '4 4' : undefined} strokeWidth="1.5" />

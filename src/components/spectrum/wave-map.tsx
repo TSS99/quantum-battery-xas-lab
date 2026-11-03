@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { shellSlice, waveField, type WaveCurves } from '@/lib/twin/wave-field';
 
 const W = 640, H = 300, GRID_W = 192, GRID_H = 90;
-const BG = [18, 26, 43], CREST = [140, 227, 255], TROUGH = [217, 89, 38];
+const BG = [7, 12, 24], CREST = [140, 227, 255], TROUGH = [217, 89, 38];
 /** One drawn wave period every two seconds: the electron's real frequency is far beyond any drawing. */
 const DRAWN_HZ = 0.5;
 
@@ -53,12 +53,12 @@ export function WaveMap({ k, atoms, curves, color, absorber, element, echo, echo
       for (const p of points) {
         const [x, y] = at(p);
         ctx.beginPath(); ctx.arc(x, y, 11, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.fill();
-        ctx.fillStyle = '#121a2b'; ctx.fillText(element, x, y + 0.5);
+        ctx.fillStyle = '#070c18'; ctx.fillText(element, x, y + 0.5);
       }
       ctx.beginPath(); ctx.arc(W / 2, H / 2, 19, 0, 2 * Math.PI);
       ctx.strokeStyle = echo > 0.3 ? '#8ce3ff' : echo < -0.3 ? '#d95926' : '#a7b1c1'; ctx.lineWidth = 3.5; ctx.stroke();
       ctx.beginPath(); ctx.arc(W / 2, H / 2, 13, 0, 2 * Math.PI); ctx.fillStyle = '#f3f6fa'; ctx.fill();
-      ctx.fillStyle = '#121a2b'; ctx.fillText(absorber, W / 2, H / 2 + 0.5);
+      ctx.fillStyle = '#070c18'; ctx.fillText(absorber, W / 2, H / 2 + 0.5);
       // Scale bar: 1 angstrom.
       ctx.strokeStyle = '#d4dae3'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(W - 20 - scale, H - 18); ctx.lineTo(W - 20, H - 18); ctx.stroke();
