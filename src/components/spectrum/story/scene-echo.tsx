@@ -38,22 +38,28 @@ export function SceneEcho({ material, e0, first, neighbours, shells }: SceneProp
   const verdict = echo > 0.3 ? 'in step' : echo < -0.3 ? 'out of step' : 'between';
   const px = (e: number) => L + (e - FROM) / (TO - FROM) * (W - L - R), py = (y: number) => T + (H - T - B) / 2 * (1 - y / wiggle.top);
   const line = wiggle.xs.map((e, i) => (i ? 'L' : 'M') + px(e).toFixed(1) + ',' + py(wiggle.ys[i]).toFixed(1)).join('');
-  return <Scene id="story-echo" n={4} title="In step or out of step: the wiggles" term="EXAFS, the wiggles"
-    body={<p>When the echo gets back in step with the wave, {element} absorbs a little more. Out of step, a little less. Raise the energy and the ripples get shorter, so it flips back and forth. That makes the small wiggles.</p>}
+  return <Scene id="story-echo" n={4} title="Where the small wiggles come from" term="EXAFS, the wiggles"
+    body={<p>When an echo comes back in step with the wave, {element} absorbs a little more. Out of step, a little less. Raise the energy and the ripples shrink, so the echoes drift in and out of step. That is the wiggle.</p>}
     picture={<figure className="story-figure">
       <div ref={stage}>{near ? <Wave3D absorber={material.absorber} neighbours={neighbours} k={k} curves={curves} echoes ring={echo}
         label={`The electron wave and the echoes of the ${first.count} nearest ${neighbour} atoms at ${eV(e0 + d)} eV: the echoes meet the ${element} atom ${verdict}`} />
         : <div className="story-stage" />}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`The wiggle of the nearest ${neighbour} atoms against X-ray energy, now ${wiggle.at(d) > 0 ? 'above the middle: more absorbed' : 'below the middle: less absorbed'}`}>
-        <rect width={W} height={H} rx="10" fill="#121a2b" />
-        <line x1={L} x2={W - R} y1={py(0)} y2={py(0)} stroke="#35404d" />
+      <div className="story-plot"><svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`The wiggle of the nearest ${neighbour} atoms against X-ray energy, now ${wiggle.at(d) > 0 ? 'above the middle: more absorbed' : 'below the middle: less absorbed'}`}>
+        {/* The wiggle filled to the middle line: cyan where more is absorbed, orange where less. */}
+        <defs>
+          <clipPath id="story-echo-more"><rect x={0} y={0} width={W} height={py(0)} /></clipPath>
+          <clipPath id="story-echo-less"><rect x={0} y={py(0)} width={W} height={H - py(0)} /></clipPath>
+        </defs>
+        <path d={`${line}L${px(TO)},${py(0)}L${px(FROM)},${py(0)}Z`} fill="#8ce3ff" opacity="0.22" clipPath="url(#story-echo-more)" />
+        <path d={`${line}L${px(TO)},${py(0)}L${px(FROM)},${py(0)}Z`} fill="#ff9650" opacity="0.22" clipPath="url(#story-echo-less)" />
+        <line className="story-axis" x1={L} x2={W - R} y1={py(0)} y2={py(0)} />
         <text x={L + 4} y={T - 6} fill="#8ce3ff" fontSize="14">more absorbed</text>
         <text x={L + 4} y={H - B + 18} fill="#ff9650" fontSize="14">less absorbed</text>
-        <text x={W - R} y={H - B + 18} textAnchor="end" fill="#a7b1c1" fontSize="14">higher energy →</text>
-        <path d={line} fill="none" stroke="#f3f6fa" strokeWidth="2" />
-        <circle cx={px(d)} cy={py(wiggle.at(d))} r="7" fill="#ffc46b" stroke="#121a2b" strokeWidth="2" />
-      </svg>
-      <p className="story-caption" aria-live="polite"><b>{eV(e0 + d)} eV</b>: the echoes arrive {verdict === 'between' ? 'between in step and out of step' : verdict}, so {element} absorbs {verdict === 'in step' ? 'a little more' : verdict === 'out of step' ? 'a little less' : 'about the average'}.</p>
+        <text x={W - R} y={H - B + 18} textAnchor="end" fill="#8a9ab0" fontSize="14">higher energy →</text>
+        <path className="story-trace" d={line} strokeWidth="2" />
+        <circle className="story-dot" cx={px(d)} cy={py(wiggle.at(d))} r="7" />
+      </svg></div>
+      <p className="story-caption" aria-live="polite">At <b>{eV(e0 + d)} eV</b> the echoes come back {verdict === 'between' ? 'halfway between in step and out of step' : verdict}, so {element} absorbs {verdict === 'in step' ? 'a little more' : verdict === 'out of step' ? 'a little less' : 'about the average'}.</p>
     </figure>}
     control={<StorySlider label="X-ray energy" display={`${eV(e0 + d)} eV`} value={d} min={FROM} max={TO} step={1} onChange={setD} />} />;
 }

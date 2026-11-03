@@ -116,3 +116,19 @@ hold each scene to 45 words, the whole story to 340, the reading grade to 8 or l
 check the physics the pictures claim (the ring against the path sum, wiggles that speed up with distance, bumps at the
 true distances, the edge shifts of the series). The Detailed view is unchanged and one click away. First load of the
 page: 197 KB (was 321 KB).
+
+## The console look (2026-11-03)
+
+The owner found both views plain and asked for something more futuristic and polished, with text that does not read as
+machine written. They chose, when asked, Outfit for this page (titles and text; Plex Mono stays for small labels and
+readouts, digits stay in the LaTeX font) and a calm "holographic console" over a quieter or a louder neon style.
+
+- Near black page with a faint measuring grid; frosted glass panels with a lit top edge; corner marks round every
+  picture and graph; cyan light only on what is live (the trace, the current step, the slider, the dot).
+- The step bar is a floating glass pill; a thin line along the top of the window shows how far through the story you
+  are; scenes rise into place as they scroll in (scroll driven CSS, off for reduced motion and where unsupported).
+- Behind the title, the chosen material's own computed spectrum, drawn once as a trace of light.
+- Wording: no colon explanations, no "not X, it is Y", no stock phrases; short and long sentences mixed; the
+  "Scientists call this" tag became a "Textbook name" label.
+
+Step 1 (v1.29.0): the Simple view. Step 2 (v1.30.0): the Detailed view, same look and the same pass over its words.

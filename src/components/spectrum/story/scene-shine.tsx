@@ -17,14 +17,17 @@ const W = 520, H = 210, L = 14, R = 14, T = 30, B = 34;
  * The sample is a little over one absorption length thick above the edge, as in the detailed view's explorer
  * (mu x = 0.35 + 1.3 x normalized mu), and mu is the twin's model of this material: FEFF10 near edge, FEFF paths above.
  */
+/** X-rays absorbed of every 100, eV by eV from FROM to TO about the edge: the graph this scene records. */
+export function absorbedCurve(material: SceneProps['material'], xanes: SceneProps['xanes'], e0: number) {
+  const model = libraryFineStructure(e0, material, ROOM_TEMPERATURE_K, xanes);
+  const mu = Array.from({ length: TO - FROM + 1 }, (_, i) => Math.max(0, model.factor(e0 + FROM + i)));
+  const top = Math.max(...mu);
+  return mu.map(m => 100 * (1 - Math.exp(-(0.35 + 1.3 * m / top))));
+}
+
 export function SceneShine({ material, xanes, e0, what }: SceneProps) {
   const element = atomName(material.absorber);
-  const absorbed = useMemo(() => {
-    const model = libraryFineStructure(e0, material, ROOM_TEMPERATURE_K, xanes);
-    const mu = Array.from({ length: TO - FROM + 1 }, (_, i) => Math.max(0, model.factor(e0 + FROM + i)));
-    const top = Math.max(...mu);
-    return mu.map(m => 100 * (1 - Math.exp(-(0.35 + 1.3 * m / top))));
-  }, [e0, material, xanes]);
+  const absorbed = useMemo(() => absorbedCurve(material, xanes, e0), [e0, material, xanes]);
   const [d, setD] = useState(FROM), [reached, setReached] = useState(FROM);
   const now = absorbed[d - FROM], kept = Math.round(100 - now);
   const lo = Math.min(...absorbed), hi = Math.max(...absorbed);
@@ -33,28 +36,29 @@ export function SceneShine({ material, xanes, e0, what }: SceneProps) {
   const seen = reached >= 0;
   const [stage, near] = useNearView<HTMLDivElement>();
   return <Scene id="story-shine" n={1} title="Shine X-rays through it and count" term="an absorption spectrum"
-    body={<p>We shine X-rays through {what} and count how many come out the other side. Slide the energy up and watch the count. The graph records it as you go.</p>}
+    body={<p>We shine X-rays through {what} and count how many make it out the other side. Turn the energy up slowly and keep an eye on the count. The graph fills in as you go.</p>}
     picture={<figure className="story-figure">
       <div ref={stage}>{near ? <Setup3D material={material.id} through={kept / 100}
         label={`The measurement in 3D: X-rays from the beamline pass through ${what} in its holder into the detector. At ${eV(e0 + d)} eV the ${element} absorbs ${Math.round(now)} of every 100 X-rays; ${kept} reach the detector`} />
         : <div className="story-stage is-wide" />}</div>
-      <p className="story-key"><span>From the left: the X-ray beam, the {element} sample in its holder, the detector that counts</span></p>
-      <p className="story-readout"><span><b>{Math.round(now)}</b> of 100 absorbed</span><span><b>{kept}</b> got through</span></p>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`X-rays absorbed against X-ray energy, recorded from ${eV(e0 + FROM)} to ${eV(e0 + reached)} eV${seen ? `, with a jump at ${eV(e0)} eV` : ''}`}>
-        <rect width={W} height={H} rx="10" fill="#121a2b" />
-        <text x={L + 4} y={T - 10} fill="#a7b1c1" fontSize="15">X-rays absorbed</text>
-        <line x1={L} x2={W - R} y1={H - B} y2={H - B} stroke="#35404d" />
-        <text x={L} y={H - 10} fill="#a7b1c1" fontSize="14">{eV(e0 + FROM)} eV</text>
-        <text x={W - R} y={H - 10} textAnchor="end" fill="#a7b1c1" fontSize="14">{eV(e0 + TO)} eV</text>
+      <p className="story-key"><span>Left to right: the X-ray beam, the {element} sample in its holder, and the detector</span></p>
+      <p className="story-readout"><span><b>{Math.round(now)}</b> of 100 absorbed</span><span><b>{kept}</b> made it through</span></p>
+      <div className="story-plot"><svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`X-rays absorbed against X-ray energy, recorded from ${eV(e0 + FROM)} to ${eV(e0 + reached)} eV${seen ? `, with a jump at ${eV(e0)} eV` : ''}`}>
+        <defs><linearGradient id="story-shine-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#8ce3ff" stopOpacity="0.32" /><stop offset="1" stopColor="#8ce3ff" stopOpacity="0" /></linearGradient></defs>
+        <text x={L + 4} y={T - 10} fill="#8a9ab0" fontSize="15">X-rays absorbed</text>
+        <line className="story-axis" x1={L} x2={W - R} y1={H - B} y2={H - B} />
+        <text x={L} y={H - 10} fill="#8a9ab0" fontSize="14">{eV(e0 + FROM)} eV</text>
+        <text x={W - R} y={H - 10} textAnchor="end" fill="#8a9ab0" fontSize="14">{eV(e0 + TO)} eV</text>
         {seen && <g>
           <line x1={px(0)} x2={px(0)} y1={T} y2={H - B} stroke="#8ce3ff" strokeDasharray="4 4" opacity="0.7" />
           <text x={px(0) + 8} y={H - B - 10} fill="#8ce3ff" fontSize="15">the jump, {eV(e0)} eV</text>
         </g>}
-        {reached === FROM && <text x={W / 2} y={(T + H - B) / 2} textAnchor="middle" fill="#a7b1c1" fontSize="16">Slide the energy to record the graph</text>}
-        {reached >= 200 && <text x={px(200)} y={py(Math.max(...absorbed.slice(100 - FROM, 300 - FROM))) - 14} textAnchor="middle" fill="#a7b1c1" fontSize="15">small wiggles: step 4</text>}
-        <path d={line} fill="none" stroke="#f3f6fa" strokeWidth="2.4" strokeLinejoin="round" />
-        <circle cx={px(d)} cy={py(now)} r="7" fill="#ffc46b" stroke="#121a2b" strokeWidth="2" />
-      </svg>
+        {reached === FROM && <text x={W / 2} y={(T + H - B) / 2} textAnchor="middle" fill="#8a9ab0" fontSize="16">Move the slider to start the graph</text>}
+        {reached >= 200 && <text x={W - R - 4} y={T - 10} textAnchor="end" fill="#8a9ab0" fontSize="15">the small wiggles: step 4</text>}
+        {reached > FROM && <path d={`${line}L${px(reached).toFixed(1)},${H - B}L${px(FROM)},${H - B}Z`} fill="url(#story-shine-area)" />}
+        <path className="story-trace" d={line} strokeWidth="2.4" />
+        <circle className="story-dot" cx={px(d)} cy={py(now)} r="7" />
+      </svg></div>
     </figure>}
     control={<StorySlider label="X-ray energy" display={`${eV(e0 + d)} eV`} value={d} min={FROM} max={TO} step={1} onChange={v => { setD(v); setReached(r => Math.max(r, v)); }} />} />;
 }

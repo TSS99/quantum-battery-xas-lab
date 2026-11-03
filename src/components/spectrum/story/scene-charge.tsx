@@ -12,6 +12,7 @@ const Atom3D = dynamic(() => import('./atom-3d'), { ssr: false, loading: () => <
 const W = 520, H = 210, L = 12, R = 12, T = 26, B = 32, FROM = -12, TO = 30;
 /** Atomic numbers of the elements that have a series; copper's K edge (xraydb), for when copper stands in. */
 const Z: Record<string, number> = { Mn: 25, Co: 27, Cu: 29 }, COPPER_K_EV = 8979;
+const capital = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 /**
  * A series that tells the story cleanly: measured beside the metal, with the edge rising as electrons are given away.
@@ -51,25 +52,24 @@ export function SceneCharge({ material }: SceneProps) {
   const given = (v: number) => Number.isInteger(v) ? String(v) : v.toFixed(1);
   const what = (m: typeof member) => m.valence === 0 ? `${element} metal` : m.name.replace(/ (pellet|foil)$/, '');
   return <Scene id="story-charge" n={7} title="Give electrons away and the jump moves up" term="the oxidation state"
-    body={<p>When {element} joins with oxygen, it gives some of its electrons away. The ones left are held more tightly, so the jump moves to a higher energy. The metal in a battery does this every time the battery charges.</p>}
+    body={<p>When {element} bonds with oxygen, it hands some of its electrons over. The ones it keeps are held tighter, so the jump shifts to a higher energy. The metal inside a battery does this every time you charge it.</p>}
     picture={<figure className="story-figure">
       <div ref={stage}>{near ? <Atom3D Z={Z[series.element]} kEdge free={false} beam={false} charge={member.valence}
         label={`A ${element} atom in 3D that has given ${given(member.valence)} electrons away: its outer cloud ${member.valence > 0 ? 'is smaller' : 'is whole'}`} />
         : <div className="story-stage" />}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`The ${element} jump for ${what(member)}: ${member.shift_eV >= 0 ? '+' : ''}${member.shift_eV.toFixed(1)} eV from the metal's`}>
-        <rect width={W} height={H} rx="10" fill="#121a2b" />
-        <line x1={px(0)} x2={px(0)} y1={T} y2={H - B} stroke="#35404d" strokeDasharray="4 4" />
-        <text x={px(0) + 6} y={T - 8} fill="#a7b1c1" fontSize="14">the metal&apos;s jump, {eV(metalEdge)} eV</text>
-        {drawn.filter(m => m !== member).map(m => <path key={m.id} d={path(m)} fill="none" stroke="#a7b1c1" strokeWidth="1.3" opacity="0.35" />)}
+      <div className="story-plot"><svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`The ${element} jump for ${what(member)}: ${member.shift_eV >= 0 ? '+' : ''}${member.shift_eV.toFixed(1)} eV from the metal's`}>
+        <line className="story-axis" x1={px(0)} x2={px(0)} y1={T} y2={H - B} strokeDasharray="4 4" />
+        <text x={px(0) + 6} y={T - 8} fill="#8a9ab0" fontSize="14">the metal&apos;s jump, {eV(metalEdge)} eV</text>
+        {drawn.filter(m => m !== member).map(m => <path key={m.id} d={path(m)} fill="none" stroke="#8a9ab0" strokeWidth="1.3" opacity="0.35" />)}
         {shapes[member.id] && <>
-          <path d={path(member)} fill="none" stroke="#f3f6fa" strokeWidth="2.6" />
-          <circle cx={px(member.shift_eV)} cy={py(xanesAt(shapes[member.id], 0))} r="6.5" fill="#ffc46b" stroke="#121a2b" strokeWidth="2" />
+          <path className="story-trace" d={path(member)} strokeWidth="2.6" />
+          <circle className="story-dot" cx={px(member.shift_eV)} cy={py(xanesAt(shapes[member.id], 0))} r="6.5" />
         </>}
-        <text x={L} y={H - 10} fill="#a7b1c1" fontSize="14">X-ray energy →</text>
-      </svg>
-      <p className="story-caption" aria-live="polite"><b>{what(member)}</b>: {member.valence === 0 ? <>no electrons given away. This is where the jump starts.</>
-        : <>{given(member.valence)} {member.valence === 1 ? 'electron' : 'electrons'} given away. The jump sits <b>{member.shift_eV.toFixed(1)} eV</b> above the metal&apos;s.</>}</p>
-      {!own && <p className="story-key"><span>Shown with copper, where the jump was measured beside the metal for each.</span></p>}
+        <text x={L} y={H - 10} fill="#8a9ab0" fontSize="14">X-ray energy →</text>
+      </svg></div>
+      <p className="story-caption" aria-live="polite"><b>{capital(what(member))}</b> {member.valence === 0 ? <>hasn&apos;t given any electrons away. This is where the jump starts.</>
+        : <>has given {given(member.valence)} {member.valence === 1 ? 'electron' : 'electrons'} away. Its jump sits <b>{member.shift_eV.toFixed(1)} eV</b> above the metal&apos;s.</>}</p>
+      {!own && <p className="story-key"><span>Shown with copper, where each jump was measured next to the metal&apos;s.</span></p>}
     </figure>}
     control={<div className="story-choice" role="group" aria-label="Electrons given away">
       <span>Electrons given away</span>

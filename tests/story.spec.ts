@@ -55,7 +55,7 @@ test('the story stays short and plain: few words, a low reading grade, no symbol
     for (const s of scenes) {
       expect(words(s.title), `${sample}: ${s.title}`).toBeLessThanOrEqual(10);
       expect(words(s.body), `${sample}: ${s.title}`).toBeLessThanOrEqual(45);
-      // The field's names and symbols stay in the "Scientists call this" tags.
+      // The field's names and symbols stay in the "Textbook name" tags.
       expect(s.body, `${sample}: ${s.title}`).not.toMatch(/χ|σ|E₀|XANES|EXAFS|Fourier|wavenumber|Å⁻¹|\bk\b/);
     }
     const all = scenes.map(s => `${s.title}. ${s.body}`).join(' ');
@@ -80,10 +80,10 @@ test('step 1: the count falls at the jump and the graph records it', async ({ pa
 test('step 2: below the jump the X-ray passes by; above it the electron is knocked out of its layer', async ({ page }) => {
   await page.goto('./spectrum/?sample=cu-foil');
   const scene = page.locator('#story-jump'), caption = scene.locator('.story-caption');
-  await expect(scene.locator('.story-body')).toContainText('At 8,979 eV an X-ray has just enough energy to knock an electron out of the innermost layer of a copper atom');
+  await expect(scene.locator('.story-body')).toContainText('An X-ray needs 8,979 eV to knock an electron out of the innermost layer of a copper atom');
   await expect(caption).toContainText('passes by');
   await scene.getByRole('slider', { name: /X-ray energy/ }).fill('5');
-  await expect(caption).toContainText('8,984 eV is enough. The electron is knocked out');
+  await expect(caption).toContainText('8,984 eV is enough. Out goes the electron');
   // Platinum is read at its L3 edge: the electron comes from the second layer.
   await page.goto('./spectrum/?sample=pt-foil');
   await expect(page.locator('#story-jump .story-body')).toContainText('out of the second layer of a platinum atom');
@@ -135,12 +135,12 @@ test('step 6: each ring adds a bump at its true distance', async ({ page }) => {
   await page.goto('./spectrum/?sample=cu-foil');
   const scene = page.locator('#story-rings'), chart = scene.getByRole('img', { name: /Distance chart/ });
   await expect(chart).toHaveAccessibleName(/bumps at 2\.5\d angstrom$/);
-  await expect(scene.locator('.story-caption')).toContainText('Ring 1: 12 copper atoms at 2.5');
+  await expect(scene.locator('.story-caption')).toContainText('Ring 1 is 12 copper atoms at 2.5');
   await scene.getByRole('button', { name: 'Add the next ring' }).click();
   // fcc copper: 6 atoms at a = 3.61 angstrom; the bump within 0.05 of it, not 0.3 short as in the plain transform.
   await expect(chart).toHaveAccessibleName(/bumps at 2\.5\d angstrom, 3\.(5[6-9]|6\d) angstrom$/);
   for (let i = 0; i < 3; i++) await scene.getByRole('button', { name: 'Add the next ring' }).click();
-  await expect(scene.locator('.story-caption')).toContainText('All 5 rings together');
+  await expect(scene.locator('.story-caption')).toContainText('All 5 rings at once');
   await expect(scene.getByRole('button', { name: 'Start again' })).toBeVisible();
 });
 
@@ -149,18 +149,18 @@ test('step 7: giving electrons away moves the jump up, and the story ends with w
   const scene = page.locator('#story-charge'), caption = scene.locator('.story-caption');
   const choice = scene.getByRole('group', { name: 'Electrons given away' });
   await expect(choice.getByRole('button', { name: '0' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(caption).toContainText('copper metal: no electrons given away');
+  await expect(caption).toContainText("Copper metal hasn't given any electrons away");
   await choice.getByRole('button', { name: '1' }).click();
-  await expect(caption).toContainText('1 electron given away. The jump sits 1.4 eV above');
+  await expect(caption).toContainText('has given 1 electron away. Its jump sits 1.4 eV above');
   await choice.getByRole('button', { name: '2' }).click();
-  await expect(caption).toContainText('CuO (tenorite): 2 electrons given away. The jump sits 5.4 eV above');
+  await expect(caption).toContainText('CuO (tenorite) has given 2 electrons away. Its jump sits 5.4 eV above');
   // The page stays where the reader is: the step rail follows the scroll without moving the page.
   await page.waitForTimeout(500);
   await expect(scene.locator('.story-choice')).toBeInViewport();
   await expect(scene.getByRole('img', { name: /The copper jump for CuO/ })).toHaveAccessibleName(/\+5\.4 eV from the metal's/);
   // The phone battery material reads its own cobalt series; manganese dioxide's series does not rise steadily, so copper stands in.
   await page.goto('./spectrum/?sample=licoo2-pellet');
-  await expect(page.locator('#story-charge .story-caption')).toContainText('LiCoO₂ cathode: 3 electrons given away');
+  await expect(page.locator('#story-charge .story-caption')).toContainText('LiCoO₂ cathode has given 3 electrons away');
   await page.goto('./spectrum/?sample=mno2-pellet');
   await expect(page.locator('#story-charge .story-key')).toContainText('Shown with copper');
   await page.getByRole('button', { name: 'See every detail' }).click();

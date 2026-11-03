@@ -12,7 +12,7 @@ import { setAddress, ViewSwitch, type SpectrumView } from '../view-switch';
 
 // The scenes come with this view, so the page does not grow above the reader as they arrive; each 3D picture loads
 // its three.js when it comes near, in a box of its own size.
-import { SceneShine } from './scene-shine';
+import { absorbedCurve, SceneShine } from './scene-shine';
 import { SceneJump } from './scene-jump';
 import { SceneRipple } from './scene-ripple';
 import { SceneEcho } from './scene-echo';
@@ -74,21 +74,35 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
     return { shells, first, neighbours, crystal };
   }, [ready]);
   const props = ready && site && { material: ready.material, xanes: ready.xanes, e0: ready.material.edge_energy_eV + (preset.sample.edgeShift_eV ?? 0), what, ...site };
+  // Behind the title, the chosen material's own computed spectrum (step 1's graph) as a trace of light.
+  const e0 = props ? props.e0 : 0;
+  const trace = useMemo(() => {
+    if (!ready) return null;
+    const a = absorbedCurve(ready.material, ready.xanes, e0), lo = Math.min(...a), hi = Math.max(...a);
+    const line = a.map((v, i) => (i ? 'L' : 'M') + (i / (a.length - 1) * 1000).toFixed(1) + ',' + (196 - (v - lo) / (hi - lo) * 176).toFixed(1)).join('');
+    return { line, area: `${line}L1000,200L0,200Z` };
+  }, [ready, e0]);
 
   return <div className="story">
+    <i className="story-progress" aria-hidden="true" />
     <header className="story-head">
-      <div>
-        <p className="twin-kicker">XAS Lab · Beamline twin</p>
-        <h1 className="twin-title story-title">Read the <em>spectrum</em></h1>
-        <p className="story-lede">How a beam of X-rays tells us which atoms sit next to each other, and how far apart they are. {SCENES.length} short steps.</p>
+      <div className="story-bar">
+        <p className="twin-kicker story-kicker">XAS Lab · Beamline twin</p>
+        <div className="story-tools">
+          <ViewSwitch view="simple" onChange={onView} />
+          <label className="story-pick">Material <select name="sample" value={presetId} onChange={e => { setPresetId(e.target.value); setAddress({ sample: e.target.value }); }}>
+            {offered.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select></label>
+          <Link className="twin-chip" href="/twin/"><ArrowLeft size={14} aria-hidden="true" />Beamline twin</Link>
+        </div>
       </div>
-      <div className="story-tools">
-        <ViewSwitch view="simple" onChange={onView} />
-        <label className="story-pick">Material <select name="sample" value={presetId} onChange={e => { setPresetId(e.target.value); setAddress({ sample: e.target.value }); }}>
-          {offered.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select></label>
-        <Link className="twin-chip" href="/twin/"><ArrowLeft size={14} aria-hidden="true" />Beamline twin</Link>
-      </div>
+      <h1 className="twin-title story-title">Read the <em>spectrum</em></h1>
+      <p className="story-lede">Point X-rays at a material and what comes out the other side tells you which atoms are inside, and how far apart they sit. Seven steps, one idea each.</p>
+      {trace && <svg key={materialId} className="story-hero-trace" viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="story-hero-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#8ce3ff" stopOpacity="0.16" /><stop offset="1" stopColor="#8ce3ff" stopOpacity="0" /></linearGradient></defs>
+        <path className="story-hero-area" d={trace.area} fill="url(#story-hero-area)" />
+        <path className="story-hero-line" d={trace.line} pathLength={1} vectorEffect="non-scaling-stroke" />
+      </svg>}
     </header>
     <nav className="story-rail" aria-label="Steps">
       {SCENES.map(([id, word], i) => <a key={id} href={`#${id}`} aria-current={current === id ? 'step' : undefined}><span>{i + 1}</span>{word}</a>)}
@@ -104,24 +118,24 @@ export function StoryView({ onView }: { onView: (view: SpectrumView) => void }) 
       <SceneRings {...props} />
       <SceneCharge {...props} />
       <section className="story-end" aria-labelledby="story-end-title">
-        <h2 id="story-end-title" className="story-h">What one spectrum tells you</h2>
+        <h2 id="story-end-title" className="story-h">Two things to read off a spectrum</h2>
         <div className="story-end-cards">
-          <div><p className="story-step">Where the jump is</p><p>How many electrons the atom has given away. Step 7.</p></div>
-          <div><p className="story-step">The wiggles</p><p>Which atoms sit next to it, and how far away. Steps 4 to 6.</p></div>
+          <div><p className="story-step">Where the jump is</p><p>How many electrons the atom has given away. That was step 7.</p></div>
+          <div><p className="story-step">The wiggles</p><p>Which atoms are next to it, and how far away. Steps 4 to 6.</p></div>
         </div>
         <div className="story-end-actions">
           <button type="button" className="twin-chip is-accent" onClick={() => onView('detailed')}>See every detail</button>
-          <Link className="twin-chip" href="/twin/">Try it on the beamline twin</Link>
+          <Link className="twin-chip" href="/twin/">Run a scan on the beamline twin</Link>
         </div>
         <details className="story-sources">
-          <summary>How this is drawn</summary>
+          <summary>How the pictures are made</summary>
           <ul>
-            <li>The spectra are calculated, not sketched: the near edge with FEFF10 for each crystal, the wiggles with the FEFF paths the beamline twin uses, at room temperature.</li>
-            <li>The atoms are the real crystal, the same atom positions FEFF used.</li>
-            <li>The single atom&apos;s electron cloud follows Slater&apos;s rules, with its sizes squeezed so the innermost layer shows; the true ratio is given on screen.</li>
-            <li>The wave and its echoes use FEFF&apos;s strength, phase shifts and electron range for each neighbour.</li>
-            <li>The distance chart takes out each ring&apos;s phase shift, so its bumps stand at the true distances; the Detailed view shows the usual chart, with peaks a little short.</li>
-            <li>The edge positions of the series were measured beside the metal; the sources are named in the Detailed view.</li>
+            <li>Every spectrum here is computed. The near edge comes from FEFF10 for each crystal, and the wiggles from the same FEFF paths the beamline twin uses, at room temperature.</li>
+            <li>The atoms sit where they do in the real crystal, at the positions FEFF used.</li>
+            <li>The lone atom&apos;s electron cloud follows Slater&apos;s rules. Its inner layers are drawn larger than life so you can see them; the true size is on screen.</li>
+            <li>The wave and its echoes use FEFF&apos;s numbers for each neighbour: how strongly it scatters, its phase shift, and how far the electron gets.</li>
+            <li>The distance chart removes each ring&apos;s phase shift, so the bumps land at the true distances. The Detailed view shows the standard chart, where peaks sit a little short.</li>
+            <li>The edge positions in step 7 were measured next to the metal. The Detailed view names the sources.</li>
             <li>Developed using Distribution: FEFF10.0 Copyright (c) 2020 FEFF Project, University of Washington and SLAC National Accelerator Laboratory.</li>
           </ul>
         </details>

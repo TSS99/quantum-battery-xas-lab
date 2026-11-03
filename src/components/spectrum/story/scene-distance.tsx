@@ -38,21 +38,20 @@ export function SceneDistance({ material, e0, first, neighbours, shells }: Scene
   const distance = first.r_A + delta, neighbour = atomName(first.element!);
   const moved = neighbours.map(n => { const r = Math.hypot(...n.xyz), f = (r + delta) / r; return { element: n.element, xyz: n.xyz.map(v => v * f) as [number, number, number] }; });
   return <Scene id="story-distance" n={5} title="Faster wiggles mean farther neighbours" term="the bond length"
-    body={<p>Push the neighbours farther away and the wiggles come faster: more of them fit in the same range of energy. So counting the wiggles tells us how far apart the atoms are.</p>}
+    body={<p>Drag the neighbours farther out and watch the wiggles bunch up. More of them squeeze into the same stretch of energy. Count the wiggles and you know how far apart the atoms are.</p>}
     picture={<figure className="story-figure">
       <div ref={stage}>{near ? <Wave3D absorber={material.absorber} neighbours={moved} k={K} curves={pathCurves(first.paths[0], K)} echoes ring={null}
         label={`The ${atomName(material.absorber)} atom and its ${first.count} nearest ${neighbour} neighbours, moved to ${distance.toFixed(2)} angstrom`} />
         : <div className="story-stage" />}</div>
       <p className="story-readout"><span><b>{crests}</b> wiggles</span><span><b>{distance.toFixed(2)}</b> Å apart</span></p>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`The wiggle of the ${neighbour} neighbours at ${distance.toFixed(2)} angstrom: ${crests} wiggles from ${eV(e0 + FROM)} to ${eV(e0 + TO)} eV`}>
-        <rect width={W} height={H} rx="10" fill="#121a2b" />
-        <line x1={L} x2={W - R} y1={py(0)} y2={py(0)} stroke="#35404d" />
-        {delta !== 0 && <path d={path(base)} fill="none" stroke="#a7b1c1" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.6" />}
-        <path d={path(now)} fill="none" stroke="#f3f6fa" strokeWidth="2" />
-        <text x={L + 4} y={T - 6} fill="#a7b1c1" fontSize="14">{delta !== 0 ? 'dashed: the real crystal' : 'the real crystal'}</text>
-        <text x={W - R} y={H - B + 18} textAnchor="end" fill="#a7b1c1" fontSize="14">higher energy →</text>
-      </svg>
-      <p className="story-key"><span>Å, the ångström: a ten billionth of a metre, about the size of an atom</span></p>
+      <div className="story-plot"><svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`The wiggle of the ${neighbour} neighbours at ${distance.toFixed(2)} angstrom: ${crests} wiggles from ${eV(e0 + FROM)} to ${eV(e0 + TO)} eV`}>
+        <line className="story-axis" x1={L} x2={W - R} y1={py(0)} y2={py(0)} />
+        {delta !== 0 && <path d={path(base)} fill="none" stroke="#8a9ab0" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.6" />}
+        <path className="story-trace" d={path(now)} strokeWidth="2" />
+        <text x={L + 4} y={T - 6} fill="#8a9ab0" fontSize="14">{delta !== 0 ? 'dashed: the real crystal' : 'the real crystal'}</text>
+        <text x={W - R} y={H - B + 18} textAnchor="end" fill="#8a9ab0" fontSize="14">higher energy →</text>
+      </svg></div>
+      <p className="story-key"><span>1 Å, one ångström, is a ten billionth of a metre: about the width of an atom</span></p>
     </figure>}
     control={<StorySlider label={`Distance to the ${neighbour} neighbours`} display={`${distance.toFixed(2)} Å`} value={delta} min={-SPAN} max={SPAN} step={0.01} onChange={setDelta} />} />;
 }

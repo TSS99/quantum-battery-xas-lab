@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Shell } from '@/lib/twin/shells';
 import type { FeffMaterial } from '@/lib/twin/types';
 import type { XanesFile } from '@/lib/twin/xanes';
@@ -17,7 +17,7 @@ export interface SceneProps { material: FeffMaterial; xanes: XanesFile; e0: numb
 export const eV = (value: number) => Math.round(value).toLocaleString('en-US');
 
 /**
- * One scene of the story: a step number, a headline, a few plain sentences and the field's name for the idea, beside
+ * One scene of the story: a step number, a headline, a few plain sentences and the textbook name for the idea, beside
  * one picture with at most one control under it.
  */
 export function Scene({ id, n, title, body, term, picture, control }: {
@@ -28,7 +28,7 @@ export function Scene({ id, n, title, body, term, picture, control }: {
       <p className="story-step">Step {n}</p>
       <h2 id={`${id}-title`} className="story-h">{title}</h2>
       <div className="story-body">{body}</div>
-      <p className="story-term">Scientists call this <strong>{term}</strong></p>
+      <p className="story-term"><span>Textbook name</span> <strong>{term}</strong></p>
     </div>
     <div className="story-picture">
       {picture}
@@ -41,7 +41,8 @@ export function StorySlider({ label, display, value, min, max, step, onChange }:
   label: string; display: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void;
 }) {
   const id = useId();
-  return <div className="story-slider">
+  // --p, how far along the slider is, lights the track up to the thumb.
+  return <div className="story-slider" style={{ '--p': `${(value - min) / (max - min) * 100}%` } as CSSProperties}>
     <label htmlFor={id}>{label} <output htmlFor={id}>{display}</output></label>
     <input id={id} type="range" min={min} max={max} step={step} value={value} aria-valuetext={display} onChange={e => onChange(+e.target.value)} />
   </div>;

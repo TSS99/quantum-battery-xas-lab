@@ -31,26 +31,25 @@ export function SceneRings({ material, shells, crystal }: SceneProps) {
   const path = (ys: number[]) => ys.map((y, i) => (i ? 'L' : 'M') + px(chart.r[i]).toFixed(1) + ',' + py(y).toFixed(1)).join('');
   const area = (ys: number[]) => `${path(ys)}L${px(chart.r.at(-1)!).toFixed(1)},${py(0)}L${px(0)},${py(0)}Z`;
   const element = atomName(material.absorber);
-  return <Scene id="story-rings" n={6} title="Unmix the wiggles into a distance chart" term="a Fourier transform"
-    body={<p>A real crystal has rings of neighbours at several distances, and their wiggles mix. A computer unmixes them into a chart of bumps: one bump for each ring, at that ring&apos;s distance.</p>}
+  return <Scene id="story-rings" n={6} title="Turn the wiggles into a distance chart" term="a Fourier transform"
+    body={<p>In a real crystal the neighbours sit in rings at different distances, and their wiggles pile on top of each other. A computer pulls them apart again. Each ring becomes one bump, sitting at that ring&apos;s distance.</p>}
     picture={<figure className="story-figure">
       <div ref={stage}>{near ? <Crystal3D atoms={crystal} colors={SHELL_COLORS} added={count} radius={newest.r_A}
         label={`The real ${material.formula} crystal round the ${element} atom in 3D, with ${count} of its ${named.length} rings of neighbours lit`} />
         : <div className="story-stage" />}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Distance chart: bumps at ${chart.peaks.slice(0, count).map(p => `${p.toFixed(2)} angstrom`).join(', ')}`}>
-        <rect width={W} height={H} rx="10" fill="#121a2b" />
-        <line x1={L} x2={W - R} y1={py(0)} y2={py(0)} stroke="#35404d" />
-        <path d={path(chart.full)} fill="none" stroke="#a7b1c1" strokeWidth="1.2" strokeDasharray="3 4" opacity="0.5" />
+      <div className="story-plot"><svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Distance chart: bumps at ${chart.peaks.slice(0, count).map(p => `${p.toFixed(2)} angstrom`).join(', ')}`}>
+        <line className="story-axis" x1={L} x2={W - R} y1={py(0)} y2={py(0)} />
+        <path d={path(chart.full)} fill="none" stroke="#8a9ab0" strokeWidth="1.2" strokeDasharray="3 4" opacity="0.5" />
         {chart.each.slice(0, count).map((m, i) => <path key={i} d={area(m)} fill={SHELL_COLORS[i]} opacity="0.35" />)}
-        <path d={path(total)} fill="none" stroke="#f3f6fa" strokeWidth="2" />
+        <path className="story-trace" d={path(total)} strokeWidth="2" />
         {named.slice(0, count).map((s, i) => <text key={s.id} x={px(chart.peaks[i])} y={Math.max(16, py(chart.each[i][chart.r.indexOf(chart.peaks[i])]) - 8)}
-          textAnchor="middle" fill="#f3f6fa" fontSize="13">{s.count} {s.element}</text>)}
-        <text x={L} y={H - 8} fill="#a7b1c1" fontSize="14">distance from the {element} atom →</text>
-        <text x={W - R} y={H - 8} textAnchor="end" fill="#a7b1c1" fontSize="14">{RMAX.toFixed(0)} Å</text>
-      </svg>
+          textAnchor="middle" fill="#eef6ff" fontSize="13">{s.count} {s.element}</text>)}
+        <text x={L} y={H - 8} fill="#8a9ab0" fontSize="14">distance from the {element} atom →</text>
+        <text x={W - R} y={H - 8} textAnchor="end" fill="#8a9ab0" fontSize="14">{RMAX.toFixed(0)} Å</text>
+      </svg></div>
       <p className="story-caption" aria-live="polite">{count < named.length
-        ? <>Ring {count}: <b>{newest.count} {atomName(newest.element!)}</b> atoms at <b>{newest.r_A.toFixed(2)} Å</b>. Dashed: all {named.length} rings together.</>
-        : <>All {named.length} rings together: each bump stands at its ring&apos;s distance.</>}</p>
+        ? <>Ring {count} is <b>{newest.count} {atomName(newest.element!)}</b> atoms at <b>{newest.r_A.toFixed(2)} Å</b>. The dashed line is all {named.length} rings at once.</>
+        : <>All {named.length} rings at once. Each bump sits at its ring&apos;s distance.</>}</p>
     </figure>}
     control={<button type="button" className="twin-chip is-accent" onClick={() => setAdded(count < named.length ? count + 1 : 1)}>
       {count < named.length ? 'Add the next ring' : 'Start again'}</button>} />;

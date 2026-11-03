@@ -17,7 +17,7 @@ export function SceneRipple({ material, first, neighbours }: SceneProps) {
   if (!first || !curves) return null;
   const element = atomName(material.absorber), neighbour = atomName(first.element!);
   return <Scene id="story-ripple" n={3} title="The freed electron spreads out like a ripple" term="the photoelectron wave"
-    body={<p>The knocked out electron is not a tiny ball. It spreads out as a wave, like a ripple on a pond. When it reaches the neighbouring atoms, each one sends a faint echo back.</p>}
+    body={<p>The electron that gets knocked out travels as a wave, spreading like a ripple on a pond. When the ripple reaches the atoms next door, each one bounces a faint echo back.</p>}
     picture={<figure className="story-figure">
       <div ref={stage}>{near ? <Wave3D absorber={material.absorber} neighbours={neighbours} k={K} curves={curves} echoes={echoes} ring={null}
         label={`The electron wave leaving the ${element} atom, drawn on a sheet through the real ${material.formula} crystal${echoes ? `, with the echoes of its ${first.count} nearest ${neighbour} neighbours` : ', alone'}`} />
