@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { axeViolations } from './axe';
 
-// Every page (the twin, Methods and the 404 page) at desktop and phone width: no console errors, no sideways scrolling, no broken maths and no
+// Every page (the twin, Quantum XAS, Methods and the 404 page) at desktop and phone width: no console errors, no sideways scrolling, no broken maths and no
 // axe violations.
-const PAGES = ['', 'methods/', 'spectrum/'];
+const PAGES = ['', 'quantum/', 'methods/', 'spectrum/'];
 // A page of the old lab: the 404 page, whose own document answers 404, which the browser logs once.
 const MISSING = 'spectrum/';
 

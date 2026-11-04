@@ -4,7 +4,7 @@ Draft of 3 November 2026. Written after reading the Xanadu and PennyLane papers 
 
 **Decisions, 3 November 2026.** The owner chose to build it inside this site, next to the twin; to keep the plan and the engine public (MIT); and to start with the oxygen K edge of lithium rich Mn oxides. Until a compute budget is set, emulation runs on the development PC (24 cores, CPU only, Linux under WSL), which covers the papers' 21 and 23 qubit checks, and there are no paid runs on quantum hardware.
 
-**Status.** Phase 1, reproducing the papers, is done (v2.1.0, 3 November 2026); the results are in [QUANTUM_REPRO.md](QUANTUM_REPRO.md). Phase 2, the problem library, is done (v2.2.0); see [QUANTUM_LIBRARY.md](QUANTUM_LIBRARY.md).
+**Status.** Phase 1, reproducing the papers, is done (v2.1.0, 3 November 2026); the results are in [QUANTUM_REPRO.md](QUANTUM_REPRO.md). Phase 2, the problem library, is done (v2.2.0); see [QUANTUM_LIBRARY.md](QUANTUM_LIBRARY.md). Phase 3, the Quantum XAS page (`/quantum/`), is done (v2.3.0): every library problem with its 3D atoms, shots, evolution length and factorization, the spectrum against its exact reference, water's circuits running in the browser (held to the Python emulator at 10⁻⁶), and the quantum models on the Methods page. The Mn clusters carry only the compressed factorization at one Trotter step per time point, since the exact one would take about six hours per problem to emulate here.
 
 ## 1. In short
 

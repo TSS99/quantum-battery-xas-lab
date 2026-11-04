@@ -2,9 +2,9 @@
    and Not found pages (.twin-doc) share its tokens. */
 
 .bare-main {display:block;min-height:100vh}
-body:has(.twin-app),body:has(.twin-doc) {background:#141d31}
+body:has(.twin-app),body:has(.twin-doc),body:has(.qx-app) {background:#141d31}
 
-.twin-app,.twin-doc {
+.twin-app,.twin-doc,.qx-app {
   --tw-bg:#141d31; --tw-card:rgb(29 40 62/.86); --tw-card-solid:#1d283e; --tw-line:rgb(255 255 255/.12); --tw-line-2:rgb(255 255 255/.2);
   --tw-text:#f3f6fa; --tw-body:#d4dae3; --tw-muted:#a7b1c1; --tw-accent:#8ce3ff; --tw-accent-soft:rgb(140 227 255/.14); --tw-accent-line:rgb(140 227 255/.42); --tw-warm:#ffc46b;
   --tw-sans:var(--font-twin-sans),system-ui,sans-serif; --tw-serif:var(--font-twin-serif),Georgia,serif; --tw-mono:var(--font-tex-digits),var(--font-twin-mono),ui-monospace,monospace;
@@ -14,7 +14,7 @@ body:has(.twin-app),body:has(.twin-doc) {background:#141d31}
   position:relative;color:var(--tw-text);font:14px/1.5 var(--font-sans);
   background:radial-gradient(ellipse 55% 45% at 50% 36%,rgb(140 227 255/.1),transparent 70%),radial-gradient(ellipse 70% 25% at 50% 100%,rgb(140 227 255/.05),transparent 70%),var(--tw-bg);
 }
-.twin-app :focus-visible,.twin-doc :focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
+.twin-app :focus-visible,.twin-doc :focus-visible,.qx-app :focus-visible {outline:2px solid var(--tw-accent);outline-offset:2px}
 
 /* ---------- Pages beside the console: Methods and Not found ---------- */
 .twin-doc {min-height:100vh;padding:28px max(22px,calc((100vw - 1120px) / 2)) 64px}

@@ -19,5 +19,12 @@
     "title": "Beamline Twin methods: every model, its source and its checks",
     "description": "How the Beamline Twin computes each reading: the tables and FEFF paths behind it, the teaching models, the unit tests that hold each one, and a comparison with a measured copper foil spectrum.",
     "ogAlt": "Beamline Twin card: an XAS beamline from the source to the detectors"
+  },
+  "quantum": {
+    "slug": "quantum",
+    "name": "Quantum XAS",
+    "title": "Quantum XAS: an X-ray absorption spectrum computed by a quantum algorithm",
+    "description": "Compute an oxygen K edge the way a fault tolerant quantum computer would, with Hadamard tests of the core-excited state's evolution read out shot by shot, and check it against the exact spectrum. Water, carbon monoxide and Li2MnO3 battery cathode clusters.",
+    "ogAlt": "Beamline Twin card: an XAS beamline from the source to the detectors"
   }
 }

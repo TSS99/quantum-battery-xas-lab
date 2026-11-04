@@ -35,6 +35,12 @@ The physics lives in `src/lib/twin/` (pure TypeScript, run in a Web Worker), and
 
 Keys: 1 to 8 switch modes, C turns detector noise on or off, I acquires, Space pauses, X enlarges the results, L toggles labels, T opens training, / opens the command bar ("set energy 8979", "detune 30 %", "insert harmonic mirror", "noise on", "acquire 3 scans"; a typo is corrected and confirmed before it runs), and [ and ] hide the side panels.
 
+## Quantum XAS
+
+`/quantum/` computes oxygen K edges with the time domain algorithm of Fomichev et al. ([arXiv 2405.11015](https://arxiv.org/abs/2405.11015), [2506.15784](https://arxiv.org/abs/2506.15784)): the core-excited state is evolved in time, Hadamard tests read out its overlap with where it started, shot by shot, and a Fourier sum turns the signal into the spectrum. A classical emulator stands in for the quantum computer and every result is checked against the exact spectrum. Pick a problem (water, carbon monoxide, or Li₂MnO₃ cathode clusters, including delithiated ones), see its atoms in 3D, set the shots, the evolution length and the factorization, and watch the spectrum come out of the measured signal; water also runs its circuits in your browser.
+
+The engine is Python in `scripts/quantum` (PennyLane and PySCF, pinned in `scripts/quantum/requirements.txt`; on Windows use WSL): problems built from written recipes (`library.py`, `qxas/builder.py`), an exact emulator of the circuit that agrees with PennyLane's gate for gate, exact references, resource estimates, and the browser packs (`packs.py`). The plan is [docs/PLAN-quantum.md](docs/PLAN-quantum.md); the reproduction of the papers is [docs/QUANTUM_REPRO.md](docs/QUANTUM_REPRO.md) and the problem library [docs/QUANTUM_LIBRARY.md](docs/QUANTUM_LIBRARY.md). Run its checks with `python -B -m unittest discover -s scripts/quantum -p "test_*.py"`.
+
 ## Without a browser: command line and MCP server
 
 The same `src/lib/twin` modules run headless in Node (bundled on the fly with esbuild):
@@ -61,6 +67,7 @@ The agent skill in [`skills/xas-lab-twin/SKILL.md`](skills/xas-lab-twin/SKILL.md
 npm run typecheck
 npm test
 npm run test:ui
+python -B -m unittest discover -s scripts/quantum -p "test_*.py"   # the quantum XAS engine, in its pinned environment
 ```
 
 The browser suite uses Microsoft Edge by default. Without Edge, run `npx playwright install chromium` and set `PLAYWRIGHT_CHANNEL=chromium` (PowerShell: `$env:PLAYWRIGHT_CHANNEL='chromium'`). The suite starts or reuses the local dev server; set `PLAYWRIGHT_EXTERNAL_SERVER=1` and `PLAYWRIGHT_BASE_URL` to test an already running static preview instead. The reference data generators and checks against xraylarch and FEFF live in `scripts/twin/`.
@@ -91,11 +98,13 @@ Or `NEXT_PUBLIC_BASE_PATH=/quantum-battery-xas-lab npm run build` in a POSIX she
 ## Project map
 
 ```text
-src/app/             The twin (/), Methods (/methods/), the /twin/ forward and the 404 page
+src/app/             The twin (/), Quantum XAS (/quantum/), Methods (/methods/), the /twin/ forward and the 404 page
 src/components/twin/ The console: 3D hutch, diagram, controls, results, training and dialogs
 src/lib/twin/        The beamline physics, scans, EXAFS, training scenarios and the command grammar
 src/lib/             X-ray tables, EXAFS reduction and file readers the twin shares
+src/lib/quantum/     The browser emulator of the quantum XAS circuit, shots and spectra
 src/cli/             The command line and MCP server
+scripts/quantum/     The quantum XAS engine (Python): problems, emulator, references, resource estimates, packs
 scripts/twin/        Reference data generators and checks against xraylarch and FEFF
 tests/               Browser tests
 .github/workflows/   Pages deploy, page checks and desktop installers

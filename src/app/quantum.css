@@ -1,0 +1,26 @@
+/* Quantum XAS (/quantum/): the twin's console tokens (twin.css), laid out as two columns of cards over the plots. */
+.qx-app {min-height:100vh;padding:24px max(18px,calc((100vw - 1240px) / 2)) 64px}
+.qx-hero {padding:6px 0 22px;max-width:900px}
+.qx-hero h1 {margin:0;font:400 54px/.94 var(--tw-serif);letter-spacing:-.01em;color:var(--tw-text)}
+.qx-hero h1 em {font-style:italic;color:var(--tw-accent)}
+.qx-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.qx-card {display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px 18px}
+.qx-wide {grid-column:1 / -1}
+.qx-stage {position:relative;height:280px;border:1px solid var(--tw-line);border-radius:12px;overflow:hidden;background:#0d1424}
+.qx-stage-empty {display:grid;place-items:center;height:100%;color:var(--tw-muted);font-size:13px}
+.qx-facts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin:0}
+.qx-facts > div {min-width:0}
+.qx-facts dt {font:500 10px/1.5 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-muted)}
+.qx-facts dd {margin:2px 0 0;color:var(--tw-text);font-size:14px;overflow-wrap:anywhere}
+.qx-readout {grid-template-columns:repeat(3,minmax(0,1fr))}
+.qx-readout dd {font-size:17px;color:#fff}
+.qx-note {margin:0;max-width:none;font-size:13px;line-height:1.55;color:var(--tw-body)}
+.qx-actions {display:flex;flex-wrap:wrap;gap:8px}
+.qx-field-head {display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.qx-field-head output {font:500 12px var(--tw-mono);color:var(--tw-accent)}
+.qx-app .twin-switch {max-width:420px}
+@media (max-width:860px) {
+  .qx-grid {grid-template-columns:minmax(0,1fr)}
+  .qx-hero h1 {font-size:40px}
+  .qx-readout {grid-template-columns:minmax(0,1fr)}
+}

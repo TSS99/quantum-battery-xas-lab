@@ -245,7 +245,9 @@ export const TWIN_ATTRIBUTIONS: readonly { name: string; use: string; licence: s
   { name: 'FEFF6L', use: 'scattering amplitudes and phases of the library paths', licence: 'as distributed with xraylarch', url: 'https://feff.phys.washington.edu/' },
   { name: 'FEFF10', use: 'the near edge spectra of the library materials (developed using Distribution: FEFF10.0, Copyright (c) 2020 FEFF Project, University of Washington and SLAC National Accelerator Laboratory)', licence: 'FEFF10 License', url: 'https://github.com/times-software/feff10' },
   { name: 'X-ray Data Booklet', use: 'bending magnet flux and critical energy', licence: 'cited reference', url: 'https://xdb.lbl.gov/' },
-  { name: 'Crystallography Open Database', use: 'the crystal structures of 28 samples, read from their deposited CIFs', licence: 'public domain (CC0)', url: 'https://www.crystallography.net/cod/' },
+  { name: 'Crystallography Open Database', use: 'the crystal structures of 28 samples, read from their deposited CIFs, and the Li2MnO3 structure the quantum XAS clusters are cut from (entry 1008373)', licence: 'public domain (CC0)', url: 'https://www.crystallography.net/cod/' },
   { name: 'Cu foil spectrum, APS 13-ID, 2001 (xraylarch examples, cu_metal_rt.xdi)', use: 'the measured spectrum the twin is compared with', licence: 'MIT, with xraylarch', url: 'https://github.com/xraypy/xraylarch/blob/master/examples/xafsdata/cu_metal_rt.xdi' },
   { name: 'Ni and Pt foil, Fe2O3 and FeO spectra (xraylarch examples)', use: 'the measured near edges the computed ones are checked against', licence: 'MIT, with xraylarch', url: 'https://github.com/xraypy/xraylarch/tree/master/examples/xafsdata' },
+  { name: 'PennyLane', use: 'the quantum XAS circuit (adapted from the demo tutorial_xas by Dale and Fomichev), compressed double factorization and the fault tolerant resource estimator', licence: 'Apache 2.0', url: 'https://github.com/PennyLaneAI/pennylane' },
+  { name: 'PySCF', use: 'Hartree Fock, active spaces, integrals and the exact references of the quantum XAS problems', licence: 'Apache 2.0', url: 'https://github.com/pyscf/pyscf' },
 ];

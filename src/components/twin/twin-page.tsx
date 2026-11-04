@@ -88,6 +88,7 @@ function TwinLayout() {
         <p className="twin-intro">A working X-ray absorption beamline. Every reading comes from tabulated cross sections and optics: the beam crosses the mirrors, the monochromator, the sample and the detectors as it would at a synchrotron.</p>
         <p className="twin-hint">Pick any label on the beamline for the physics of that part.</p>
         <div className="twin-chips">
+          <Link className="twin-chip is-accent" href="/quantum/">Quantum XAS</Link>
           <Link className="twin-chip" href="/methods/">Methods</Link>
           {!process.env.NEXT_PUBLIC_DESKTOP && <a className="twin-chip" href="https://github.com/TSS99/quantum-battery-xas-lab/releases/latest" target="_blank" rel="noreferrer"><Download size={14} aria-hidden="true" />Desktop app</a>}
         </div>

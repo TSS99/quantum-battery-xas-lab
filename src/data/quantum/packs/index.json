@@ -1,0 +1,59 @@
+{
+ "schema": 1,
+ "packs": [
+  {
+   "id": "h2o-o-k-sto3g",
+   "title": "Water, oxygen K edge, minimal basis",
+   "live": true,
+   "qubits": 15,
+   "determinants": 441,
+   "edge_eV": 542.23978074,
+   "kilobytes": 94
+  },
+  {
+   "id": "co-o-k-sto3g",
+   "title": "Carbon monoxide, oxygen K edge, minimal basis",
+   "live": false,
+   "qubits": 21,
+   "determinants": 14400,
+   "edge_eV": 539.999650041,
+   "kilobytes": 34
+  },
+  {
+   "id": "li2mno3-o2-k",
+   "title": "Li4Mn2O from Li2MnO3, O2 site, oxygen K edge",
+   "live": false,
+   "qubits": 23,
+   "determinants": 108900,
+   "edge_eV": 560.480852698,
+   "kilobytes": 28
+  },
+  {
+   "id": "li2mno3-o1-k",
+   "title": "Li4Mn2O from Li2MnO3, O1 site, oxygen K edge",
+   "live": false,
+   "qubits": 23,
+   "determinants": 108900,
+   "edge_eV": 560.52171995,
+   "kilobytes": 27
+  },
+  {
+   "id": "li3mn2o-o2-k",
+   "title": "Li3Mn2O, O2 site with one lithium removed",
+   "live": false,
+   "qubits": 23,
+   "determinants": 152460,
+   "edge_eV": 557.408939696,
+   "kilobytes": 23
+  },
+  {
+   "id": "li2mn2o-o2-k",
+   "title": "Li2Mn2O, O2 site with two lithium removed",
+   "live": false,
+   "qubits": 23,
+   "determinants": 108900,
+   "edge_eV": 559.416432306,
+   "kilobytes": 29
+  }
+ ]
+}

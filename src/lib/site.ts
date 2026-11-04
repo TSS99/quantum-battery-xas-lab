@@ -1,4 +1,4 @@
-// Page titles, descriptions, canonical URLs, share images and JSON-LD for the two routes: the twin (/) and /methods/.
+// Page titles, descriptions, canonical URLs, share images and JSON-LD for the routes: the twin (/), /quantum/ and /methods/.
 import type { Metadata } from 'next';
 import site from '@/data/site-pages.json';
 
@@ -7,6 +7,7 @@ export const SITE_NAME = site.siteName;
 export const SITE_URL = site.siteUrl;
 export const HOME_PAGE: SitePage = site.home;
 export const METHODS_PAGE: SitePage = site.methods;
+export const QUANTUM_PAGE: SitePage = site.quantum;
 
 /** Absolute URL with a trailing slash, matching trailingSlash: true. */
 export const pageUrl = (slug: string) => `${SITE_URL}/${slug ? slug + '/' : ''}`;
@@ -42,7 +43,7 @@ const webApplication = {
   inLanguage: 'en',
 };
 
-/** JSON-LD for one page: WebSite and WebApplication, and on /methods/ a breadcrumb back to the twin. */
+/** JSON-LD for one page: WebSite and WebApplication, and below the home page a breadcrumb back to the twin. */
 export function pageJsonLd(page: SitePage) {
   const graph: object[] = [webSite, webApplication];
   if (page.slug) graph.push({

@@ -9,8 +9,9 @@ import { expect, test } from '@playwright/test';
 // 2026-10-31: spectrum 320 to 321. The model now carries the FEFF10 near edge of each library material (its
 // loaders and helpers are lazy chunks; what stays is the hand over in libraryFineStructure).
 // 2026-11-01: spectrum 321 to 200. The story and the detailed view each load as their own chunk, after the frame.
-// 2026-11-03: the twin is the whole site (/); Methods keeps the old Methods page's 300.
-const BUDGET_KB: Record<string, number> = { '': 405, 'methods/': 300 };
+// 2026-11-03: the twin is the whole site (/); Methods keeps the old Methods page's 300. Quantum XAS loads its 3D
+// atoms and its packs after the frame.
+const BUDGET_KB: Record<string, number> = { '': 405, 'quantum/': 300, 'methods/': 300 };
 
 test('first-load JavaScript stays within each page budget', async ({ request, baseURL }) => {
   for (const [path, limit] of Object.entries(BUDGET_KB)) {
