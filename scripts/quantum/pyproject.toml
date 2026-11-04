@@ -1,0 +1,21 @@
+# The quantum XAS engine as a Python package. From the repository root, in the pinned environment (requirements.txt;
+# on Windows use WSL, PySCF has no Windows wheels):
+#   pip install -e scripts/quantum      # then: qxas --help, or python -m qxas
+# Editable, so recipes find the library's crystal structures in scripts/quantum/structures.
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qxas"
+version = "2.6.0"
+description = "Time domain X-ray absorption on a quantum computer: problems, exact references, an exact emulator of the circuit, and fault tolerant cost"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["pennylane>=0.45", "pyscf>=2.14", "numpy>=2", "scipy>=1.14", "jax>=0.12", "optax>=0.2", "pymatgen>=2025"]
+
+[project.scripts]
+qxas = "qxas.__main__:main"
+
+[tool.setuptools]
+packages = ["qxas"]

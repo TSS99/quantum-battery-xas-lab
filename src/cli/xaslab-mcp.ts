@@ -1,12 +1,13 @@
-// MCP server for the beamline twin, over stdio: one JSON-RPC 2.0 message per line in, one per line out. Logs go to
+// MCP server for the beamline twin and the quantum XAS engine, over stdio: one JSON-RPC 2.0 message per line in, one per line out. Logs go to
 // stderr so they never mix with the protocol. Build and run with `npm run --silent mcp`.
 import { createInterface } from 'node:readline';
 import { HeadlessTwin, loadTables, plain } from './headless';
 import { SAMPLE_PRESETS } from '../lib/twin/presets';
 import { COMMAND_EXAMPLES } from '../lib/twin/command-bar';
 import type { Acquisition } from '../lib/twin/types';
+import { QUANTUM_TOOLS } from './quantum-tools';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const PROTOCOL = '2025-06-18';
 
 type Json = Record<string, unknown>;
@@ -106,6 +107,7 @@ export function createServer() {
         return one.xdi(acquisition);
       },
     },
+    ...QUANTUM_TOOLS,
   ];
 
   const ready = loadTables();

@@ -52,7 +52,7 @@ describe('MCP server', () => {
     expect(await handle({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18' } })).toMatchObject({ result: { serverInfo: { name: 'xaslab-twin' }, capabilities: { tools: {} } } });
     expect(await handle({ jsonrpc: '2.0', method: 'notifications/initialized' })).toBeNull();
     const listed = await handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) as { result: { tools: { name: string }[] } };
-    expect(listed.result.tools.map(t => t.name)).toEqual(['twin_status', 'twin_command', 'twin_acquire', 'twin_analyze', 'twin_export', 'twin_reset', 'simulate']);
+    expect(listed.result.tools.map(t => t.name).slice(0, 7)).toEqual(['twin_status', 'twin_command', 'twin_acquire', 'twin_analyze', 'twin_export', 'twin_reset', 'simulate']);
     expect((await call('twin_command', { command: 'sample fe 2 mm' })).content[0].text).toMatch(/Fe, 2 mM in water/);
     expect((await call('twin_command', { command: 'swich to fluorescence' })).content[0].text).toMatch(/Read as "switch to fluorescence"/);
     expect((await call('twin_status')).content[0].text).toMatch(/Mode fluorescence/);

@@ -32,6 +32,13 @@ npm run twin -- --formula CuO --edge Cu-K --density 6.3 --thickness 10 --out cuo
 | `twin_export` | An acquisition as `xdi`, `csv`, `json` or a `larch` script |
 | `twin_reset` | Back to the starting state |
 | `simulate` | One-off scan on a fresh twin, returned as XDI |
+| `quantum_problems` | The quantum XAS library: oxygen K edges with active space, qubits, exact edge and fault tolerant cost |
+| `quantum_build` | A problem's recipe, its Hamiltonian as `fcidump`, its atoms as `xyz`, or `recipe_for` a new one (build it with `qxas build`) |
+| `quantum_estimate` | Logical qubits, Toffolis, run time and machine fit for a `problem`, `orbitals` or `resolution_eV` |
+| `quantum_emulate` | The spectrum the algorithm measures with `shots`; `live` reruns water's circuits |
+| `quantum_compare` | A soft X-ray scan of a Li2MnO3 cluster mixture fitted back, or a measured `spectrum` given as text |
+
+The quantum tools are explained, with real outputs, in `docs/QUANTUM_AGENTS.md`. Their energies sit 6 to 30 eV above experiment, so compare shapes after the fit's shift, never absolute positions.
 
 ## Command grammar
 
