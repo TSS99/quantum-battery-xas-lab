@@ -58,9 +58,23 @@ test('the twin links the quantum page, and Methods lists the quantum models and 
   await expect(page.getByRole('link', { name: 'Quantum XAS' })).toHaveAttribute('href', /\/quantum\/$/);
   await page.goto('./methods/');
   const table = page.getByRole('table', { name: 'Quantum XAS models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(9);
+  await expect(table.getByRole('row')).toHaveCount(10);
   await expect(table).toContainText('PennyLane circuit, gate for gate');
   await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(24);
+});
+
+test('the cost section says what each problem needs on a fault tolerant machine', async ({ page }) => {
+  await page.goto('./quantum/');
+  const cost = page.getByRole('region', { name: 'Cost on a fault tolerant quantum computer' });
+  await expect(cost.locator('.qx-readout div').filter({ hasText: 'Logical qubits' }).locator('dd')).toHaveText('78');
+  await expect(cost.locator('.qx-machines li').first()).toContainText('This problem fits.');
+  await page.getByLabel('Absorber and cluster').selectOption('li2mno3-o2-k-18');
+  await expect(cost.locator('.qx-readout div').filter({ hasText: 'Logical qubits' }).locator('dd')).toHaveText('100');
+  await expect(cost.locator('.qx-machines li').first()).toContainText('Its longest circuit is too long.');
+  await cost.getByRole('spinbutton', { name: 'Gates per circuit' }).fill('1000000000');
+  await expect(cost.getByRole('status')).toContainText('Fits.');
+  const [file] = await Promise.all([page.waitForEvent('download'), cost.getByRole('button', { name: 'Download the readiness report' }).click()]);
+  expect(file.suggestedFilename()).toBe('quantum-readiness-li2mno3-o2-k-18.md');
 });
 
 test('the quantum page fits a phone and has no accessibility violations', async ({ page }) => {

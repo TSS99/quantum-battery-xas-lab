@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import { ArrowLeft, Cpu, Shuffle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plot } from '../plot';
+import { CostCard } from './cost-card';
 import { seededRandom } from '@/lib/xas';
 import { loadIndex, loadPack, spectra, storedSignals, type Factorization, type Pack, type PackEntry } from '@/lib/quantum/packs';
 import type { RunMessage, RunRequest } from '@/lib/quantum/worker';
@@ -20,6 +21,9 @@ const Cluster3D = dynamic(() => import('./cluster-3d'), { ssr: false, loading: (
 const ALPHA = 1.3384;  // the paper's shot distribution exponent
 const SHOT_STEPS = [1_000, 3_000, 10_000, 30_000, 100_000, 300_000, 1_000_000];
 const fmt = (x: number, digits = 1) => x.toLocaleString('en', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+
+/** A problem too large for a browser pack: shown with its cost, and the atoms of a pack built on the same cluster. */
+interface Target { id: string; title: string; why: string; same_atoms_as: string | null; orbitals: number; active_electrons: number; determinants: number }
 
 interface Live { key: string; signals: (Signal | null)[]; seconds: number; /** Largest difference from the stored Python signal. */ difference: number }
 
@@ -55,15 +59,26 @@ export function QuantumPage() {
   const [jmax, setJmax] = useState(100);
   const [seed, setSeed] = useState(1);
   const [live, setLive] = useState<Live | null>(null);
+  const [targets, setTargets] = useState<Target[]>([]);
+  const [atoms, setAtoms] = useState<[string, number[]][] | null>(null);
   const { progress, run } = useEmulator();
 
   useEffect(() => { void loadIndex().then(setIndex); }, []);
   useEffect(() => {
+    if (!index.length) return;
+    const packed = new Set(index.map(p => p.id));
+    void import('@/data/quantum/estimates.json').then(m => setTargets((m.default.problems as unknown as Target[]).filter(p => !packed.has(p.id))));
+  }, [index]);
+  const target = targets.find(t => t.id === id);
+  const source = target ? target.same_atoms_as : id;
+  useEffect(() => {
     let stale = false;
     setPack(null);
-    void loadPack(id).then(p => { if (!stale) setPack(p); });
+    setAtoms(null);
+    if (!source) return;
+    void loadPack(source).then(p => { if (stale) return; setAtoms(p.atoms); if (!target) setPack(p); });
     return () => { stale = true; };
-  }, [id]);
+  }, [source, target]);
 
   // The Mn cluster packs hold only the compressed factorization (the exact one would take hours per problem here).
   const available = pack ? (['exact', 'cdf'] as Factorization[]).filter(f => pack.signals[f]) : [];
@@ -89,7 +104,7 @@ export function QuantumPage() {
     });
   };
 
-  const absorber = pack ? Math.max(0, pack.atoms.findIndex(([s]) => s === 'O')) : 0;
+  const absorber = atoms ? Math.max(0, atoms.findIndex(([s]) => s === 'O')) : 0;
   const m = pack?.meta;
   const substeps = pack?.signals[used]?.substeps ?? 1;
   const steps = pack ? Math.min(jmax, pack.settings.jmax) * substeps : 0;
@@ -113,9 +128,19 @@ export function QuantumPage() {
           <select value={id} onChange={e => { setId(e.target.value); setLive(null); }}>
             {(index.length ? index : [{ id, title: 'Water, oxygen K edge, minimal basis' } as PackEntry]).map(p =>
               <option key={p.id} value={p.id}>{p.title}{p.live ? ' (runs in your browser)' : ''}</option>)}
+            {targets.map(t => <option key={t.id} value={t.id}>{t.title} (cost only)</option>)}
           </select>
         </label>
-        <div className="qx-stage">{pack ? <Cluster3D atoms={pack.atoms} absorber={absorber} label={`The atoms of ${pack.title}, the absorbing oxygen glowing`} /> : <div className="qx-stage-empty">Loading…</div>}</div>
+        <div className="qx-stage">{atoms ? <Cluster3D atoms={atoms} absorber={absorber} label="The atoms of the problem, the absorbing oxygen glowing" /> : <div className="qx-stage-empty">Loading…</div>}</div>
+        {target && <>
+          <dl className="qx-facts">
+            <div><dt>Active space</dt><dd>{target.active_electrons} electrons in {target.orbitals} orbitals</dd></div>
+            <div><dt>Qubits</dt><dd>{2 * target.orbitals + 1} (two per orbital, one for the test)</dd></div>
+            <div><dt>Determinants</dt><dd>{target.determinants.toLocaleString('en')}</dd></div>
+            <div><dt>Exact edge</dt><dd>none: beyond exact methods</dd></div>
+          </dl>
+          <p className="qx-note">{target.why}</p>
+        </>}
         {pack && m && <>
           <dl className="qx-facts">
             <div><dt>Active space</dt><dd>{m.active_electrons} electrons in {m.active_orbitals} orbitals</dd></div>
@@ -127,6 +152,10 @@ export function QuantumPage() {
         </>}
       </section>
 
+      {target ? <section className="twin-card qx-card" aria-labelledby="qx-none">
+        <h2 id="qx-none" className="twin-kicker">Circuits</h2>
+        <p className="qx-note">No spectrum here. With {target.determinants.toLocaleString('en')} determinants this problem is beyond exact classical methods, and its {2 * target.orbitals + 1} qubit circuits are beyond emulation on an ordinary computer: that is what makes it a target for fault tolerant hardware. Its cost is below.</p>
+      </section> : <>
       <section className="twin-card qx-card" aria-labelledby="qx-circuit">
         <h2 id="qx-circuit" className="twin-kicker">Circuits</h2>
         <div className="twin-switch" role="group" aria-label="Factorization">
@@ -175,7 +204,11 @@ export function QuantumPage() {
         </> : <p className="qx-note">Loading the problem…</p>}
       </section>
 
-      <section className="twin-card qx-card qx-wide" aria-labelledby="qx-signal">
+      </>}
+
+      <CostCard id={id} />
+
+      {!target && <section className="twin-card qx-card qx-wide" aria-labelledby="qx-signal">
         <h2 id="qx-signal" className="twin-kicker">What the circuits measure</h2>
         {result && <Plot exportName={`quantum-signal-${id}`} xLabel="Evolution time, t (1/Ha)" yLabel="Re G(t), between −1 and 1" height={200}
           series={[
@@ -183,7 +216,7 @@ export function QuantumPage() {
             { name: 'Measured', color: '#8ce3ff', x: result.times, y: Array.from(result.signalMeasured[0]) },
           ]} />}
         <p className="qx-note">Each point is the real part of the Hadamard test at one evolution time, averaged over the three dipole directions. Shots are spread so that early times, which matter most, get the most. Energies sit 6 to 30 eV above experiment because these small models do not relax the orbitals around the core hole; the quantum algorithm reproduces each model&apos;s exact spectrum, which is what this page checks.</p>
-      </section>
+      </section>}
     </div>
   </div>;
 }

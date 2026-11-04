@@ -50,8 +50,9 @@ RECIPES = [
            avas=("Mn 3d", "O 1s"), core="O 1s", structure=LI2MNO3, site="O2", remove=("Li3", "Li2"),
            tags=("li2mno3", "delithiated")),
     Recipe("li2mno3-o2-k-18", "Li4Mn2O, O2 site, the paper's full active space",
-           "CAS(22e,18o) of 2405.11015 and 2506.15784: Mn 3d, Li 2s, O 2p and O 1s. Far beyond exact classical "
-           "methods (about 10^9 determinants), so no reference: a target for fault tolerant hardware.",
+           "The 18 orbitals of 2405.11015 and 2506.15784: Mn 3d, Li 2s, O 2p and O 1s. AVAS here counts 24 electrons "
+           "where the paper, after tuning its threshold, has 22. With about 3.4 x 10^8 determinants it is far beyond "
+           "exact classical methods, so no reference: a target for fault tolerant hardware.",
            avas=("Mn 3d", "Li 2s", "O 2p", "O 1s"), core="O 1s", structure=LI2MNO3, site="O2",
            tags=("li2mno3", "quantum-target")),
 ]

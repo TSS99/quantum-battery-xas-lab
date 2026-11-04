@@ -19,6 +19,14 @@
 .qx-field-head {display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .qx-field-head output {font:500 12px var(--tw-mono);color:var(--tw-accent)}
 .qx-app .twin-switch {max-width:420px}
+.qx-machines {display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:13.5px;color:var(--tw-body)}
+.qx-machines li {padding:8px 12px;border:1px solid var(--tw-line);border-left:3px solid var(--tw-line-2);border-radius:8px}
+.qx-machines li[data-fits="true"] {border-left-color:var(--tw-accent)}
+.qx-yours {display:flex;flex-wrap:wrap;align-items:end;gap:10px 16px;margin:0;padding:12px 14px;border:1px solid var(--tw-line);border-radius:10px}
+.qx-yours legend {padding:0 6px;font:500 10px/1.5 var(--tw-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tw-muted)}
+.qx-yours label {display:grid;gap:4px;font-size:13px;color:var(--tw-text)}
+.qx-yours input {width:150px}
+.qx-yours .qx-note {flex-basis:100%}
 @media (max-width:860px) {
   .qx-grid {grid-template-columns:minmax(0,1fr)}
   .qx-hero h1 {font-size:40px}

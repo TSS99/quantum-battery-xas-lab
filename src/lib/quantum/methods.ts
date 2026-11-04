@@ -80,4 +80,13 @@ export const QUANTUM_METHODS: readonly TwinMethod[] = [
     provenance: 'computed',
     tests: [py('test_qxas', 'test_table_one_at_eighteen_orbitals')],
   },
+  {
+    quantity: 'Machine fit and run time',
+    model: 'Logical qubits and longest circuit against announced machine generations; run time at a 1 MHz logical clock, sequential and on the active volume layout; the classical cost from the paper\'s restricted active space model',
+    data: 'The fault tolerant cost of each library problem',
+    checked: 'Recomputed from each problem\'s orbitals; the paper\'s own figures at 18 orbitals (100 qubits, about 32 days classically, under a day on the active volume layout)',
+    tolerance: 'exact; 1 day',
+    provenance: 'teaching-model',
+    tests: [py('test_estimates', 'test_the_numbers_come_back_when_recomputed'), py('test_estimates', 'test_the_models_give_the_paper_s_own_figures_at_eighteen_orbitals')],
+  },
 ];

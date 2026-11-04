@@ -1,0 +1,381 @@
+{
+ "schema": 1,
+ "pennylane": "0.45.1",
+ "settings": {
+  "eta_Ha": 0.05,
+  "jmax": 100,
+  "h_norm_Ha": 2.0,
+  "tau_per_Ha": 0.7853981633974483,
+  "trotter_step_per_Ha": 0.22360679774997896,
+  "alpha": 1.3384,
+  "shots": 2500,
+  "rotation_precision": 0.001,
+  "slater_determinants": 10000.0,
+  "fragments": "L = N",
+  "clock_Hz": 1000000.0,
+  "active_volume_cycles_per_toffoli": 0.17685589519650655
+ },
+ "machines": [
+  {
+   "id": "starling",
+   "name": "IBM Starling class",
+   "year": 2029,
+   "logical_qubits": 200,
+   "gates": 100000000.0,
+   "source": "IBM roadmap, June 2025"
+  },
+  {
+   "id": "blue-jay",
+   "name": "IBM Blue Jay class",
+   "year": 2033,
+   "logical_qubits": 2000,
+   "gates": 1000000000.0,
+   "source": "IBM roadmap, June 2025"
+  }
+ ],
+ "problems": [
+  {
+   "id": "h2o-o-k-sto3g",
+   "title": "Water, oxygen K edge, minimal basis",
+   "why": "The smallest oxygen K edge: every orbital of STO-3G active, so the reference is full CI. Sized for the browser emulator.",
+   "instance_hash": "eff504fc9da605c0",
+   "active_electrons": 10,
+   "determinants": 441,
+   "orbitals": 7,
+   "logical_qubits": 78,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 15530458.0,
+   "toffoli_whole_spectrum": 24932974974.263187,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 24932.974974263187,
+   "seconds_active_volume_1MHz": 4409.543608985411,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.01271647474327628,
+   "classical_seconds_here": 0.5,
+   "same_atoms_as": null
+  },
+  {
+   "id": "co-o-k-sto3g",
+   "title": "Carbon monoxide, oxygen K edge, minimal basis",
+   "why": "A pi* resonance like the oxide pre-edge, with every STO-3G orbital active (21 qubits).",
+   "instance_hash": "e714e752d5a98825",
+   "active_electrons": 14,
+   "determinants": 14400,
+   "orbitals": 10,
+   "logical_qubits": 84,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 48377488.0,
+   "toffoli_whole_spectrum": 73971505483.30035,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 73971.50548330035,
+   "seconds_active_volume_1MHz": 13082.296821282378,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.2554172229888591,
+   "classical_seconds_here": 17.7,
+   "same_atoms_as": null
+  },
+  {
+   "id": "li2mno3-o2-k",
+   "title": "Li4Mn2O from Li2MnO3, O2 site, oxygen K edge",
+   "why": "Fig. 9 of 2506.15784. The paper gives no site, charge or spin; the O2 site is the more common one, and a neutral cluster with 2S = 0 is what gives the paper's CAS(14e,11o) from AVAS on Mn 3d and O 1s.",
+   "instance_hash": "d7f1f5fc4d3ca3fc",
+   "active_electrons": 14,
+   "determinants": 108900,
+   "orbitals": 11,
+   "logical_qubits": 86,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 65304978.0,
+   "toffoli_whole_spectrum": 99123426417.76561,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 99123.42641776562,
+   "seconds_active_volume_1MHz": 17530.56231405898,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.6942959959260877,
+   "classical_seconds_here": 245.2,
+   "same_atoms_as": null
+  },
+  {
+   "id": "li2mno3-o1-k",
+   "title": "Li4Mn2O from Li2MnO3, O1 site, oxygen K edge",
+   "why": "The other oxygen site (a third of the oxygens), with the same choices as O2.",
+   "instance_hash": "5e3814504ea071cd",
+   "active_electrons": 14,
+   "determinants": 108900,
+   "orbitals": 11,
+   "logical_qubits": 86,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 65304978.0,
+   "toffoli_whole_spectrum": 99123426417.76561,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 99123.42641776562,
+   "seconds_active_volume_1MHz": 17530.56231405898,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.6942959959260877,
+   "classical_seconds_here": 235.4,
+   "same_atoms_as": null
+  },
+  {
+   "id": "li3mn2o-o2-k",
+   "title": "Li3Mn2O, O2 site with one lithium removed",
+   "why": "Delithiation takes lithium from the lithium layers first; this removes the nearest of them (Li3, 2.04 A). The cluster stays neutral, so it loses an electron with the lithium, and 2S = 1.",
+   "instance_hash": "8f01513dc8c86174",
+   "active_electrons": 13,
+   "determinants": 152460,
+   "orbitals": 11,
+   "logical_qubits": 86,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 65304978.0,
+   "toffoli_whole_spectrum": 99123426417.76561,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 99123.42641776562,
+   "seconds_active_volume_1MHz": 17530.56231405898,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.6942959959260877,
+   "classical_seconds_here": 335.5,
+   "same_atoms_as": null
+  },
+  {
+   "id": "li2mn2o-o2-k",
+   "title": "Li2Mn2O, O2 site with two lithium removed",
+   "why": "The two nearest lithium layer atoms removed (Li3 at 2.04 A, Li2 at 2.15 A); neutral, 2S = 0.",
+   "instance_hash": "1f56f4f2760ed2b8",
+   "active_electrons": 14,
+   "determinants": 108900,
+   "orbitals": 11,
+   "logical_qubits": 86,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 65304978.0,
+   "toffoli_whole_spectrum": 99123426417.76561,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 99123.42641776562,
+   "seconds_active_volume_1MHz": 17530.56231405898,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.6942959959260877,
+   "classical_seconds_here": 308.5,
+   "same_atoms_as": null
+  },
+  {
+   "id": "li2mno3-o2-k-18",
+   "title": "Li4Mn2O, O2 site, the paper's full active space",
+   "why": "The 18 orbitals of 2405.11015 and 2506.15784: Mn 3d, Li 2s, O 2p and O 1s. AVAS here counts 24 electrons where the paper, after tuning its threshold, has 22. With about 3.4 x 10^8 determinants it is far beyond exact classical methods, so no reference: a target for fault tolerant hardware.",
+   "instance_hash": "378f753530a54c19",
+   "active_electrons": 24,
+   "determinants": 344622096,
+   "orbitals": 18,
+   "logical_qubits": 100,
+   "logical_qubits_estimator": 100,
+   "toffoli_longest_circuit": 302238528.0,
+   "toffoli_whole_spectrum": 449162041402.2439,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 449162.0414022439,
+   "seconds_active_volume_1MHz": 79436.95492048418,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 761.3880108966578,
+   "classical_seconds_here": null,
+   "same_atoms_as": "li2mno3-o2-k"
+  }
+ ],
+ "curve": [
+  {
+   "orbitals": 6,
+   "logical_qubits": 76,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 9431928.0,
+   "toffoli_whole_spectrum": 15746608759.752972,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 15746.608759752971,
+   "seconds_active_volume_1MHz": 2784.8805885152638,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.004678129622227239
+  },
+  {
+   "orbitals": 8,
+   "logical_qubits": 80,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 23828628.0,
+   "toffoli_whole_spectrum": 37370059804.43435,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 37370.05980443435,
+   "seconds_active_volume_1MHz": 6609.115380260223,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.03456696221670631
+  },
+  {
+   "orbitals": 10,
+   "logical_qubits": 84,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 48377488.0,
+   "toffoli_whole_spectrum": 73971505483.30035,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 73971.50548330035,
+   "seconds_active_volume_1MHz": 13082.296821282378,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 0.2554172229888591
+  },
+  {
+   "orbitals": 12,
+   "logical_qubits": 88,
+   "logical_qubits_estimator": 91,
+   "toffoli_longest_circuit": 85785708.0,
+   "toffoli_whole_spectrum": 129501186139.43265,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 129501.18613943264,
+   "seconds_active_volume_1MHz": 22903.04820369879,
+   "fits": {
+    "starling": true,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 1.8872921892977597
+  },
+  {
+   "orbitals": 14,
+   "logical_qubits": 92,
+   "logical_qubits_estimator": 92,
+   "toffoli_longest_circuit": 138760488.0,
+   "toffoli_whole_spectrum": 207909342115.9129,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 207909.3421159129,
+   "seconds_active_volume_1MHz": 36769.99281962652,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 13.94530786179479
+  },
+  {
+   "orbitals": 16,
+   "logical_qubits": 96,
+   "logical_qubits_estimator": 96,
+   "toffoli_longest_circuit": 210009028.0,
+   "toffoli_whole_spectrum": 313146213755.82275,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 313146.21375582274,
+   "seconds_active_volume_1MHz": 55381.75396118262,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 103.04266210766033
+  },
+  {
+   "orbitals": 18,
+   "logical_qubits": 100,
+   "logical_qubits_estimator": 100,
+   "toffoli_longest_circuit": 302238528.0,
+   "toffoli_whole_spectrum": 449162041402.2439,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 449162.0414022439,
+   "seconds_active_volume_1MHz": 79436.95492048418,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 761.3880108966578
+  },
+  {
+   "orbitals": 20,
+   "logical_qubits": 104,
+   "logical_qubits_estimator": 104,
+   "toffoli_longest_circuit": 418156188.0,
+   "toffoli_whole_spectrum": 619907065398.2579,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 619907.0653982579,
+   "seconds_active_volume_1MHz": 109634.21898964825,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 5625.938725568625
+  },
+  {
+   "orbitals": 22,
+   "logical_qubits": 108,
+   "logical_qubits_estimator": 108,
+   "toffoli_longest_circuit": 560469208.0,
+   "toffoli_whole_spectrum": 829331526086.9465,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 829331.5260869465,
+   "seconds_active_volume_1MHz": 146672.16946079183,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 41570.37685237298
+  },
+  {
+   "orbitals": 24,
+   "logical_qubits": 112,
+   "logical_qubits_estimator": 112,
+   "toffoli_longest_circuit": 731884788.0,
+   "toffoli_whole_spectrum": 1081385663811.3915,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 1081385.6638113915,
+   "seconds_active_volume_1MHz": 191249.4296260321,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 307165.8466158721
+  },
+  {
+   "orbitals": 26,
+   "logical_qubits": 116,
+   "logical_qubits_estimator": 116,
+   "toffoli_longest_circuit": 935110128.0,
+   "toffoli_whole_spectrum": 1380019718914.6743,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 1380019.7189146744,
+   "seconds_active_volume_1MHz": 244064.62277748605,
+   "fits": {
+    "starling": false,
+    "blue-jay": true
+   },
+   "classical_hours_paper_model": 2269665.672320206
+  },
+  {
+   "orbitals": 28,
+   "logical_qubits": 120,
+   "logical_qubits_estimator": 120,
+   "toffoli_longest_circuit": 1172852428.0,
+   "toffoli_whole_spectrum": 1729183931739.8767,
+   "circuits": 15000,
+   "seconds_sequential_1MHz": 1729183.9317398767,
+   "seconds_active_volume_1MHz": 305816.37220727076,
+   "fits": {
+    "starling": false,
+    "blue-jay": false
+   },
+   "classical_hours_paper_model": 16770686.978591155
+  }
+ ]
+}
