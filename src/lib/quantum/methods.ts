@@ -5,6 +5,7 @@ import type { TwinMethod, TwinTestRef } from '../twin/methods';
 
 const py = (file: string, name: string): TwinTestRef => ({ file: `scripts/quantum/${file}.py`, name });
 const ts = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/emulate.test.ts', name });
+const ms = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/measure.test.ts', name });
 
 export const QUANTUM_METHODS: readonly TwinMethod[] = [
   {
@@ -88,5 +89,26 @@ export const QUANTUM_METHODS: readonly TwinMethod[] = [
     tolerance: 'exact; 1 day',
     provenance: 'teaching-model',
     tests: [py('test_estimates', 'test_the_numbers_come_back_when_recomputed'), py('test_estimates', 'test_the_models_give_the_paper_s_own_figures_at_eighteen_orbitals')],
+  },
+  {
+    quantity: 'Soft X-ray measurement',
+    model: String.raw`Lifetime (0.15 eV) and grating ($E/R$) broadening; total electron or fluorescence yield over an I0 mesh with Poisson counts and normalization noise; fluorescence saturation $\frac{rt}{rt+2}$; surface dose $N E\,(\mu/\rho)/A$`,
+    data: 'Tabulated cross sections of Li₂MnO₃ at the oxygen K edge (xraydb)',
+    checked: 'A noiseless scan fits back exactly; a noisy one within its noise; the dose by hand',
+    tolerance: String.raw`$10^{-6}$; $\chi^2_
+u$ from 0.7 to 1.4`,
+    provenance: 'teaching-model',
+    tests: [ms('a noiseless scan fits back exactly'), ms('recovers a known spectrum from a simulated measurement within its noise'),
+      ms('saturates fluorescence from a concentrated oxide'), ms('gives the surface dose from photons')],
+  },
+  {
+    quantity: 'Fit and ranking',
+    model: 'Non-negative mixture of candidate spectra with a common shift and extra Gaussian broadening, by weighted least squares; each candidate alone ranks the hypotheses',
+    data: 'A simulated scan, or a measured spectrum loaded in the browser',
+    checked: 'Synthetic mixtures of the oxide clusters; the right cluster ranked first; broadening in the sample; a 30 eV offset on a sloping background',
+    tolerance: String.raw`$3\sigma$ or 0.05 in each fraction; 0.05 eV`,
+    provenance: 'computed',
+    tests: [ms('recovers synthetic mixtures of the library clusters'), ms('ranks the right cluster first'), ms('recovers broadening in the sample'),
+      ms('finds a spectrum shifted by tens of eV'), ms('reads back its own CSV')],
   },
 ];

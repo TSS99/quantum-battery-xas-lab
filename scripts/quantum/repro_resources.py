@@ -3,7 +3,7 @@
 
 Run in the pinned environment from the repository root:  python scripts/quantum/repro_resources.py
 
-The circuit model is the one of the PennyLane demo `tutorial_resource_estimation_spectroscopy` (Apache 2.0): load a
+The circuit model, in qxas/resources.py, is the one of the PennyLane demo `tutorial_resource_estimation_spectroscopy` (Apache 2.0): load a
 sum of 1e4 Slater determinants with QROM, then a Hadamard test around a controlled second order Trotter evolution of a
 compressed double factorized Hamiltonian with L = N fragments, rotations to 1e-3 synthesized with a semi adder (phase
 gradient), basis rotations as Givens networks, and controlled RZ by the double phase trick (two CNOTs and an RZ).
@@ -23,8 +23,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import sys
+
 import numpy as np
 import pennylane.estimator as qre
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from qxas.resources import ALPHA, DELTA, ETA, H_NORM, JMAX, SHOTS, TAU, circuit, config  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "src" / "data" / "quantum" / "repro" / "resources.json"
@@ -33,48 +38,6 @@ OUT = ROOT / "src" / "data" / "quantum" / "repro" / "resources.json"
 PAPER = [(6, 76, 2.42e10, 1.39e7), (9, 82, 6.21e10, 3.99e7), (10, 84, 8.26e10, 5.39e7), (11, 86, 1.08e11, 7.12e7),
          (14, 92, 2.17e11, 1.46e8), (16, 96, 3.22e11, 2.18e8), (18, 100, 4.58e11, 3.11e8),
          (24, 112, 1.09e12, 7.45e8), (28, 120, 1.74e12, 1.19e9)]
-
-ETA, JMAX, H_NORM, Y3, ALPHA, SHOTS = 0.05, 100, 2.0, 1.0, 1.3384, 2500
-TAU = np.pi / (2 * H_NORM)
-DELTA = np.sqrt(ETA / Y3)
-
-
-def config() -> qre.ResourceConfig:
-    cfg = qre.ResourceConfig()
-
-    def rotation(precision):
-        bits = int(np.ceil(np.log2(1 / precision)))
-        return [qre.GateCount(qre.resource_rep(qre.SemiAdder, {"max_register_size": bits + 1}))]
-
-    def basis_rotation(dim):
-        pairs = dim * (dim - 1) / 2
-        ops = [(qre.RZ, dim, None), (qre.RX, pairs, None), (qre.RY, pairs, None), (qre.Hadamard, 4 * pairs, None),
-               (qre.S, pairs, None), (qre.Adjoint, pairs, {"base_cmpr_op": qre.resource_rep(qre.S)}),
-               (qre.CNOT, 2 * pairs + dim, None)]
-        return [qre.GateCount(qre.resource_rep(op, params or {}), count) for op, count, params in ops]
-
-    def controlled_rz(precision):
-        return [qre.GateCount(qre.resource_rep(qre.CNOT), 2),
-                qre.GateCount(qre.resource_rep(qre.RZ, {"precision": precision}), 1)]
-
-    for gate in (qre.RX, qre.RY, qre.RZ):
-        cfg.set_decomp(gate, rotation)
-    cfg.set_decomp(qre.BasisRotation, basis_rotation)
-    cfg.set_decomp(qre.CRZ, controlled_rz)
-    cfg.set_single_qubit_rot_precision(1e-3)
-    return cfg
-
-
-def circuit(hamiltonian, steps: int, prepare: bool = True, num_slaters: float = 1e4):
-    if prepare:
-        qubits = int(np.ceil(np.log2(num_slaters)))
-        qre.QROMStatePreparation(num_state_qubits=qubits)
-        qre.QROM(num_bitstrings=2 ** qubits, size_bitstring=qubits, select_swap_depth=1)
-    qre.Hadamard()
-    if steps:
-        qre.Controlled(qre.TrotterCDF(hamiltonian, steps, order=2), num_ctrl_wires=1, num_zero_ctrl=0)
-    qre.Hadamard()
-
 
 def main() -> None:
     cfg = config()

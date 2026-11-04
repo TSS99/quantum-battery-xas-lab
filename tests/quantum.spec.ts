@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { axeViolations } from './axe';
 
@@ -58,7 +59,7 @@ test('the twin links the quantum page, and Methods lists the quantum models and 
   await expect(page.getByRole('link', { name: 'Quantum XAS' })).toHaveAttribute('href', /\/quantum\/$/);
   await page.goto('./methods/');
   const table = page.getByRole('table', { name: 'Quantum XAS models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(10);
+  await expect(table.getByRole('row')).toHaveCount(12);
   await expect(table).toContainText('PennyLane circuit, gate for gate');
   await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(24);
 });
@@ -75,6 +76,34 @@ test('the cost section says what each problem needs on a fault tolerant machine'
   await expect(cost.getByRole('status')).toContainText('Fits.');
   const [file] = await Promise.all([page.waitForEvent('download'), cost.getByRole('button', { name: 'Download the readiness report' }).click()]);
   expect(file.suggestedFilename()).toBe('quantum-readiness-li2mno3-o2-k-18.md');
+});
+
+test('the beamline measures the oxide clusters and the fit reads the mixture back, from a scan or a file', async ({ page }) => {
+  await page.goto('./quantum/');
+  const card = page.getByRole('region', { name: 'Measure on a soft X-ray beamline, and compare' });
+  const fraction = async (name: string) => parseFloat(await card.locator('tbody tr').filter({ hasText: name }).locator('td').first().innerText());
+  const readout = async (name: string) => card.locator('.qx-readout div').filter({ hasText: name }).locator('dd').innerText();
+  await expect.poll(async () => Math.abs(await fraction('Li₂MnO₃, O2 site') - 66.7)).toBeLessThan(2);
+  await expect.poll(async () => Math.abs(await fraction('Li₂MnO₃, O1 site') - 33.3)).toBeLessThan(2);
+  await expect.poll(async () => Math.abs(parseFloat(await readout('Shift applied')))).toBeLessThanOrEqual(0.05);
+  const resolution = card.getByRole('slider', { name: 'Candidates, as a quantum run resolves them' });
+  await resolution.fill('4');
+  await expect(card.getByRole('status').filter({ hasText: 'Longest circuit' })).toContainText('fits the Starling class');
+  await resolution.fill('2');
+  await expect(card.getByRole('status').filter({ hasText: 'Longest circuit' })).toContainText('needs the Blue Jay class');
+  await resolution.fill('0');
+  const [scan] = await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: 'Download the scan' }).click()]);
+  expect(scan.suggestedFilename()).toBe('quantum-scan-crystal.csv');
+
+  await card.getByRole('combobox').selectOption('charged');
+  await expect.poll(async () => Math.abs(await fraction('one lithium removed') - 30)).toBeLessThan(2);
+  await card.getByRole('button', { name: 'Fluorescence yield' }).click();
+  await expect.poll(async () => parseFloat((await readout('Misfit')).split('χ²ᵥ')[1])).toBeGreaterThan(10);
+
+  await card.getByLabel('Load your measured spectrum').setInputFiles({ name: 'my-scan.csv', mimeType: 'text/csv', buffer: readFileSync(await scan.path()) });
+  await expect(card.getByRole('combobox')).toHaveValue('file');
+  await expect.poll(async () => Math.abs(parseFloat(await readout('Shift applied')))).toBeLessThanOrEqual(0.1);
+  await expect.poll(async () => Math.abs(await fraction('Li₂MnO₃, O2 site') - 66.7)).toBeLessThan(4);
 });
 
 test('the quantum page fits a phone and has no accessibility violations', async ({ page }) => {

@@ -41,6 +41,15 @@ class Estimates(unittest.TestCase):
         self.assertFalse(row["fits"]["starling"])
         self.assertTrue(row["fits"]["blue-jay"])
 
+    def test_a_finer_resolution_evolves_longer_with_finer_steps(self):
+        rows = {r["eta_Ha"]: r for r in DATA["resolution"]}
+        self.assertEqual(rows[0.05]["toffoli_longest_circuit"], next(r for r in DATA["problems"] if r["id"] == "li2mno3-o2-k")["toffoli_longest_circuit"])
+        fresh = estimates.cost(11, 0.01)
+        for key, value in fresh.items():
+            self.assertEqual(value, rows[0.01][key], key)
+        # Five times finer: five times the evolution in steps sqrt(5) times shorter, about 11 times the gates.
+        self.assertAlmostEqual(rows[0.01]["toffoli_longest_circuit"] / rows[0.05]["toffoli_longest_circuit"], 5 ** 1.5, delta=0.3)
+
 
 if __name__ == "__main__":
     unittest.main()
