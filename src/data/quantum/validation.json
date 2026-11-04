@@ -1,0 +1,42 @@
+{
+ "schema": 1,
+ "rows": [
+  {
+   "problem": "h2o-o-k-sto3g",
+   "feature": "first peak, O 1s to 4a1",
+   "peaks": [
+    0
+   ],
+   "eV": 534.0,
+   "source": "Schirmer et al., Phys. Rev. A 47, 1136 (1993)",
+   "doi": "10.1103/PhysRevA.47.1136",
+   "computed_eV": 542.24,
+   "difference_eV": 8.24
+  },
+  {
+   "problem": "h2o-o-k-sto3g",
+   "feature": "spacing from 4a1 to 2b2",
+   "peaks": [
+    0,
+    1
+   ],
+   "eV": 1.89,
+   "source": "Schirmer et al., Phys. Rev. A 47, 1136 (1993)",
+   "doi": "10.1103/PhysRevA.47.1136",
+   "computed_eV": 2.142,
+   "difference_eV": 0.252
+  },
+  {
+   "problem": "co-o-k-sto3g",
+   "feature": "first peak, O 1s to 2pi*",
+   "peaks": [
+    0
+   ],
+   "eV": 534.21,
+   "source": "Sodhi and Brion (1984), electron energy loss, as quoted by Püttner et al., Phys. Rev. A 59, 3415 (1999)",
+   "doi": "10.1103/PhysRevA.59.3415",
+   "computed_eV": 540.0,
+   "difference_eV": 5.79
+  }
+ ]
+}

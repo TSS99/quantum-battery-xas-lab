@@ -111,4 +111,13 @@ u$ from 0.7 to 1.4`,
     tests: [ms('recovers synthetic mixtures of the library clusters'), ms('ranks the right cluster first'), ms('recovers broadening in the sample'),
       ms('finds a spectrum shifted by tens of eV'), ms('reads back its own CSV')],
   },
+  {
+    quantity: 'Against experiment',
+    model: 'Peaks of the exact spectra (transitions above 2 % of the dipole weight) next to published measured peak energies',
+    data: 'Water and CO in the gas phase: Schirmer et al. 1993; Sodhi and Brion 1984',
+    checked: 'Recomputed from the instance files; every row names its source',
+    tolerance: 'reported, not a pass mark: 5.8 to 8.2 eV high in absolute energy, 0.25 eV in the water peak spacing',
+    provenance: 'computed',
+    tests: [py('test_validation', 'test_the_rows_come_back_when_recomputed'), py('test_validation', 'test_absolute_energies_are_high_and_the_water_spacing_is_close')],
+  },
 ];

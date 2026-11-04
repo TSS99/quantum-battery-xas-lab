@@ -24,6 +24,7 @@ test('the quantum page loads water, rebuilds its spectrum and puts the peak on t
   await expect(peak(page, 'Main peak, exact')).toHaveText(/^5\d\d\.\d\d eV$/);
   expect(await peak(page, 'Main peak, measured').textContent()).toBe(await peak(page, 'Main peak, exact').textContent());
   await expect(page.locator('.qx-stage canvas')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Against experiment' })).toContainText('First peak, O 1s to 4a1: measured 534.00 eV, this model 542.24 eV (+8.24 eV).');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://tss99.github.io/quantum-battery-xas-lab/quantum/');
   await expect(page.locator('.katex-error')).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -59,7 +60,7 @@ test('the twin links the quantum page, and Methods lists the quantum models and 
   await expect(page.getByRole('link', { name: 'Quantum XAS' })).toHaveAttribute('href', /\/quantum\/$/);
   await page.goto('./methods/');
   const table = page.getByRole('table', { name: 'Quantum XAS models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(12);
+  await expect(table.getByRole('row')).toHaveCount(13);
   await expect(table).toContainText('PennyLane circuit, gate for gate');
   await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(24);
 });

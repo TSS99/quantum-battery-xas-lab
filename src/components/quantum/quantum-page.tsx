@@ -15,6 +15,7 @@ import { seededRandom } from '@/lib/xas';
 import { loadIndex, loadPack, spectra, storedSignals, type Factorization, type Pack, type PackEntry } from '@/lib/quantum/packs';
 import type { RunMessage, RunRequest } from '@/lib/quantum/worker';
 import type { Signal } from '@/lib/quantum/spectrum';
+import validation from '@/data/quantum/validation.json';
 
 const Cluster3D = dynamic(() => import('./cluster-3d'), { ssr: false, loading: () => <div className="qx-stage-empty">Loading the atoms…</div> });
 const MeasureCard = dynamic(() => import('./measure-card'), { ssr: false });
@@ -106,6 +107,7 @@ export function QuantumPage() {
   };
 
   const absorber = atoms ? Math.max(0, atoms.findIndex(([s]) => s === 'O')) : 0;
+  const measured = validation.rows.filter(r => r.problem === id);
   const m = pack?.meta;
   const substeps = pack?.signals[used]?.substeps ?? 1;
   const steps = pack ? Math.min(jmax, pack.settings.jmax) * substeps : 0;
@@ -150,6 +152,9 @@ export function QuantumPage() {
             <div><dt>Exact edge</dt><dd>{fmt(pack.reference.edge_eV)} eV</dd></div>
           </dl>
           <p className="qx-note">{pack.why}</p>
+          {measured.length > 0 && <ul className="qx-measured" aria-label="Against experiment">
+            {measured.map(r => <li key={r.feature}>{r.feature[0].toUpperCase() + r.feature.slice(1)}: measured {r.eV.toFixed(2)} eV, this model {r.computed_eV.toFixed(2)} eV ({r.difference_eV > 0 ? '+' : ''}{r.difference_eV.toFixed(2)} eV). <a href={`https://doi.org/${r.doi}`} target="_blank" rel="noreferrer">{r.source}</a></li>)}
+          </ul>}
         </>}
       </section>
 
