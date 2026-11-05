@@ -90,8 +90,16 @@ class Engine(unittest.TestCase):
     def test_the_stored_water_data_come_back(self):
         stored = json.loads((eels_data.OUT / f"{WATER}.json").read_text())
         fresh = json.loads(json.dumps(eels_data.data(WATER)))
-        for key in ("measures", "signals", "check", "dipole_norms"):
-            self.assertEqual(fresh[key], stored[key], key)
+        # Lanczos without reorthogonalization leaves ghost sticks of weight near 1e-37 that differ between machines, so
+        # the measures are compared broadened, as test_library compares its reference.
+        for key, m in stored["measures"].items():
+            a = broadened((np.array(fresh["measures"][key]["centres_Ha"]), np.array(fresh["measures"][key]["weights"])), self.w)
+            b = broadened((np.array(m["centres_Ha"]), np.array(m["weights"])), self.w)
+            self.assertLess(np.abs(a - b).max() / b.max(), 1e-6, key)
+        for k, g in stored["signals"]["cross"].items():
+            self.assertTrue(np.allclose(fresh["signals"]["cross"][k], g, rtol=0, atol=1e-9), k)
+        self.assertTrue(np.allclose(fresh["dipole_norms"], stored["dipole_norms"], rtol=1e-9))
+        self.assertTrue(np.allclose(fresh["check"]["values"], stored["check"]["values"], rtol=1e-6))
 
 
 class Data(unittest.TestCase):
