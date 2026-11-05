@@ -13,7 +13,7 @@ function collectErrors(page: import('@playwright/test').Page) {
 }
 
 const peak = (page: import('@playwright/test').Page, label: string) =>
-  page.locator('.qx-readout div').filter({ hasText: label }).locator('dd');
+  page.locator('section[aria-labelledby="qx-spectrum"] .qx-readout div').filter({ hasText: label }).locator('dd');
 
 test('the quantum page loads water, rebuilds its spectrum and puts the peak on the exact one', async ({ page }) => {
   const errors = collectErrors(page);
@@ -60,7 +60,7 @@ test('the twin links the quantum page, and Methods lists the quantum models and 
   await expect(page.getByRole('link', { name: 'Quantum XAS' })).toHaveAttribute('href', /\/quantum\/$/);
   await page.goto('./methods/');
   const table = page.getByRole('table', { name: 'Quantum XAS models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(13);
+  await expect(table.getByRole('row')).toHaveCount(14);
   await expect(table).toContainText('PennyLane circuit, gate for gate');
   await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(24);
 });
@@ -105,6 +105,20 @@ test('the beamline measures the oxide clusters and the fit reads the mixture bac
   await expect(card.getByRole('combobox')).toHaveValue('file');
   await expect.poll(async () => Math.abs(parseFloat(await readout('Shift applied')))).toBeLessThanOrEqual(0.1);
   await expect.poll(async () => Math.abs(await fraction('Li₂MnO₃, O2 site') - 66.7)).toBeLessThan(4);
+});
+
+test('electron energy loss turns with q: the pi* of CO across the bond, its sigma* along it', async ({ page }) => {
+  await page.goto('./quantum/');
+  await page.getByLabel('Absorber and cluster').selectOption('co-o-k-sto3g');
+  const card = page.getByRole('region', { name: 'Electron energy loss, for an oriented sample' });
+  const loss = (label: string) => card.locator('.qx-readout div').filter({ hasText: label }).locator('dd');
+  await card.getByRole('button', { name: 'q along x' }).click();
+  await expect(loss('Strongest loss, exact')).toHaveText('540.00 eV');
+  await card.getByRole('button', { name: 'q along z' }).click();
+  await expect(loss('Strongest loss, exact')).toHaveText(/^556\.\d\d eV$/);
+  await expect(card.getByRole('button', { name: 'q along z' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel('Absorber and cluster').selectOption('li2mno3-o2-k-18');
+  await expect(card).toHaveCount(0);
 });
 
 test('the quantum page fits a phone and has no accessibility violations', async ({ page }) => {

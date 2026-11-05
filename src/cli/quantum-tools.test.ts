@@ -16,7 +16,7 @@ const number = (text: string, pattern: RegExp) => parseFloat(text.match(pattern)
 describe('quantum MCP tools', () => {
   it('are listed after the twin tools', async () => {
     const listed = await handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) as { result: { tools: { name: string }[] } };
-    expect(listed.result.tools.map(t => t.name).slice(-5)).toEqual(['quantum_problems', 'quantum_build', 'quantum_estimate', 'quantum_emulate', 'quantum_compare']);
+    expect(listed.result.tools.map(t => t.name).slice(-6)).toEqual(['quantum_problems', 'quantum_build', 'quantum_estimate', 'quantum_emulate', 'quantum_eels', 'quantum_compare']);
   });
 
   it('quantum_problems lists the library', async () => {
@@ -74,6 +74,16 @@ describe('quantum MCP tools', () => {
     expect((await call('quantum_emulate', { problem: 'li2mno3-o2-k', factorization: 'exact' })).error).toBe(true);
     expect((await call('quantum_emulate', { problem: 'li2mno3-o2-k-18' })).error).toBe(true);
   }, 300_000);
+
+  it('quantum_eels finds the pi* of CO across the bond and its sigma* along it', async () => {
+    const across = (await call('quantum_eels', { problem: 'co-o-k-sto3g', q: [1, 0, 0] })).text;
+    const along = (await call('quantum_eels', { problem: 'co-o-k-sto3g', q: [0, 0, 2] })).text;
+    expect(number(across, /exact ([\d.]+) eV/)).toBeCloseTo(540.0, 0);
+    expect(number(along, /exact ([\d.]+) eV/)).toBeCloseTo(556.3, 0);
+    expect(along).toMatch(/q along \(0\.000, 0\.000, 1\.000\)/);
+    expect((await call('quantum_eels', { problem: 'li2mno3-o2-k-18', q: [0, 0, 1] })).error).toBe(true);
+    expect((await call('quantum_eels', { problem: 'co-o-k-sto3g', q: [0, 0, 0] })).error).toBe(true);
+  });
 
   it('quantum_compare reads a simulated mixture back, and aligns a measured spectrum passed as text', async () => {
     const crystal = (await call('quantum_compare', { sample: 'crystal' })).text;

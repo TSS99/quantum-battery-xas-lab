@@ -6,6 +6,7 @@ import type { TwinMethod, TwinTestRef } from '../twin/methods';
 const py = (file: string, name: string): TwinTestRef => ({ file: `scripts/quantum/${file}.py`, name });
 const ts = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/emulate.test.ts', name });
 const ms = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/measure.test.ts', name });
+const el = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/eels.test.ts', name });
 
 export const QUANTUM_METHODS: readonly TwinMethod[] = [
   {
@@ -110,6 +111,16 @@ u$ from 0.7 to 1.4`,
     provenance: 'computed',
     tests: [ms('recovers synthetic mixtures of the library clusters'), ms('ranks the right cluster first'), ms('recovers broadening in the sample'),
       ms('finds a spectrum shifted by tens of eV'), ms('reads back its own CSV')],
+  },
+  {
+    quantity: 'Electron energy loss',
+    model: String.raw`Dipole limit $S(\mathbf q,\omega)=\sum_{ab} q_a q_b I_{ab}(\omega)$; exact cross terms from the measure of $(m_a+m_b)|I\rangle$, and on the circuit off-diagonal Hadamard tests $\langle m_a I|e^{-iHt}|m_b I\rangle$ (Kunitsa et al. 2025)`,
+    data: 'The problem integrals, dipole states and the pack factorization',
+    checked: String.raw`The exact cross correlation on a turned water molecule; turning with the sample and averaging to XAS; the $\pi^*$ of CO only across the bond; emulated signals against the exact oriented spectrum`,
+    tolerance: String.raw`$10^{-3}$; $10^{-6}$; 10 % of the peak with the compressed factorization`,
+    provenance: 'computed',
+    tests: [py('test_eels', 'test_the_off_diagonal_test_is_the_exact_cross_correlation'), py('test_eels', 'test_the_spectrum_turns_with_the_sample_and_averages_to_xas'),
+      py('test_eels', 'test_co_pi_star_needs_a_momentum_transfer_across_the_bond'), el('rebuilds the exact oriented spectrum'), el('averages over orientations to the XAS spectrum')],
   },
   {
     quantity: 'Against experiment',

@@ -54,6 +54,13 @@
     "blue-jay": true
    },
    "classical_hours_paper_model": 0.01271647474327628,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 15613246.0,
+    "toffoli_whole_spectrum": 51107769948.526375,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 9038.710405743748
+   },
    "classical_seconds_here": 0.5,
    "same_atoms_as": null
   },
@@ -77,6 +84,13 @@
     "blue-jay": true
    },
    "classical_hours_paper_model": 0.2554172229888591,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 48460276.0,
+    "toffoli_whole_spectrum": 149184830966.6007,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 26384.216830337682
+   },
    "classical_seconds_here": 17.7,
    "same_atoms_as": null
   },
@@ -100,6 +114,13 @@
     "blue-jay": true
    },
    "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 65387766.0,
+    "toffoli_whole_spectrum": 199488672835.53122,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 35280.74781589089
+   },
    "classical_seconds_here": 245.2,
    "same_atoms_as": null
   },
@@ -123,6 +144,13 @@
     "blue-jay": true
    },
    "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 65387766.0,
+    "toffoli_whole_spectrum": 199488672835.53122,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 35280.74781589089
+   },
    "classical_seconds_here": 235.4,
    "same_atoms_as": null
   },
@@ -146,6 +174,13 @@
     "blue-jay": true
    },
    "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 65387766.0,
+    "toffoli_whole_spectrum": 199488672835.53122,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 35280.74781589089
+   },
    "classical_seconds_here": 335.5,
    "same_atoms_as": null
   },
@@ -169,6 +204,13 @@
     "blue-jay": true
    },
    "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 65387766.0,
+    "toffoli_whole_spectrum": 199488672835.53122,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 35280.74781589089
+   },
    "classical_seconds_here": 308.5,
    "same_atoms_as": null
   },
@@ -192,6 +234,13 @@
     "blue-jay": true
    },
    "classical_hours_paper_model": 761.3880108966578,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 302321316.0,
+    "toffoli_whole_spectrum": 899565902804.4878,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 159093.5330287413
+   },
    "classical_seconds_here": null,
    "same_atoms_as": "li2mno3-o2-k"
   }
@@ -210,7 +259,14 @@
     "starling": true,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 0.004678129622227239
+   "classical_hours_paper_model": 0.004678129622227239,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 9514716.0,
+    "toffoli_whole_spectrum": 32735037519.505943,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 5789.384364803453
+   }
   },
   {
    "orbitals": 8,
@@ -225,7 +281,14 @@
     "starling": true,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 0.03456696221670631
+   "classical_hours_paper_model": 0.03456696221670631,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 23911416.0,
+    "toffoli_whole_spectrum": 75981939608.8687,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 13437.853948293372
+   }
   },
   {
    "orbitals": 10,
@@ -240,7 +303,14 @@
     "starling": true,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 0.2554172229888591
+   "classical_hours_paper_model": 0.2554172229888591,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 48460276.0,
+    "toffoli_whole_spectrum": 149184830966.6007,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 26384.216830337682
+   }
   },
   {
    "orbitals": 12,
@@ -255,7 +325,14 @@
     "starling": true,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 1.8872921892977597
+   "classical_hours_paper_model": 1.8872921892977597,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 85868496.0,
+    "toffoli_whole_spectrum": 260244192278.8653,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 46025.7195951705
+   }
   },
   {
    "orbitals": 14,
@@ -270,7 +347,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 13.94530786179479
+   "classical_hours_paper_model": 13.94530786179479,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 138843276.0,
+    "toffoli_whole_spectrum": 417060504231.8258,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 73759.60882702595
+   }
   },
   {
    "orbitals": 16,
@@ -285,7 +369,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 103.04266210766033
+   "classical_hours_paper_model": 103.04266210766033,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 210091816.0,
+    "toffoli_whole_spectrum": 627534247511.6455,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 110983.13111013819
+   }
   },
   {
    "orbitals": 18,
@@ -300,7 +391,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 761.3880108966578
+   "classical_hours_paper_model": 761.3880108966578,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 302321316.0,
+    "toffoli_whole_spectrum": 899565902804.4878,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 159093.5330287413
+   }
   },
   {
    "orbitals": 20,
@@ -315,7 +413,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 5625.938725568625
+   "classical_hours_paper_model": 5625.938725568625,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 418238976.0,
+    "toffoli_whole_spectrum": 1241055950796.5159,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 219488.0611670694
+   }
   },
   {
    "orbitals": 22,
@@ -330,7 +435,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 41570.37685237298
+   "classical_hours_paper_model": 41570.37685237298,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 560551996.0,
+    "toffoli_whole_spectrum": 1659904872173.893,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 293563.96210935665
+   }
   },
   {
    "orbitals": 24,
@@ -345,7 +457,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 307165.8466158721
+   "classical_hours_paper_model": 307165.8466158721,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 731967576.0,
+    "toffoli_whole_spectrum": 2164013147622.783,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 382718.4824398372
+   }
   },
   {
    "orbitals": 26,
@@ -360,7 +479,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 2269665.672320206
+   "classical_hours_paper_model": 2269665.672320206,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 935192916.0,
+    "toffoli_whole_spectrum": 2761281257829.3486,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 488348.8687427451
+   }
   },
   {
    "orbitals": 28,
@@ -375,7 +501,14 @@
     "starling": false,
     "blue-jay": false
    },
-   "classical_hours_paper_model": 16770686.978591155
+   "classical_hours_paper_model": 16770686.978591155,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 1172935216.0,
+    "toffoli_whole_spectrum": 3459609683479.7534,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 611852.3676023145
+   }
   }
  ],
  "resolution": [
@@ -393,7 +526,14 @@
     "starling": true,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 0.6942959959260877
+   "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 65387766.0,
+    "toffoli_whole_spectrum": 199488672835.53122,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 35280.74781589089
+   }
   },
   {
    "eta_Ha": 0.02,
@@ -409,7 +549,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 0.6942959959260877
+   "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 257531036.0,
+    "toffoli_whole_spectrum": 765512129316.7393,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 135385.3329140958
+   }
   },
   {
    "eta_Ha": 0.01,
@@ -425,7 +572,14 @@
     "starling": false,
     "blue-jay": true
    },
-   "classical_hours_paper_model": 0.6942959959260877
+   "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 727389326.0,
+    "toffoli_whole_spectrum": 2147115027682.7063,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 379729.95031069696
+   }
   },
   {
    "eta_Ha": 0.005,
@@ -441,7 +595,14 @@
     "starling": false,
     "blue-jay": false
    },
-   "classical_hours_paper_model": 0.6942959959260877
+   "classical_hours_paper_model": 0.6942959959260877,
+   "toffoli_state_preparation": 82788.0,
+   "eels": {
+    "toffoli_longest_circuit": 2056202966.0,
+    "toffoli_whole_spectrum": 6050252230401.682,
+    "circuits": 30000,
+    "seconds_active_volume_1MHz": 1070022.7743723497
+   }
   }
  ]
 }

@@ -73,11 +73,13 @@ class HadamardTest:
         phi0, phi1 = self.first_order(phi0, phi1, step / 2, order)
         return self.first_order(phi0, phi1, step / 2, order[::-1])
 
-    def signal(self, psi: np.ndarray, tau: float, jmax: int, substeps: int = 1, seed: int | None = None) -> np.ndarray:
+    def signal(self, psi: np.ndarray, tau: float, jmax: int, substeps: int = 1, seed: int | None = None,
+               bra: np.ndarray | None = None) -> np.ndarray:
         """<X> + i<Y> at t_j = j tau for j = 1..jmax, carrying the state from one time to the next as a simulator
-        can (hardware would rerun each time from the start; the circuit for time j is j steps of the same formula)."""
+        can (hardware would rerun each time from the start; the circuit for time j is j steps of the same formula).
+        With `bra` the test is the off-diagonal one, <bra|U(t)|psi>, which EELS needs (qxas/eels.py)."""
         rng = None if seed is None else np.random.default_rng(seed)
-        phi0 = psi.astype(complex)
+        phi0 = (psi if bra is None else bra).astype(complex)
         phi1 = psi.astype(complex)
         out = np.empty(jmax, dtype=complex)
         for j in range(jmax):

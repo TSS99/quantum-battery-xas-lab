@@ -9,6 +9,8 @@ import { seededRandom } from '../lib/xas';
 import { HadamardTest } from '../lib/quantum/emulate';
 import { HARTREE_EV, spectra, storedSignals, type Factorization, type Pack } from '../lib/quantum/packs';
 import type { Signal } from '../lib/quantum/spectrum';
+import { eelsSpectra, type EelsData } from '../lib/quantum/eels';
+import eelsIndex from '../data/quantum/eels/index.json';
 import { BEAMLINE, LIFETIME_HWHM_EV, fit, measure, mixture, rank, readSpectrum, scanEnergies, type Detection, type FitOptions, type Measured, type Sticks } from '../lib/quantum/measure';
 import estimatesJson from '../data/quantum/estimates.json';
 import instanceIndex from '../data/quantum/instances/index.json';
@@ -45,14 +47,16 @@ function problemId(value: unknown): string {
   return id;
 }
 
-/** The repository's instance files, found by walking up from this module (the source file or its bundle). */
-function instanceFile(id: string): Json {
+/** A file of the repository's quantum data (instances, eels), found by walking up from this module (the source file
+ * or its bundle). */
+function dataFile(folder: string, id: string): Json {
   for (let dir = dirname(fileURLToPath(import.meta.url)); ; dir = dirname(dir)) {
-    const file = join(dir, 'src', 'data', 'quantum', 'instances', `${id}.json`);
+    const file = join(dir, 'src', 'data', 'quantum', folder, `${id}.json`);
     if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
-    if (dirname(dir) === dir) throw new Error('The instance files were not found: run the server from the repository.');
+    if (dirname(dir) === dir) throw new Error(`No ${folder} data for ${id}: run the server from the repository.`);
   }
 }
+const instanceFile = (id: string) => dataFile('instances', id);
 
 /** The active space Hamiltonian in the FCIDUMP format (Knowles and Handy), chemists' notation, 1-based, unique entries. */
 export function fcidump(integrals: { n_orb: number; n_elec: number[]; e_core: number; h1: number[][]; h2: number[][][][] }): string {
@@ -178,6 +182,31 @@ export const QUANTUM_TOOLS: QuantumTool[] = [
         `${id}, ${method} factorization, j_max ${jmax}, ${shots.toLocaleString('en')} shots per direction (${r.shots.toLocaleString('en')} in all). ${note}`,
         `Main peak: exact ${r.peak_eV.exact.toFixed(2)} eV, measured ${r.peak_eV.measured.toFixed(2)} eV; largest difference from the exact spectrum ${(100 * r.difference).toFixed(1)} % of its peak.`,
         `Broadening eta ${(pack.settings.eta_Ha * HARTREE_EV).toFixed(2)} eV. Energies sit 6 to 30 eV above experiment: these small models do not relax the orbitals around the core hole.`,
+      ].join('\n');
+    },
+  },
+  {
+    name: 'quantum_eels',
+    description: 'Core loss electron energy loss of an oriented sample in the dipole limit: S(q, w) along a direction of the momentum transfer q, exact and as the algorithm measures it with off-diagonal Hadamard tests, next to the orientation average (the XAS spectrum). Directions are in the frame of the problem (atoms from quantum_build xyz).',
+    inputSchema: object({
+      problem: { type: 'string', description: `One of ${eelsIndex.problems.join(', ')}.` },
+      q: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3, description: 'Direction of q, for example [0, 0, 1]; it is normalized.' },
+      shots: { type: 'integer', minimum: 100, maximum: 10_000_000, description: 'Shots per correlation function (default 10,000).' },
+      seed: { type: 'integer', minimum: 0 },
+    }, ['problem', 'q']),
+    run: async args => {
+      const id = problemId(args.problem);
+      if (!eelsIndex.problems.includes(id)) throw new Error(`No EELS data for ${id} yet. Available: ${eelsIndex.problems.join(', ')}.`);
+      const raw = (args.q as unknown[]).map(Number), size = Math.hypot(...raw);
+      if (raw.length !== 3 || !(size > 0)) throw new Error('q needs three numbers, not all zero.');
+      const q = raw.map(v => v / size), shots = Number(args.shots ?? 10_000);
+      const d = dataFile('eels', id) as unknown as EelsData, pack = PACKS.get(id)!;
+      const r = eelsSpectra(d, pack, q, shots, ALPHA, seededRandom(Number(args.seed ?? 1)));
+      return [
+        `${id}, q along (${q.map(v => v.toFixed(3)).join(', ')}), ${shots.toLocaleString('en')} shots per correlation function, ${d.signals.factorization} factorization.`,
+        `Strongest loss: exact ${r.peak_eV.exact.toFixed(2)} eV, measured ${r.peak_eV.measured.toFixed(2)} eV; largest difference ${(100 * r.difference).toFixed(1)} % of the peak.`,
+        `Averaged over orientations (the XAS spectrum) the strongest loss is at ${r.peak_eV.average.toFixed(2)} eV; along q the peak is ${r.strength.toFixed(2)} times the average's.`,
+        'Dipole limit, small collection angles. Energies sit 6 to 30 eV above experiment, as for XAS.',
       ].join('\n');
     },
   },

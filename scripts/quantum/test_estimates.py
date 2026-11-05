@@ -50,6 +50,14 @@ class Estimates(unittest.TestCase):
         # Five times finer: five times the evolution in steps sqrt(5) times shorter, about 11 times the gates.
         self.assertAlmostEqual(rows[0.01]["toffoli_longest_circuit"] / rows[0.05]["toffoli_longest_circuit"], 5 ** 1.5, delta=0.3)
 
+    def test_eels_costs_twice_xas_and_lands_near_the_eels_paper(self):
+        row = next(r for r in DATA["curve"] if r["orbitals"] == 18)
+        ratio = row["eels"]["toffoli_whole_spectrum"] / row["toffoli_whole_spectrum"]
+        self.assertTrue(2 <= ratio < 2.01, ratio)
+        # Table 1 of 2508.15935 gives 3.25e12 T gates at 18 orbitals with its own settings; at 4 T per Toffoli this
+        # model lands 11 percent above it.
+        self.assertLess(abs(4 * row["eels"]["toffoli_whole_spectrum"] / 3.25e12 - 1), 0.15)
+
 
 if __name__ == "__main__":
     unittest.main()

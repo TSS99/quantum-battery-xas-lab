@@ -16,9 +16,11 @@ import { loadIndex, loadPack, spectra, storedSignals, type Factorization, type P
 import type { RunMessage, RunRequest } from '@/lib/quantum/worker';
 import type { Signal } from '@/lib/quantum/spectrum';
 import validation from '@/data/quantum/validation.json';
+import eelsIndex from '@/data/quantum/eels/index.json';
 
 const Cluster3D = dynamic(() => import('./cluster-3d'), { ssr: false, loading: () => <div className="qx-stage-empty">Loading the atoms…</div> });
 const MeasureCard = dynamic(() => import('./measure-card'), { ssr: false });
+const EelsCard = dynamic(() => import('./eels-card'), { ssr: false });
 
 const ALPHA = 1.3384;  // the paper's shot distribution exponent
 const SHOT_STEPS = [1_000, 3_000, 10_000, 30_000, 100_000, 300_000, 1_000_000];
@@ -223,6 +225,8 @@ export function QuantumPage() {
           ]} />}
         <p className="qx-note">Each point is the real part of the Hadamard test at one evolution time, averaged over the three dipole directions. Shots are spread so that early times, which matter most, get the most. Energies sit 6 to 30 eV above experiment because these small models do not relax the orbitals around the core hole; the quantum algorithm reproduces each model&apos;s exact spectrum, which is what this page checks.</p>
       </section>}
+
+      {pack && !target && eelsIndex.problems.includes(id) && <EelsCard id={id} pack={pack} shots={shots} seed={seed} />}
 
       <MeasureCard id={id} />
     </div>

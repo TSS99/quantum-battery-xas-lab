@@ -100,6 +100,10 @@ def cost(orbitals: int, eta: float = ETA) -> dict:
     total = float(n_trot * one + 6 * SHOTS * prep)
     longest = float(big.gate_counts["Toffoli"])
     qubits = int(np.ceil(2 * orbitals + 5 * np.log2(1e4) - 3))
+    # An oriented EELS spectrum (Kunitsa et al. 2025, qxas/eels.py) needs six correlation functions instead of three;
+    # the three off-diagonal ones prepare both states (a linear combination of the two preparations), so it takes
+    # twice the circuits, half of them with one more state preparation.
+    eels_total = 2 * total + 6 * SHOTS * prep
     return {
         "orbitals": orbitals, "logical_qubits": qubits, "logical_qubits_estimator": int(big.total_wires),
         "toffoli_longest_circuit": longest, "toffoli_whole_spectrum": total, "circuits": 6 * SHOTS,
@@ -107,6 +111,9 @@ def cost(orbitals: int, eta: float = ETA) -> dict:
         "seconds_active_volume_1MHz": total * ACTIVE_VOLUME_CYCLES_PER_TOFFOLI / CLOCK_HZ,
         "fits": {m["id"]: bool(qubits <= m["logical_qubits"] and longest <= m["gates"]) for m in MACHINES},
         "classical_hours_paper_model": classical_hours(orbitals),
+        "toffoli_state_preparation": float(prep),
+        "eels": {"toffoli_longest_circuit": longest + float(prep), "toffoli_whole_spectrum": float(eels_total),
+                 "circuits": 12 * SHOTS, "seconds_active_volume_1MHz": eels_total * ACTIVE_VOLUME_CYCLES_PER_TOFFOLI / CLOCK_HZ},
     }
 
 
