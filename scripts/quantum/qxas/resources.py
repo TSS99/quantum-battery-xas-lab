@@ -117,6 +117,32 @@ def cost(orbitals: int, eta: float = ETA) -> dict:
     }
 
 
+# RIXS (Loaiza et al., arXiv 2602.20270; qxas/rixs.py): each sample is a phase estimation of the qubitized walk of a
+# tensor hypercontracted Hamiltonian (rank 3N, 13 bit coefficients and rotations) on a state made by K_A rounds of
+# amplitude amplification around a block encoding that calls the walk 2 K_G times (Eqs. 32 to 38). The paper takes
+# K_A = 13 from its success probability, sqrt(P_R) about 0.06; the page computes P_R for each problem instead.
+RIXS_KA, RIXS_SAMPLES, RIXS_RESOLUTION_HA, RIXS_BITS = 13, 2000, 0.2 / 27.211386245988, 13
+
+
+def rixs_cost(orbitals: int, one_norm: float, k_a: int = RIXS_KA) -> dict:
+    """Logical qubits and Toffolis of one RIXS sample (Eqs. 37 and 38): [(2 K_A + 1) 2 K_G + 2^n_w] T_W, with the
+    Green's function degree K_G of the paper's fit and n_w phase bits for a resolution of 0.2 eV."""
+    from .rixs import green_degree
+
+    ham = qre.THCHamiltonian(num_orbitals=orbitals, tensor_rank=3 * orbitals, one_norm=one_norm)
+    walk = qre.estimate(lambda: qre.QubitizeTHC(ham, coeff_precision=RIXS_BITS, rotation_precision=RIXS_BITS))()
+    k_g = green_degree(one_norm)
+    n_omega = int(np.ceil(np.log2(np.ceil(np.pi * one_norm / (np.sqrt(2) * RIXS_RESOLUTION_HA)))))
+    n_dipole = 3 * int(np.ceil(np.log2(orbitals))) + 2 * RIXS_BITS + 2
+    walk_toffoli = float(walk.gate_counts["Toffoli"])
+    per_sample = ((2 * k_a + 1) * 2 * k_g + 2 ** n_omega) * walk_toffoli
+    return {"one_norm_Ha": one_norm, "green_degree": k_g, "phase_bits": n_omega, "toffoli_walk": walk_toffoli,
+            # 2N + max(n_w, n_D + 4) + n_W, where the estimator's walk wires hold the 2N system qubits and n_W
+            "logical_qubits": max(n_omega, n_dipole + 4) + int(walk.total_wires),
+            "amplification_rounds": k_a, "toffoli_per_sample": per_sample, "samples": RIXS_SAMPLES,
+            "toffoli_spectrum": per_sample * RIXS_SAMPLES, "seconds_sequential_1MHz": per_sample * RIXS_SAMPLES / CLOCK_HZ}
+
+
 def settings() -> dict:
     """The settings every estimate states."""
     return {"eta_Ha": ETA, "jmax": JMAX, "h_norm_Ha": H_NORM, "tau_per_Ha": TAU, "trotter_step_per_Ha": DELTA,

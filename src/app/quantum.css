@@ -32,6 +32,14 @@
 .qx-measure-plot {min-width:0}
 .qx-file {cursor:pointer}
 .qx-app .qx-directions {max-width:640px}
+.qx-rixs-controls {display:flex;flex-wrap:wrap;gap:8px 12px}
+.qx-rixs-controls .twin-switch {flex:0 1 auto;min-width:200px}
+.qx-app .qx-three {grid-template-columns:repeat(3,1fr)}
+.qx-map {min-width:0}
+.qx-map svg {display:block;max-width:100%;cursor:crosshair}
+.qx-map-tick {font:11px var(--tw-mono);fill:var(--tw-muted)}
+.qx-map-label {font:12px var(--tw-mono);fill:var(--tw-body)}
+.qx-map-hover {margin:4px 0 0;max-width:none;min-height:1.5em;font:12px var(--tw-mono);color:var(--tw-muted)}
 .qx-measured {display:grid;gap:6px;margin:0;padding:0 0 0 14px;font-size:13px;line-height:1.5;color:var(--tw-body)}
 .qx-measured a {color:var(--tw-muted)}
 .qx-file:focus-within {outline:2px solid var(--tw-accent);outline-offset:2px}

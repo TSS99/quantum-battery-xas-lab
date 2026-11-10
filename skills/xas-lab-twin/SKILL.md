@@ -37,6 +37,7 @@ npm run twin -- --formula CuO --edge Cu-K --density 6.3 --thickness 10 --out cuo
 | `quantum_estimate` | Logical qubits, Toffolis, run time and machine fit for a `problem`, `orbitals` or `resolution_eV` |
 | `quantum_emulate` | The spectrum the algorithm measures with `shots`; `live` reruns water's circuits |
 | `quantum_eels` | Electron energy loss of an oriented sample: S(q, w) along a direction `q`, exact and as the algorithm measures it |
+| `quantum_rixs` | Resonant inelastic X-ray scattering at an `incident_eV`: the loss spectrum sampled by phase estimation for a powder (`parallel`, `crossed`) or an oriented `geometry` (`xz`: in along x, out along z) |
 | `quantum_compare` | A soft X-ray scan of a Li2MnO3 cluster mixture fitted back, or a measured `spectrum` given as text |
 
 The quantum tools are explained, with real outputs, in `docs/QUANTUM_AGENTS.md`. Their energies sit 6 to 30 eV above experiment, so compare shapes after the fit's shift, never absolute positions.

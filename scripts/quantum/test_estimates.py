@@ -58,6 +58,21 @@ class Estimates(unittest.TestCase):
         # model lands 11 percent above it.
         self.assertLess(abs(4 * row["eels"]["toffoli_whole_spectrum"] / 3.25e12 - 1), 0.15)
 
+    def test_rixs_reproduces_the_rixs_paper_s_table_1(self):
+        # 2602.20270, Table 1: 16 to 30 orbitals of the MnO7H6 model with their one-norms. Its Toffolis count the walk
+        # calls of Eq. 38 "up to subdominant factors" and this model lands 3 to 6 percent below; qubits within 4 percent.
+        for row in DATA["rixs_paper"]:
+            self.assertLess(abs(row["toffoli_per_sample"] / row["paper_toffoli"] - 1), 0.1, row["orbitals"])
+            self.assertLess(abs(row["logical_qubits"] / row["paper_qubits"] - 1), 0.1, row["orbitals"])
+
+    def test_every_problem_has_a_rixs_cost_from_its_own_one_norm(self):
+        for row in DATA["problems"]:
+            fresh = estimates.rixs_cost(row["orbitals"], row["rixs"]["one_norm_Ha"])
+            self.assertEqual(fresh, row["rixs"], row["id"])
+        target = next(r for r in DATA["problems"] if r["id"] == "li2mno3-o2-k-18")["rixs"]
+        # Another cluster, but the same size and elements as the paper's MnO7H6 at 18 orbitals (117.46 Ha).
+        self.assertLess(abs(target["one_norm_Ha"] / 117.46 - 1), 0.1)
+
 
 if __name__ == "__main__":
     unittest.main()

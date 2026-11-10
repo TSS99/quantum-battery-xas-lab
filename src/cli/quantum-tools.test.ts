@@ -16,7 +16,7 @@ const number = (text: string, pattern: RegExp) => parseFloat(text.match(pattern)
 describe('quantum MCP tools', () => {
   it('are listed after the twin tools', async () => {
     const listed = await handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) as { result: { tools: { name: string }[] } };
-    expect(listed.result.tools.map(t => t.name).slice(-6)).toEqual(['quantum_problems', 'quantum_build', 'quantum_estimate', 'quantum_emulate', 'quantum_eels', 'quantum_compare']);
+    expect(listed.result.tools.map(t => t.name).slice(-7)).toEqual(['quantum_problems', 'quantum_build', 'quantum_estimate', 'quantum_emulate', 'quantum_eels', 'quantum_rixs', 'quantum_compare']);
   });
 
   it('quantum_problems lists the library', async () => {
@@ -83,6 +83,19 @@ describe('quantum MCP tools', () => {
     expect(along).toMatch(/q along \(0\.000, 0\.000, 1\.000\)/);
     expect((await call('quantum_eels', { problem: 'li2mno3-o2-k-18', q: [0, 0, 1] })).error).toBe(true);
     expect((await call('quantum_eels', { problem: 'co-o-k-sto3g', q: [0, 0, 0] })).error).toBe(true);
+  });
+
+  it('quantum_rixs samples a powder and an oriented CO, and loses the elastic line across the axis', async () => {
+    const powder = (await call('quantum_rixs', { problem: 'co-o-k-sto3g', shots: 1_000_000 })).text;
+    expect(powder).toMatch(/powder, parallel polarizations, 1,000,000 samples/);
+    expect(number(powder, /Elastic line ([\d.]+) %/)).toBeGreaterThan(10);
+    expect(number(powder, /exact ([\d.]+) eV/)).toBe(number(powder, /measured ([\d.]+) eV/));
+    expect(powder).toMatch(/\d+ rounds of amplitude amplification; a sample is [\d.]+e\+\d+ Toffoli gates/);
+    const crossed = (await call('quantum_rixs', { problem: 'co-o-k-sto3g', geometry: 'xz', incident_eV: 540 })).text;
+    expect(crossed).toMatch(/incident 540\.\d\d eV.*oriented, in along x, out along z, 10,000 samples/);
+    expect(number(crossed, /Elastic line ([\d.]+) %/)).toBe(0);
+    expect((await call('quantum_rixs', { problem: 'li2mno3-o2-k-18' })).error).toBe(true);
+    expect((await call('quantum_rixs', { problem: 'co-o-k-sto3g', geometry: 'up' })).error).toBe(true);
   });
 
   it('quantum_compare reads a simulated mixture back, and aligns a measured spectrum passed as text', async () => {

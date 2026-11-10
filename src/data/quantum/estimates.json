@@ -62,7 +62,19 @@
     "seconds_active_volume_1MHz": 9038.710405743748
    },
    "classical_seconds_here": 0.5,
-   "same_atoms_as": null
+   "same_atoms_as": null,
+   "rixs": {
+    "one_norm_Ha": 53.8124,
+    "green_degree": 44917,
+    "phase_bits": 14,
+    "toffoli_walk": 1187.0,
+    "logical_qubits": 193,
+    "amplification_rounds": 13,
+    "toffoli_per_sample": 2898537674.0,
+    "samples": 2000,
+    "toffoli_spectrum": 5797075348000.0,
+    "seconds_sequential_1MHz": 5797075.348
+   }
   },
   {
    "id": "co-o-k-sto3g",
@@ -92,7 +104,19 @@
     "seconds_active_volume_1MHz": 26384.216830337682
    },
    "classical_seconds_here": 17.7,
-   "same_atoms_as": null
+   "same_atoms_as": null,
+   "rixs": {
+    "one_norm_Ha": 91.7816,
+    "green_degree": 81068,
+    "phase_bits": 15,
+    "toffoli_walk": 1557.0,
+    "logical_qubits": 242,
+    "amplification_rounds": 13,
+    "toffoli_per_sample": 6867055080.0,
+    "samples": 2000,
+    "toffoli_spectrum": 13734110160000.0,
+    "seconds_sequential_1MHz": 13734110.16
+   }
   },
   {
    "id": "li2mno3-o2-k",
@@ -122,7 +146,19 @@
     "seconds_active_volume_1MHz": 35280.74781589089
    },
    "classical_seconds_here": 245.2,
-   "same_atoms_as": null
+   "same_atoms_as": null,
+   "rixs": {
+    "one_norm_Ha": 64.1249,
+    "green_degree": 54547,
+    "phase_bits": 15,
+    "toffoli_walk": 1769.0,
+    "logical_qubits": 262,
+    "amplification_rounds": 13,
+    "toffoli_per_sample": 5268623314.0,
+    "samples": 2000,
+    "toffoli_spectrum": 10537246628000.0,
+    "seconds_sequential_1MHz": 10537246.628
+   }
   },
   {
    "id": "li2mno3-o1-k",
@@ -152,7 +188,19 @@
     "seconds_active_volume_1MHz": 35280.74781589089
    },
    "classical_seconds_here": 235.4,
-   "same_atoms_as": null
+   "same_atoms_as": null,
+   "rixs": {
+    "one_norm_Ha": 64.2191,
+    "green_degree": 54636,
+    "phase_bits": 15,
+    "toffoli_walk": 1769.0,
+    "logical_qubits": 262,
+    "amplification_rounds": 13,
+    "toffoli_per_sample": 5277125128.0,
+    "samples": 2000,
+    "toffoli_spectrum": 10554250256000.0,
+    "seconds_sequential_1MHz": 10554250.256
+   }
   },
   {
    "id": "li3mn2o-o2-k",
@@ -182,7 +230,19 @@
     "seconds_active_volume_1MHz": 35280.74781589089
    },
    "classical_seconds_here": 335.5,
-   "same_atoms_as": null
+   "same_atoms_as": null,
+   "rixs": {
+    "one_norm_Ha": 60.7339,
+    "green_degree": 51363,
+    "phase_bits": 15,
+    "toffoli_walk": 1769.0,
+    "logical_qubits": 262,
+    "amplification_rounds": 13,
+    "toffoli_per_sample": 4964468530.0,
+    "samples": 2000,
+    "toffoli_spectrum": 9928937060000.0,
+    "seconds_sequential_1MHz": 9928937.06
+   }
   },
   {
    "id": "li2mn2o-o2-k",
@@ -212,7 +272,19 @@
     "seconds_active_volume_1MHz": 35280.74781589089
    },
    "classical_seconds_here": 308.5,
-   "same_atoms_as": null
+   "same_atoms_as": null,
+   "rixs": {
+    "one_norm_Ha": 63.9985,
+    "green_degree": 54428,
+    "phase_bits": 15,
+    "toffoli_walk": 1769.0,
+    "logical_qubits": 262,
+    "amplification_rounds": 13,
+    "toffoli_per_sample": 5257255720.0,
+    "samples": 2000,
+    "toffoli_spectrum": 10514511440000.0,
+    "seconds_sequential_1MHz": 10514511.44
+   }
   },
   {
    "id": "li2mno3-o2-k-18",
@@ -242,7 +314,19 @@
     "seconds_active_volume_1MHz": 159093.5330287413
    },
    "classical_seconds_here": null,
-   "same_atoms_as": "li2mno3-o2-k"
+   "same_atoms_as": "li2mno3-o2-k",
+   "rixs": {
+    "one_norm_Ha": 110.9361,
+    "green_degree": 99900,
+    "phase_bits": 16,
+    "toffoli_walk": 2713.0,
+    "logical_qubits": 371,
+    "amplification_rounds": 13,
+    "toffoli_per_sample": 14813348968.0,
+    "samples": 2000,
+    "toffoli_spectrum": 29626697936000.0,
+    "seconds_sequential_1MHz": 29626697.936
+   }
   }
  ],
  "curve": [
@@ -603,6 +687,128 @@
     "circuits": 30000,
     "seconds_active_volume_1MHz": 1070022.7743723497
    }
+  }
+ ],
+ "rixs_paper": [
+  {
+   "orbitals": 16,
+   "one_norm_Ha": 105.37,
+   "paper_qubits": 351,
+   "paper_toffoli": 13800000000.0,
+   "green_degree": 94394,
+   "phase_bits": 15,
+   "toffoli_walk": 2609.0,
+   "logical_qubits": 338,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 13384284796.0,
+   "samples": 2000,
+   "toffoli_spectrum": 26768569592000.0,
+   "seconds_sequential_1MHz": 26768569.592
+  },
+  {
+   "orbitals": 18,
+   "one_norm_Ha": 117.46,
+   "paper_qubits": 384,
+   "paper_toffoli": 16800000000.0,
+   "green_degree": 106386,
+   "phase_bits": 16,
+   "toffoli_walk": 2713.0,
+   "logical_qubits": 371,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 15763560940.0,
+   "samples": 2000,
+   "toffoli_spectrum": 31527121880000.0,
+   "seconds_sequential_1MHz": 31527121.88
+  },
+  {
+   "orbitals": 20,
+   "one_norm_Ha": 125.51,
+   "paper_qubits": 414,
+   "paper_toffoli": 20000000000.0,
+   "green_degree": 114434,
+   "phase_bits": 16,
+   "toffoli_walk": 3013.0,
+   "logical_qubits": 401,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 18816100636.0,
+   "samples": 2000,
+   "toffoli_spectrum": 37632201272000.0,
+   "seconds_sequential_1MHz": 37632201.272
+  },
+  {
+   "orbitals": 22,
+   "one_norm_Ha": 141.43,
+   "paper_qubits": 449,
+   "paper_toffoli": 25500000000.0,
+   "green_degree": 130486,
+   "phase_bits": 16,
+   "toffoli_walk": 3391.0,
+   "logical_qubits": 436,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 24116045980.0,
+   "samples": 2000,
+   "toffoli_spectrum": 48232091960000.0,
+   "seconds_sequential_1MHz": 48232091.96
+  },
+  {
+   "orbitals": 24,
+   "one_norm_Ha": 148.47,
+   "paper_qubits": 479,
+   "paper_toffoli": 29300000000.0,
+   "green_degree": 137637,
+   "phase_bits": 16,
+   "toffoli_walk": 3707.0,
+   "logical_qubits": 466,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 27794841338.0,
+   "samples": 2000,
+   "toffoli_spectrum": 55589682676000.0,
+   "seconds_sequential_1MHz": 55589682.676
+  },
+  {
+   "orbitals": 26,
+   "one_norm_Ha": 166.23,
+   "paper_qubits": 509,
+   "paper_toffoli": 35900000000.0,
+   "green_degree": 155811,
+   "phase_bits": 16,
+   "toffoli_walk": 4033.0,
+   "logical_qubits": 496,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 34197137890.0,
+   "samples": 2000,
+   "toffoli_spectrum": 68394275780000.0,
+   "seconds_sequential_1MHz": 68394275.78
+  },
+  {
+   "orbitals": 28,
+   "one_norm_Ha": 160.45,
+   "paper_qubits": 539,
+   "paper_toffoli": 37200000000.0,
+   "green_degree": 149876,
+   "phase_bits": 16,
+   "toffoli_walk": 4367.0,
+   "logical_qubits": 526,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 35629654280.0,
+   "samples": 2000,
+   "toffoli_spectrum": 71259308560000.0,
+   "seconds_sequential_1MHz": 71259308.56
+  },
+  {
+   "orbitals": 30,
+   "one_norm_Ha": 205.65,
+   "paper_qubits": 570,
+   "paper_toffoli": 52500000000.0,
+   "green_degree": 196742,
+   "phase_bits": 16,
+   "toffoli_walk": 4711.0,
+   "logical_qubits": 557,
+   "amplification_rounds": 13,
+   "toffoli_per_sample": 50358724444.0,
+   "samples": 2000,
+   "toffoli_spectrum": 100717448888000.0,
+   "seconds_sequential_1MHz": 100717448.888
   }
  ]
 }

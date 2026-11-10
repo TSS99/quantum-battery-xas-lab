@@ -60,7 +60,7 @@ test('the twin links the quantum page, and Methods lists the quantum models and 
   await expect(page.getByRole('link', { name: 'Quantum XAS' })).toHaveAttribute('href', /\/quantum\/$/);
   await page.goto('./methods/');
   const table = page.getByRole('table', { name: 'Quantum XAS models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(14);
+  await expect(table.getByRole('row')).toHaveCount(15);
   await expect(table).toContainText('PennyLane circuit, gate for gate');
   await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(24);
 });
@@ -119,6 +119,28 @@ test('electron energy loss turns with q: the pi* of CO across the bond, its sigm
   await expect(card.getByRole('button', { name: 'q along z' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByLabel('Absorber and cluster').selectOption('li2mno3-o2-k-18');
   await expect(card).toHaveCount(0);
+});
+
+test('resonant inelastic scattering maps CO, samples a row, and loses the elastic line across the bond', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./quantum/');
+  await page.getByLabel('Absorber and cluster').selectOption('co-o-k-sto3g');
+  const card = page.getByRole('region', { name: 'Resonant inelastic X-ray scattering' });
+  const readout = (label: string) => card.locator('.qx-readout div').filter({ hasText: label }).locator('dd');
+  await expect(card.getByRole('img', { name: /^RIXS map, inelastic part/ })).toBeVisible();
+  await expect(readout('Elastic line')).toHaveText(/^\d+\.\d % of samples$/);
+  await expect(readout('Block encoding succeeds')).toHaveText(/ %, \d+ rounds$/);
+  await card.getByRole('button', { name: 'Oriented' }).click();
+  await card.getByRole('button', { name: 'In along x' }).click();
+  await card.getByRole('button', { name: 'Out along z' }).click();
+  await expect(card.getByRole('button', { name: 'Out along z' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(readout('Elastic line')).toHaveText('0.00 % of samples');
+  const incident = card.getByRole('slider', { name: 'Incident photon energy' });
+  await incident.fill('0');
+  await expect(card.locator('output[for="qx-rixs-in"]')).toHaveText('538.00 eV');
+  await page.getByLabel('Absorber and cluster').selectOption('li2mno3-o2-k-18');
+  await expect(card).toHaveCount(0);
+  expect(errors).toEqual([]);
 });
 
 test('the quantum page fits a phone and has no accessibility violations', async ({ page }) => {

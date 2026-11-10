@@ -11,6 +11,8 @@ import { HARTREE_EV, spectra, storedSignals, type Factorization, type Pack } fro
 import type { Signal } from '../lib/quantum/spectrum';
 import { eelsSpectra, type EelsData } from '../lib/quantum/eels';
 import eelsIndex from '../data/quantum/eels/index.json';
+import { amplificationRounds, rixsSpectrum, successProbability, toffoliPerSample, type Geometry, type RixsCost, type RixsData } from '../lib/quantum/rixs';
+import rixsIndex from '../data/quantum/rixs/index.json';
 import { BEAMLINE, LIFETIME_HWHM_EV, fit, measure, mixture, rank, readSpectrum, scanEnergies, type Detection, type FitOptions, type Measured, type Sticks } from '../lib/quantum/measure';
 import estimatesJson from '../data/quantum/estimates.json';
 import instanceIndex from '../data/quantum/instances/index.json';
@@ -207,6 +209,36 @@ export const QUANTUM_TOOLS: QuantumTool[] = [
         `Strongest loss: exact ${r.peak_eV.exact.toFixed(2)} eV, measured ${r.peak_eV.measured.toFixed(2)} eV; largest difference ${(100 * r.difference).toFixed(1)} % of the peak.`,
         `Averaged over orientations (the XAS spectrum) the strongest loss is at ${r.peak_eV.average.toFixed(2)} eV; along q the peak is ${r.strength.toFixed(2)} times the average's.`,
         'Dipole limit, small collection angles. Energies sit 6 to 30 eV above experiment, as for XAS.',
+      ].join('\n');
+    },
+  },
+  {
+    name: 'quantum_rixs',
+    description: 'Resonant inelastic X-ray scattering at an incident photon energy: the energy loss spectrum as the algorithm of Loaiza et al. (2026) samples it by phase estimation, next to the exact Kramers-Heisenberg spectrum, for a powder (parallel or crossed polarizations) or an oriented sample (in and out polarizations along the axes of the problem, as in quantum_build xyz), with the success probability of the block encoding and the Toffoli gates per sample.',
+    inputSchema: object({
+      problem: { type: 'string', description: `One of ${rixsIndex.problems.join(', ')}.` },
+      incident_eV: { type: 'number', description: 'Incident photon energy on the model\'s scale (as its XAS spectrum); the nearest computed one is used. Default: where the scattering is strongest.' },
+      geometry: { type: 'string', enum: ['parallel', 'crossed', 'xx', 'xy', 'xz', 'yx', 'yy', 'yz', 'zx', 'zy', 'zz'], description: 'Powder with parallel or crossed polarizations, or an oriented pair, in then out (default parallel).' },
+      shots: { type: 'integer', minimum: 100, maximum: 10_000_000, description: 'Phase estimation samples (default 10,000).' },
+      seed: { type: 'integer', minimum: 0 },
+    }, ['problem']),
+    run: async args => {
+      const id = problemId(args.problem);
+      if (!rixsIndex.problems.includes(id)) throw new Error(`No RIXS data for ${id} yet. Available: ${rixsIndex.problems.join(', ')}.`);
+      const d = dataFile('rixs', id) as unknown as RixsData, geometry = (args.geometry ?? 'parallel') as Geometry, shots = Number(args.shots ?? 10_000);
+      if (!(geometry in d.maps)) throw new Error(`Unknown geometry "${geometry}".`);
+      const target = args.incident_eV === undefined ? d.incident_eV[d.polynomial.row] : Number(args.incident_eV);
+      const row = d.incident_eV.reduce((best, e, i) => Math.abs(e - target) < Math.abs(d.incident_eV[best] - target) ? i : best, 0);
+      if (d.totals[geometry][row] <= 0) throw new Error(`Nothing scatters in geometry ${geometry} for ${id}: the incoming polarization is not absorbed.`);
+      const r = rixsSpectrum(d, geometry, row, shots, seededRandom(Number(args.seed ?? 1)));
+      const p = successProbability(d, geometry, row), rounds = amplificationRounds(p);
+      const cost = ((estimates.problems as unknown as { id: string; rixs: RixsCost }[]).find(c => c.id === id)!).rixs;
+      return [
+        `${id}, incident ${d.incident_eV[row].toFixed(2)} eV (computed from ${d.incident_eV[0].toFixed(2)} to ${d.incident_eV.at(-1)!.toFixed(2)} eV), ${geometry === 'parallel' || geometry === 'crossed' ? `powder, ${geometry} polarizations` : `oriented, in along ${geometry[0]}, out along ${geometry[1]}`}, ${shots.toLocaleString('en')} samples.`,
+        `Strongest loss: exact ${r.peak_eV.exact.toFixed(1)} eV, measured ${r.peak_eV.measured.toFixed(1)} eV; largest difference ${(100 * r.difference).toFixed(1)} % of the peak.`,
+        `Elastic line ${(100 * r.elastic).toFixed(1)} % of the samples, losses beyond ${d.loss_eV.at(-1)} eV ${(100 * r.outside).toFixed(1)} %.`,
+        `The block encoding succeeds with probability ${(100 * p).toPrecision(2)} %, so ${rounds} rounds of amplitude amplification; a sample is ${sci(toffoliPerSample(cost, rounds))} Toffoli gates on ${cost.logical_qubits} logical qubits (Green's function polynomial of degree ${cost.green_degree}, ${cost.phase_bits} phase bits).`,
+        'Readout resolution 0.2 eV, core hole half width 0.3 eV. Energies sit 6 to 30 eV above experiment, as for XAS.',
       ].join('\n');
     },
   },

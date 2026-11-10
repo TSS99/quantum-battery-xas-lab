@@ -17,10 +17,12 @@ import type { RunMessage, RunRequest } from '@/lib/quantum/worker';
 import type { Signal } from '@/lib/quantum/spectrum';
 import validation from '@/data/quantum/validation.json';
 import eelsIndex from '@/data/quantum/eels/index.json';
+import rixsIndex from '@/data/quantum/rixs/index.json';
 
 const Cluster3D = dynamic(() => import('./cluster-3d'), { ssr: false, loading: () => <div className="qx-stage-empty">Loading the atoms…</div> });
 const MeasureCard = dynamic(() => import('./measure-card'), { ssr: false });
 const EelsCard = dynamic(() => import('./eels-card'), { ssr: false });
+const RixsCard = dynamic(() => import('./rixs-card'), { ssr: false });
 
 const ALPHA = 1.3384;  // the paper's shot distribution exponent
 const SHOT_STEPS = [1_000, 3_000, 10_000, 30_000, 100_000, 300_000, 1_000_000];
@@ -227,6 +229,8 @@ export function QuantumPage() {
       </section>}
 
       {pack && !target && eelsIndex.problems.includes(id) && <EelsCard id={id} pack={pack} shots={shots} seed={seed} />}
+
+      {!target && rixsIndex.problems.includes(id) && <RixsCard id={id} shots={shots} seed={seed} />}
 
       <MeasureCard id={id} />
     </div>

@@ -7,6 +7,7 @@ const py = (file: string, name: string): TwinTestRef => ({ file: `scripts/quantu
 const ts = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/emulate.test.ts', name });
 const ms = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/measure.test.ts', name });
 const el = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/eels.test.ts', name });
+const rx = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/rixs.test.ts', name });
 
 export const QUANTUM_METHODS: readonly TwinMethod[] = [
   {
@@ -121,6 +122,17 @@ u$ from 0.7 to 1.4`,
     provenance: 'computed',
     tests: [py('test_eels', 'test_the_off_diagonal_test_is_the_exact_cross_correlation'), py('test_eels', 'test_the_spectrum_turns_with_the_sample_and_averages_to_xas'),
       py('test_eels', 'test_co_pi_star_needs_a_momentum_transfer_across_the_bond'), el('rebuilds the exact oriented spectrum'), el('averages over orientations to the XAS spectrum')],
+  },
+  {
+    quantity: 'Resonant inelastic scattering',
+    model: String.raw`Kramers–Heisenberg $\sum_F |\langle F|m_b G(\omega_I) m_a|I\rangle|^2$ with $G$ from the Lanczos tridiagonal of the core-excited states; powder averages from $|\mathrm{tr}\,R|^2$, $\sum|R_{ab}|^2$ and $\sum R_{ab}R_{ba}^*$; on the circuit a block encoding with $\Gamma G$ as a Chebyshev polynomial and phase estimation samples (Loaiza et al. 2026)`,
+    data: 'The problem integrals and dipoles; the polynomial degree and one-norm from them',
+    checked: 'The sum over every eigenstate of water; the average over orientations; no elastic line for crossed polarizations along different symmetry axes; the polynomial against the Green function; samples against the exact row',
+    tolerance: String.raw`$10^{-8}$; $10^{-9}$; $10^{-8}$; $10^{-3}$; 2 % of the peak at $10^7$ samples`,
+    provenance: 'computed',
+    tests: [py('test_rixs', 'test_the_krylov_reference_is_the_sum_over_every_state'), py('test_rixs', 'test_the_powder_formulas_are_averages_over_orientations'),
+      py('test_rixs', 'test_crossed_polarizations_leave_water_no_elastic_line'), py('test_rixs', 'test_the_papers_polynomial_reproduces_the_green_function'),
+      rx('draws samples that converge on the exact row'), rx('leaves the molecules no elastic line with crossed polarizations along different symmetry axes')],
   },
   {
     quantity: 'Against experiment',
