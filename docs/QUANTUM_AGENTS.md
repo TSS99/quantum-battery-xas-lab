@@ -1,6 +1,6 @@
 # Quantum XAS, step 6: tools for AI agents, and a Python package
 
-Phase 6 of [PLAN-quantum.md](PLAN-quantum.md). The quantum XAS engine is now open to AI agents through seven MCP tools, and to scripts through an installable Python package, `qxas`. Both use the same data and code as the [Quantum XAS page](https://tss99.github.io/quantum-battery-xas-lab/quantum/).
+Phase 6 of [PLAN-quantum.md](PLAN-quantum.md). The quantum XAS engine is now open to AI agents through eight MCP tools, and to scripts through an installable Python package, `qxas`. Both use the same data and code as the [Quantum XAS page](https://tss99.github.io/quantum-battery-xas-lab/quantum/).
 
 ## Connecting an agent
 
@@ -18,6 +18,7 @@ claude mcp add xaslab-twin -- npm run --silent --prefix "$PWD" mcp
 | `quantum_emulate` | The spectrum as the algorithm measures it, shots drawn on the emulated circuits; water's circuits rerun on the spot |
 | `quantum_eels` | Electron energy loss of an oriented sample along a direction of q, exact and as the algorithm measures it ([QUANTUM_EELS.md](QUANTUM_EELS.md)) |
 | `quantum_rixs` | Resonant inelastic X-ray scattering at an incident energy, for a powder or an oriented sample: the loss spectrum as phase estimation samples it, the exact one, the block encoding's success probability and the Toffolis per sample ([QUANTUM_RIXS.md](QUANTUM_RIXS.md)) |
+| `quantum_ledge` | Mn L edges of Mn2+, Mn3+ or Mn4+ with or without spin orbit coupling: L3 and L2, their splitting and L3 share, exact and as the algorithm measures them ([QUANTUM_LEDGE.md](QUANTUM_LEDGE.md)) |
 | `quantum_compare` | A model soft X-ray scan of a cluster mixture fitted back, or a measured spectrum you pass as text |
 
 The tests are `src/cli/quantum-tools.test.ts`. Every output below is the tool's own, called over stdio.

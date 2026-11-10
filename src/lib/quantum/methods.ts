@@ -8,6 +8,7 @@ const ts = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/emulate.test
 const ms = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/measure.test.ts', name });
 const el = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/eels.test.ts', name });
 const rx = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/rixs.test.ts', name });
+const lx = (name: string): TwinTestRef => ({ file: 'src/lib/quantum/ledge.test.ts', name });
 
 export const QUANTUM_METHODS: readonly TwinMethod[] = [
   {
@@ -133,6 +134,17 @@ u$ from 0.7 to 1.4`,
     tests: [py('test_rixs', 'test_the_krylov_reference_is_the_sum_over_every_state'), py('test_rixs', 'test_the_powder_formulas_are_averages_over_orientations'),
       py('test_rixs', 'test_crossed_polarizations_leave_water_no_elastic_line'), py('test_rixs', 'test_the_papers_polynomial_reproduces_the_green_function'),
       rx('draws samples that converge on the exact row'), rx('leaves the molecules no elastic line with crossed polarizations along different symmetry axes')],
+  },
+  {
+    quantity: 'Mn L edges',
+    model: String.raw`Mn 2p and 3d in spin orbitals over spin free X2C orbitals, spin orbit coupling from the one electron X2C Hamiltonian, ligands as point charges; each core hole sector's own block of $H$; Hadamard tests on the complex Hamiltonian with second order product formula steps`,
+    data: 'MnO, Jahn-Teller Mn³⁺ and the Li₂MnO₃ octahedron; cc-pVDZ-DK',
+    checked: 'Spin orbit off against PySCF spin free CI; L₃ to L₂ splitting; the order of the oxidation states and of their L₃ shares; the same orbitals on every run; the product formula against the exact signal',
+    tolerance: String.raw`$10^{-8}$ Ha; within 7 % of 11 eV; strict order; $10^{-6}$; 1 % of $G(0)$`,
+    provenance: 'computed',
+    tests: [py('test_ledge', 'test_without_spin_orbit_coupling_it_is_the_spin_free_problem'), py('test_ledge', 'test_l3_and_l2_split_by_the_mn_2p_spin_orbit_splitting'),
+      py('test_ledge', 'test_the_oxidation_states_come_in_the_measured_order'), py('test_ledge', 'test_the_stored_mn4_edge_comes_back'),
+      lx('rebuilds the exact edge from the product formula signal as the shots grow')],
   },
   {
     quantity: 'Against experiment',

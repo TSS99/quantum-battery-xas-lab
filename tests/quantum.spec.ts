@@ -60,7 +60,7 @@ test('the twin links the quantum page, and Methods lists the quantum models and 
   await expect(page.getByRole('link', { name: 'Quantum XAS' })).toHaveAttribute('href', /\/quantum\/$/);
   await page.goto('./methods/');
   const table = page.getByRole('table', { name: 'Quantum XAS models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(15);
+  await expect(table.getByRole('row')).toHaveCount(16);
   await expect(table).toContainText('PennyLane circuit, gate for gate');
   await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(24);
 });
@@ -140,6 +140,21 @@ test('resonant inelastic scattering maps CO, samples a row, and loses the elasti
   await expect(card.locator('output[for="qx-rixs-in"]')).toHaveText('538.00 eV');
   await page.getByLabel('Absorber and cluster').selectOption('li2mno3-o2-k-18');
   await expect(card).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('the Mn L edges split with spin orbit coupling and come in the order of the oxidation states', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./quantum/');
+  const card = page.getByRole('region', { name: 'Mn L edges, with spin orbit coupling' });
+  const readout = (label: string) => card.locator('.qx-readout div').filter({ hasText: label }).locator('dd');
+  const l3 = async () => parseFloat((await readout('L₃, centroid').textContent())!);
+  await expect(readout('L₂ above L₃')).toHaveText(/^1[01]\.\d\d eV$/);
+  const four = await l3();
+  await card.getByRole('button', { name: 'Mn²⁺' }).click();
+  await expect.poll(l3).toBeLessThan(four);
+  await card.getByRole('button', { name: 'Off', exact: true }).click();
+  await expect(readout('L₃ share')).toHaveText('no L₃ or L₂');
   expect(errors).toEqual([]);
 });
 

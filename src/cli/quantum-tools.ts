@@ -13,6 +13,8 @@ import { eelsSpectra, type EelsData } from '../lib/quantum/eels';
 import eelsIndex from '../data/quantum/eels/index.json';
 import { amplificationRounds, rixsSpectrum, successProbability, toffoliPerSample, type Geometry, type RixsCost, type RixsData } from '../lib/quantum/rixs';
 import rixsIndex from '../data/quantum/rixs/index.json';
+import { ledgeSpectra, type LedgeData } from '../lib/quantum/ledge';
+import ledgeIndex from '../data/quantum/ledge/index.json';
 import { BEAMLINE, LIFETIME_HWHM_EV, fit, measure, mixture, rank, readSpectrum, scanEnergies, type Detection, type FitOptions, type Measured, type Sticks } from '../lib/quantum/measure';
 import estimatesJson from '../data/quantum/estimates.json';
 import instanceIndex from '../data/quantum/instances/index.json';
@@ -239,6 +241,29 @@ export const QUANTUM_TOOLS: QuantumTool[] = [
         `Elastic line ${(100 * r.elastic).toFixed(1)} % of the samples, losses beyond ${d.loss_eV.at(-1)} eV ${(100 * r.outside).toFixed(1)} %.`,
         `The block encoding succeeds with probability ${(100 * p).toPrecision(2)} %, so ${rounds} rounds of amplitude amplification; a sample is ${sci(toffoliPerSample(cost, rounds))} Toffoli gates on ${cost.logical_qubits} logical qubits (Green's function polynomial of degree ${cost.green_degree}, ${cost.phase_bits} phase bits).`,
         'Readout resolution 0.2 eV, core hole half width 0.3 eV. Energies sit 6 to 30 eV above experiment, as for XAS.',
+      ].join('\n');
+    },
+  },
+  {
+    name: 'quantum_ledge',
+    description: 'Manganese L edges with spin orbit coupling: the Mn 2p absorption of Mn2+, Mn3+ or Mn4+ in an octahedral crystal field, exact and as the time domain algorithm measures it with shots on the complex spin orbital Hamiltonian, with L3 and L2 centroids, their splitting and the L3 share; or without spin orbit coupling, one edge.',
+    inputSchema: object({
+      state: { type: 'string', enum: ledgeIndex.problems, description: 'mn2-oct, mn3-oct (Jahn-Teller elongated) or mn4-li2mno3 (the octahedron of Li2MnO3).' },
+      spin_orbit: { type: 'boolean', description: 'Include spin orbit coupling (default true).' },
+      shots: { type: 'integer', minimum: 100, maximum: 10_000_000, description: 'Shots for the whole spectrum (default 10,000).' },
+      seed: { type: 'integer', minimum: 0 },
+    }, ['state']),
+    run: async args => {
+      const id = String(args.state);
+      if (!ledgeIndex.problems.includes(id)) throw new Error(`Unknown state "${id}". Known: ${ledgeIndex.problems.join(', ')}.`);
+      const d = dataFile('ledge', id) as unknown as LedgeData, spinOrbit = args.spin_orbit !== false, shots = Number(args.shots ?? 10_000);
+      const r = ledgeSpectra(d, spinOrbit, shots, ALPHA, seededRandom(Number(args.seed ?? 1))), e = spinOrbit ? d.spin_orbit : d.spin_free;
+      return [
+        `${d.title} (${id}), spin orbit coupling ${spinOrbit ? 'on' : 'off'}, ${shots.toLocaleString('en')} shots; ${d.spin_orbitals} spin orbitals (Mn 2p and 3d) as qubits, ${d.settings.trotter_steps} product formula steps per time point.`,
+        spinOrbit ? `L3 centroid ${e.l3_eV!.toFixed(2)} eV, L2 ${e.l2_eV!.toFixed(2)} eV, splitting ${(e.l2_eV! - e.l3_eV!).toFixed(2)} eV, L3 share ${(100 * e.l3_share!).toFixed(1)} %.`
+          : `One 2p edge, centroid ${e.centroid_eV!.toFixed(2)} eV: without spin orbit coupling there is no L3 or L2.`,
+        `Strongest: exact ${r.peak_eV.exact.toFixed(2)} eV, measured ${r.peak_eV.measured.toFixed(2)} eV; largest difference ${(100 * r.difference).toFixed(1)} % of the peak.`,
+        'Ligands are point charges (a crystal field without covalency): the oxidation states come in the measured order, but absolute energies sit about 10 eV above experiment.',
       ].join('\n');
     },
   },

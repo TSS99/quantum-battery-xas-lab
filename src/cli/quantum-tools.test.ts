@@ -16,7 +16,7 @@ const number = (text: string, pattern: RegExp) => parseFloat(text.match(pattern)
 describe('quantum MCP tools', () => {
   it('are listed after the twin tools', async () => {
     const listed = await handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) as { result: { tools: { name: string }[] } };
-    expect(listed.result.tools.map(t => t.name).slice(-7)).toEqual(['quantum_problems', 'quantum_build', 'quantum_estimate', 'quantum_emulate', 'quantum_eels', 'quantum_rixs', 'quantum_compare']);
+    expect(listed.result.tools.map(t => t.name).slice(-8)).toEqual(['quantum_problems', 'quantum_build', 'quantum_estimate', 'quantum_emulate', 'quantum_eels', 'quantum_rixs', 'quantum_ledge', 'quantum_compare']);
   });
 
   it('quantum_problems lists the library', async () => {
@@ -96,6 +96,15 @@ describe('quantum MCP tools', () => {
     expect(number(crossed, /Elastic line ([\d.]+) %/)).toBe(0);
     expect((await call('quantum_rixs', { problem: 'li2mno3-o2-k-18' })).error).toBe(true);
     expect((await call('quantum_rixs', { problem: 'co-o-k-sto3g', geometry: 'up' })).error).toBe(true);
+  });
+
+  it('quantum_ledge splits the Mn 2p edge only with spin orbit coupling, and orders the oxidation states', async () => {
+    const l3 = async (state: string) => number((await call('quantum_ledge', { state, shots: 1_000_000 })).text, /L3 centroid ([\d.]+) eV/);
+    const [two, three, four] = [await l3('mn2-oct'), await l3('mn3-oct'), await l3('mn4-li2mno3')];
+    expect(two).toBeLessThan(three);
+    expect(three).toBeLessThan(four);
+    expect((await call('quantum_ledge', { state: 'mn4-li2mno3', spin_orbit: false })).text).toMatch(/One 2p edge.*no L3 or L2/);
+    expect((await call('quantum_ledge', { state: 'mn5' })).error).toBe(true);
   });
 
   it('quantum_compare reads a simulated mixture back, and aligns a measured spectrum passed as text', async () => {
