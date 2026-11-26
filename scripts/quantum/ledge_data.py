@@ -46,12 +46,12 @@ def problems() -> list[dict]:
     shell = cluster.first_shells(library.ROOT / "scripts" / "quantum" / "structures" / library.LI2MNO3, centre="Mn")[0]
     return [
         {"id": "mn2-oct", "title": "Mn²⁺, octahedral (MnO)", "charge": 2, "spin": 5, "d": 5,
-         "why": "High spin d5 as in MnO: Mn-O 2.222 A, half the rock salt cell.", "ligands": octahedron(2.222)},
+         "why": "High spin d5 as in MnO: Mn-O 2.222 Å, half the rock salt cell.", "ligands": octahedron(2.222)},
         {"id": "mn3-oct", "title": "Mn³⁺, octahedral, Jahn-Teller", "charge": 3, "spin": 4, "d": 4,
-         "why": "High spin d4 in an octahedron elongated as Jahn-Teller makes it, Mn-O 4 x 1.93 and 2 x 2.27 A, whose "
-                "mean is the 2.045 A sum of Shannon's ionic radii.", "ligands": octahedron(1.93, 2.27)},
+         "why": "High spin d4 in an octahedron elongated as Jahn-Teller makes it, Mn-O 4 x 1.93 and 2 x 2.27 Å, whose "
+                "mean is the 2.045 Å sum of Shannon's ionic radii.", "ligands": octahedron(1.93, 2.27)},
         {"id": "mn4-li2mno3", "title": "Mn⁴⁺ in Li₂MnO₃", "charge": 4, "spin": 3, "d": 3,
-         "why": "d3 in the octahedron of Li2MnO3 (Mn-O 1.904 to 1.919 A), the cathode of the oxygen K edge problems.",
+         "why": "d3 in the octahedron of Li₂MnO₃ (Mn-O 1.904 to 1.919 Å), the cathode of the oxygen K edge problems.",
          "ligands": [xyz for _, xyz in shell["atoms"][1:]]},
     ]
 

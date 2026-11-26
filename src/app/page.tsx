@@ -4,6 +4,7 @@ import { JsonLd } from '@/components/json-ld';
 import { HOME_PAGE, pageMetadata } from '@/lib/site';
 import { twinFonts } from './fonts';
 import './twin.css';
+import './quantum.css';
 
 export const metadata: Metadata = pageMetadata(HOME_PAGE);
 

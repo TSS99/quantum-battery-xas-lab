@@ -63,12 +63,28 @@ function useEnergyNote(energy_eV: number, dispatch: Dispatch<TwinAction>) {
   }, [energy_eV, dispatch]);
 }
 
+const SoftLine = dynamic(() => import('./soft-line').then(m => m.SoftLine), { ssr: false, loading: () => <p className="twin-hint">Loading the soft X-ray beamline…</p> });
+type Line = 'hard' | 'soft';
+
+/** Which beamline the page shows, kept in the query (?beamline=soft), since the twin owns the hash. */
+function useLine(): [Line, (line: Line) => void] {
+  const [line, setLine] = useState<Line>('hard');
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('beamline') === 'soft') setLine('soft'); }, []);
+  return [line, (next: Line) => {
+    setLine(next);
+    const url = new URL(window.location.href);
+    if (next === 'soft') url.searchParams.set('beamline', 'soft'); else url.searchParams.delete('beamline');
+    history.replaceState(history.state, '', url);
+  }];
+}
+
 function TwinLayout() {
   const { store: { twin, view }, dispatch } = useTwin();
   const [keysOpen, setKeysOpen] = useState(false);
   const [calibrateOpen, setCalibrateOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false), [commandUsed, setCommandUsed] = useState(false);
+  const [line, pickLine] = useLine();
   const commandButton = useRef<HTMLButtonElement>(null);
   const openCommand = useCallback(() => { setCommandUsed(true); setCommandOpen(true); }, []);
   const keysButton = useRef<HTMLButtonElement>(null);
@@ -94,12 +110,14 @@ function TwinLayout() {
         </div>
       </header>
       <Training />
-      <ExplainRail />
+      {line === 'hard' && <ExplainRail />}
     </div>
     <div className="twin-col twin-col-centre">
-      <ModeBar />
-      <TwinScene />
-      <ResultsDock />
+      <div className="twin-switch twin-line" role="group" aria-label="Beamline">
+        <button type="button" aria-pressed={line === 'hard'} onClick={() => pickLine('hard')}>Hard X-ray</button>
+        <button type="button" aria-pressed={line === 'soft'} onClick={() => pickLine('soft')}>Soft X-ray</button>
+      </div>
+      {line === 'hard' ? <><ModeBar /><TwinScene /><ResultsDock /></> : <SoftLine />}
     </div>
     <div className="twin-col twin-col-right">
       <div className="twin-toolbar twin-card" role="group" aria-label="Page tools">
@@ -116,7 +134,7 @@ function TwinLayout() {
           <button type="button" className="twin-icon twin-rail-toggle" aria-pressed={!view.rightHidden} aria-keyshortcuts="]" title="Controls (])" onClick={() => dispatch({ type: 'rail', side: 'right' })}><PanelRight size={16} aria-hidden="true" /><span className="sr-only">Controls</span></button>
         </div>
       </div>
-      <ControlRail />
+      {line === 'hard' ? <ControlRail /> : <p className="twin-card twin-hint soft-rail">The soft X-ray line is set from its measurement, under the beamline.</p>}
     </div>
     <ShortcutsDialog open={keysOpen} onClose={closeKeys} />
     <CalibrateDialog open={calibrateOpen} onClose={closeCalibrate} />

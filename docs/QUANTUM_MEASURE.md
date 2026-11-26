@@ -44,5 +44,13 @@ At 1 eV of broadening in the sample, electron yield, 1 s per point (seed 1):
 ## What is not done
 
 * **Measured references.** The plan asks that measured spectra be reproduced. No openly licensed measured O K edge of Li₂MnO₃ or its delithiated forms was found, so this step stops at synthetic data and lets you load your own. It stays open until there is data the project may publish.
-* **The twin's hutch.** The soft X-ray beamline lives on the Quantum XAS page; the twin's 3D hutch stays a hard X-ray beamline.
-* **Mn L edges.** They need spin orbit coupling, which the library's problems do not have yet (a research track in the plan).
+* **Mn L edges.** Step 10 computes them with spin orbit coupling ([QUANTUM_LEDGE.md](QUANTUM_LEDGE.md)), but this measurement and its fit still run only the oxygen K edge.
+
+## In the twin (step 11)
+
+The twin page has a Hard / Soft switch; Soft (or a link with `?beamline=soft`) shows this beamline in 3D above the same measurement, which drives it. The parts and their optics are `src/components/twin/soft-parts.ts`, tested in `soft-parts.test.ts`, and the drawing is `soft-3d.tsx`.
+
+* **Grating.** 1,200 lines per mm in the inside first order at a fixed cff = cos β / cos α of 2.25, so sin α + sin β = Nλ and the cff fix both angles; the plane mirror before it grazes at 90° − (α − β)/2. At the scan's middle, 566 eV, that is α = 87.94°, β = −85.36° and 3.35° on the mirror. The test solves both equations back to 10⁻¹² and 10⁻¹⁰ from 400 to 900 eV.
+* **Exit slit.** A model: the resolving power is inverse in the gap, 25 µm for 5,000, and the flux in proportion to it, as when the slit and not the source limits the resolution. The drawing widens the jaws a thousand times so the change shows.
+* **Detectors.** The drain current to a picoammeter reads electron yield; a silicon drift detector at 90° reads fluorescence. The one the measurement does not use is drawn idle.
+* **Layout.** The line is 9 m long, compressed from a real one's 30 to 50 m. Labels that would overlap on a small screen become dots, still buttons, with the open part, the monochromator, slit and end station named first.

@@ -8,7 +8,7 @@ test('the Methods page lists the models and their tests, and leads back to the t
   await expect(page).toHaveTitle('Beamline Twin methods: every model, its source and its checks | Beamline Twin');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Methods');
   const table = page.getByRole('table', { name: 'Beamline twin models, checks and tests' });
-  await expect(table.getByRole('row')).toHaveCount(24);
+  await expect(table.getByRole('row')).toHaveCount(26);
   await expect(table).toContainText('Larch sigma2_eins');
   await table.getByText('3 tests').first().click();
   await expect(table.locator('details[open] li').first()).toContainText('.test.ts');

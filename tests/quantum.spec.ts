@@ -62,7 +62,7 @@ test('the twin links the quantum page, and Methods lists the quantum models and 
   const table = page.getByRole('table', { name: 'Quantum XAS models, checks and tests' });
   await expect(table.getByRole('row')).toHaveCount(16);
   await expect(table).toContainText('PennyLane circuit, gate for gate');
-  await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(24);
+  await expect(page.getByRole('table', { name: 'Beamline twin models, checks and tests' }).getByRole('row')).toHaveCount(26);
 });
 
 test('the cost section says what each problem needs on a fault tolerant machine', async ({ page }) => {

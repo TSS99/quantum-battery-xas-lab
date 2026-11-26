@@ -38,7 +38,8 @@ const pct = (x: number) => `${(100 * x).toFixed(1)} %`;
 const spread = (x: number) => x < 5e-4 ? '± <0.1 %' : `± ${pct(x)}`;
 const duration = (s: number) => s < 120 ? `${Math.round(s)} s` : s < 7200 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} hours`;
 
-export default function MeasureCard({ id }: { id: string }) {
+/** `onBeamline` hears the settings that move the hardware: the twin's soft X-ray line draws them (step 11). */
+export default function MeasureCard({ id, onBeamline }: { id: string; onBeamline?: (b: { energy_eV: number; resolvingPower: number; detection: Detection }) => void }) {
   const [packs, setPacks] = useState<Pack[] | null>(null);
   const [sample, setSample] = useState<SampleKey>('crystal');
   const [detection, setDetection] = useState<Detection>('tey');
@@ -61,6 +62,10 @@ export default function MeasureCard({ id }: { id: string }) {
   const quantum = resolution > 0 ? resolutions[resolution - 1] : undefined;
   const halfWidth = quantum ? quantum.eta_Ha * HARTREE_EV : LIFETIME_HWHM_EV;
   const built = packs ? packs[0].settings.eta_Ha * HARTREE_EV : 1.36;
+
+  useEffect(() => {
+    if (onBeamline && energies) onBeamline({ energy_eV: (energies[0] + energies[energies.length - 1]) / 2, resolvingPower: POWERS[power], detection });
+  }, [onBeamline, energies, power, detection]);
 
   const scan = useMemo(() => sticks && energies && truth
     ? measure(mixture(sticks.map((s, k) => ({ sticks: s, fraction: truth[k] }))), energies, beam, seededRandom(seed), WIDTHS[width]) : null,

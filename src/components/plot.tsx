@@ -42,7 +42,8 @@ export function Plot({ series, xLabel = 'Photon energy (eV)', yLabel = 'Œº (cm‚Å
   for (const s of valid) for (let i = 0; i < s.x.length; i++) { x0 = Math.min(x0, s.x[i]); x1 = Math.max(x1, s.x[i]); low = Math.min(low, s.y[i] - (s.sigma?.[i] ?? 0)); high = Math.max(high, s.y[i] + (s.sigma?.[i] ?? 0)); }
   const y0 = minY ?? low, y1 = Math.max(high, y0 + 1e-6) + (high - y0) * .1;
   const labelLines: string[] = [];
-  const maxChars = Math.max(20, Math.floor((width - 16) / 7));
+  // The label starts at the middle of the plot, so its lines wrap to fit the right half.
+  const maxChars = Math.max(20, Math.floor((width / 2 - 20) / 7));
   for (const word of xLabel.split(' ')) {
     const last = labelLines.length - 1;
     if (last < 0 || labelLines[last].length + word.length + 1 > maxChars) labelLines.push(word); else labelLines[last] += ' ' + word;

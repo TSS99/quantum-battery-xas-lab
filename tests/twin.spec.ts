@@ -708,6 +708,70 @@ test('axe finds no accessibility violations on the twin page at 1440 and 390 px'
   expect(await axeViolations(page)).toEqual([]);
 });
 
+test('soft X-ray line: the switch shows its beamline, the parts follow the measurement, a scan is fitted, and Hard brings the hard line back', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTwin(page);
+  await mode(page, 'Fluorescence').click();
+  const hash = await page.evaluate(() => location.hash);
+  const lines = page.getByRole('group', { name: 'Beamline' });
+  await lines.getByRole('button', { name: 'Soft X-ray' }).click();
+  await expect(lines.getByRole('button', { name: 'Soft X-ray' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveURL(/\?beamline=soft#v=1&mode=fluorescence/);
+  await expect(page.getByRole('group', { name: 'Modes' })).toHaveCount(0);
+  const scene = page.getByRole('group', { name: /^Soft X-ray beamline in 3D/ });
+  await expect(scene.locator('.soft-label')).toHaveCount(12);
+
+  // The grating card reads its angles at the scan's energy; the exit slit card its gap for the resolving power.
+  const card = page.locator('#soft-card');
+  await scene.getByRole('button', { name: 'Plane grating monochromator' }).click();
+  await expect(card).toContainText(/At 5\d\d\.\d eV: incidence 8\d\.\d\d°, diffraction -8\d\.\d\d°/);
+  await scene.getByRole('button', { name: 'Exit slit' }).click();
+  await expect(card).toContainText('Gap 25.0 um for E/ΔE = 5,000');
+  const measure = page.getByRole('region', { name: 'Measure on a soft X-ray beamline, and compare' });
+  await measure.getByRole('slider', { name: 'Resolving power, E/ΔE' }).fill('3');
+  await expect(card).toContainText('Gap 12.5 um for E/ΔE = 10,000');
+  // The detection lights its detector and idles the other.
+  const drain = scene.getByRole('button', { name: 'Drain current (electron yield)' }), sdd = scene.getByRole('button', { name: 'Fluorescence detector' });
+  await expect(drain).not.toHaveClass(/is-idle/);
+  await expect(sdd).toHaveClass(/is-idle/);
+  await measure.getByRole('button', { name: 'Fluorescence yield' }).click();
+  await expect(drain).toHaveClass(/is-idle/);
+  await expect(sdd).not.toHaveClass(/is-idle/);
+  await measure.getByRole('button', { name: 'Electron yield' }).click();
+  // The scan of the crystal is fitted back to its two oxygen sites, 2 : 1.
+  const fraction = async (name: string) => parseFloat(await measure.locator('tbody tr').filter({ hasText: name }).locator('td').first().innerText());
+  await expect.poll(async () => Math.abs(await fraction('Li₂MnO₃, O2 site') - 66.7)).toBeLessThan(2);
+  await expect.poll(async () => Math.abs(await fraction('Li₂MnO₃, O1 site') - 33.3)).toBeLessThan(2);
+
+  // Named labels stay inside the view and apart; on a wide screen only the idle detector is left as a dot.
+  const labelsApart = async () => scene.evaluate(el => {
+    const view = el.getBoundingClientRect();
+    const boxes = [...el.querySelectorAll('.soft-label:not([data-marker])')].map(b => b.getBoundingClientRect());
+    const inside = boxes.every(r => r.left >= view.left - 0.5 && r.right <= view.right + 0.5 && r.top >= view.top - 0.5 && r.bottom <= view.bottom + 0.5);
+    const apart = boxes.every((a, i) => boxes.every((b, j) => i === j || a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top));
+    return { named: boxes.length, inside, apart };
+  });
+  await expect.poll(labelsApart).toEqual({ named: 11, inside: true, apart: true });
+  await expect(scene.locator('.soft-label[data-marker]')).toHaveText(['Fluorescence']);
+
+  // Hard brings back the hard line as it was, and the link drops the soft line.
+  await lines.getByRole('button', { name: 'Hard X-ray' }).click();
+  await expect(mode(page, 'Fluorescence')).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => [location.search, location.hash])).toEqual(['', hash]);
+
+  // A link opens the soft line directly; it passes axe at 1440 and 390 px, and a phone keeps the named labels apart.
+  await page.goto('./?beamline=soft');
+  await expect(scene.locator('.soft-label')).toHaveCount(12);
+  await scene.getByRole('button', { name: 'End station' }).click();
+  await expect(card).toContainText('ultra high vacuum');
+  expect(await axeViolations(page)).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => { const r = await labelsApart(); return r.inside && r.apart && r.named >= 3 && r.named < 12; }).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await axeViolations(page)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('the / key opens the command bar, which runs commands and confirms a corrected typo first', async ({ page }) => {
   const errors = collectErrors(page);
   await openTwin(page, '#mode=transmission&seed=7');
